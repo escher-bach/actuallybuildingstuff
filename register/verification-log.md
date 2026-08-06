@@ -51,6 +51,19 @@ The §2.3 review was notably more careful than §2.5: it marked most of its own 
 
 ---
 
+## Pass 3 — 2026-08-07, vein §2.1
+
+| Source | Claim checked | Outcome |
+|---|---|---|
+| Figural-memory AIG study, PMC7298330 | LR test of radical-constrained vs unconstrained difficulty model; N, R², effect sizes | ✅ **Exact on every figure.** N = 208; radical explains 95.41% of difficulty variance (adj. R² = 0.939); χ²(6) = 24.21, p < .001; within-family incidental effects 6.82% (p<.05) low-load and 12.36% (p<.001) medium-load; high-load −1.48%, n.s. |
+| Cattell Culture Fair Test cross-cultural bias analysis (ERIC ED274668) | "59% of items flagged as biased across four methods" | ✅ **Confirmed**, including the four named methods and the reported high inter-method correlation |
+
+**Score for this vein: 2 checked, 2 exact, 0 drift.** The most accurate review of the six, and the one that most consistently distinguished what it read from what it inferred.
+
+**One nuance the review did not surface, found during checking and worth keeping:** a *separate* Rasch-based cross-cultural analysis of the same instrument reported far more modest bias — 13 of 46 items, with 22 not flagged. Same test, different method, materially different answer. That strengthens rather than weakens the lesson for us: bias detection is method-dependent, so our single `permuted_alphabet_check` should be assumed to understate. Recorded in docs/04.
+
+---
+
 ## Consequences applied
 
 - `mutant-localization.toml` — the 26.5% claim removed and replaced with the paper's actual figures. **This materially weakens the row's A1 argument** and the correction is recorded in the row itself, not silently swapped: unit-level FEP being ~0% means the "corruption might be invisible" hazard is much smaller in the regime we would actually train in.

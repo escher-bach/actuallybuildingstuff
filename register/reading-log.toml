@@ -119,3 +119,31 @@ One CONTAMINATION, self-reported: a graph-colouring phase-transition paper was
 opened before its sealed content was recognised, then excluded from all use with
 an independent substitute source found. See docs/00-heldout-partition.md.
 """
+
+[[entry]]
+n = 5
+date = "2026-08-07"
+source = "Vein 2.1 -- automatic item generation, cognitive design systems, Q-matrix estimation, culture-fair testing"
+vein = "2.1"
+rows = ["matrix-reasoning-item-model"]
+note = """
+ZERO new primitives. Matrix reasoning's 'correspondence finding' was explicitly
+tested against a fold into abstraction-naming + structure-walk-query +
+constraint-propagation and found to have no residue -- the review stated the
+rejected fold rather than just asserting reuse.
+
+Only one row, and the vein's real yield was not a family at all: it supplied the
+empirical procedure for distinguishing k from e that the Task Spec asserts but
+never operationalizes. Written up in docs/04-radical-incidental.md and now a
+tracked task, because it is an A3 test every family should pass BEFORE the
+matrix runs.
+
+It also supplied the closest methodological prior art to our own section 6 --
+Q-matrix estimation -- along with its failure modes: provable non-identifiability,
+misclassification up to 44% under misspecification, and a published case of a
+fitted model assigning 74-98% skill mastery to students who scored zero. Recorded
+in docs/02 as a raised bar for step 6: recovering the plants is necessary and not
+sufficient.
+
+Most accurate review of the six. Every figure checked came back exact.
+"""

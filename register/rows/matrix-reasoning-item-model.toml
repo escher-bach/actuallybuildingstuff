@@ -1,0 +1,126 @@
+id = "matrix-reasoning-item-model"
+title = "Matrix reasoning under a generated item model"
+vein = "2.1"
+their_term = "item model; item shell; cognitive design system; automatic item generation"
+substrate = "figural matrix items -- a grid of cells related by transformation rules"
+status = "translated"
+levels = ["L0", "L1"]
+complexity_modes = ["description_length", "state_width"]
+contents = ["structure_induction", "composition"]
+asymmetries = ["evaluate/search"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "abstraction-naming",
+    "structure-walk-query",
+    "constraint-propagation",
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+]
+predicted_block = "cognitive design systems group matrix items by the processing operations attributed to them and by number of rules. Note this vein's taxonomy is the closest methodologically to ours -- a Q-matrix IS a measured capability decomposition -- so agreement with it would be the least informative match available and disagreement the most interesting."
+notes = """
+The closest prior art in the whole review, and the row where the vein's real
+contribution turned out not to be a family.
+
+**What actually transferred was a methodology, not a task.** Item generation
+names our k/e distinction as radicals and incidentals, and unlike us it has an
+empirical procedure for telling them apart -- fit an unconstrained
+item-difficulty model against one constrained to depend on the radical alone,
+and likelihood-ratio test the difference. Written up separately in
+docs/04-radical-incidental.md, because it applies to every family in the
+register rather than to this one.
+
+The result that makes it worth adopting: in a study with N=208, the radical
+explained 95.41% of difficulty variance and the LR test STILL rejected the
+constrained model (chi-square(6)=24.21, p<.001), with within-family differences
+of 6.82% and 12.36%. A radical explaining 95% of variance passes every eyeball
+test there is, and its incidentals were leaking anyway. Every figure
+curator-verified 2026-08-07.
+
+**As a family it is weaker than as a source.** Matrix reasoning has a validated
+radical set and a difficulty-regression apparatus, but no L1/L2/L3 machinery at
+all -- the paradigm administers items, it does not withhold a rule and let a
+subject probe. It fails A4 badly at published sizes for the usual reason. It is
+registered because the item-model formalism genuinely round-trips through the
+section 7 interface and because the composition content is real, not because it
+is a strong candidate.
+
+**Recorded L0 and L1 only.** L2 needs a q* over which cell to reveal next, which
+is constructible but was not designed here; L3 needs an enumerable posterior over
+rule combinations, which is plausible at small rule counts and unverified.
+Claiming either would be filling in the form rather than reporting it.
+"""
+
+[[sources]]
+citation = "Figural-memory automatic-item-generation study using a Rasch-family model: N=208, radical explains 95.41% of item-difficulty variance (adj. R^2 = 0.939), LR test chi-square(6)=24.21 p<.001, within-family incidental effects 6.82% (p<.05) and 12.36% (p<.001). Curator-verified 2026-08-07, all figures read directly"
+year = 2020
+kind = "paper"
+url = "https://pmc.ncbi.nlm.nih.gov/articles/PMC7298330/"
+verified = true
+
+[[sources]]
+citation = "Gierl & Lai, automatic item generation / item-model formalism (NCME instructional module) -- n-layer item models, generator apparatus, similarity metric between generated items"
+year = 2013
+kind = "paper"
+url = ""
+verified = false
+
+[[sources]]
+citation = "Embretson, cognitive design system for matrix-reasoning items -- validated radical set (number of rules, overlay, fusion, distortion) and the difficulty-regression apparatus"
+year = 1998
+kind = "paper"
+url = ""
+verified = false
+
+[form]
+theta = "The rule set governing the matrix: which transformations relate cells along rows and columns, and their parameters. The item model's slots are theta's coordinates."
+p_theta = "k sets the number of rules composed and the transformation vocabulary. Sample rules, then instantiate the grid -- the answer cell is computed, never searched for."
+query_space = "the cell to be completed, or a candidate completion to be judged"
+oracle = "Apply the rule set to the queried position and return the correct cell. One evaluation."
+encodings = [
+    "explicit attribute tuples per cell over anonymized symbol dimensions",
+    "grid rendering with row-major versus column-major traversal order",
+    "relational listing -- each rule stated as a relation between named positions",
+]
+k_semantics = "Number of composed rules primarily; transformation vocabulary size secondarily. This is their radical, imported as-is, but the difficulty it predicts is HUMAN difficulty and must be re-derived for an inducer -- that hazard is the vein's own and it is explicit about it."
+teacher_query = "Not designed. A structure-walk over the rule set would give the cell that most constrains an untested rule, but it was not worked out, so L2 is not claimed."
+posterior = "Plausibly enumerable at small rule counts, since the rule set is drawn from a finite vocabulary. Unverified, so L3 is not claimed."
+trace = "Steps: apply each rule in turn to derive the target cell. Natural, and the rule-by-rule structure gives an obvious thinning schedule."
+stochastic = false
+episode_length = "Enough cells to identify the rule set. Their teaching-analogue is item count per model, which is not the same quantity."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "An item model IS a program with slots, and the slot assignment is the hidden parameter. This is the correspondence that makes the vein close prior art rather than an analogy."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sample the rule set, instantiate the grid, read off the answer cell. Generation is forward from the rules and never searches -- which is exactly why the field could manufacture items at industrial scale."
+
+[checks.A2]
+verdict = "repairable"
+reason = "Fails as published. Their worked examples use real content -- and this vein supplies the best evidence anywhere of how hard A2 is: a test DESIGNED to be culture-free had 59% of its items flagged as biased across four independent methods, with high inter-method agreement, while a different method on the same instrument flagged far fewer. Designing for invariance did not achieve it, and detection is method-dependent."
+repair = "Anonymize dimensions to abstract symbol tokens, as with the SHJ families. But record the caveat honestly: our permuted-alphabet check is a single method, and the psychometric experience is that one method understates. See docs/04-radical-incidental.md for the case that a second, independent A2 method is worth building."
+
+[checks.A3]
+verdict = "pass"
+reason = "Three structurally different renderings, including a traversal-order change that alters what is locally available."
+repair = "Untested by the radical/incidental procedure, like every other family here. That test is now a tracked task and this row is the one that supplied it."
+
+[checks.A4]
+verdict = "repairable"
+reason = "Fails badly at published sizes. Items are built to be solved by a human in a couple of minutes, so the rule set is small and the grid is small."
+repair = "Raise the number of composed rules and the transformation vocabulary. The structural solver is linear in rules while blind search over completions is exponential in grid size, so headroom exists -- but the published parametrization sits far below where it starts."
+
+[checks.A5]
+verdict = "pass"
+reason = "Uses abstraction-naming (recognizing that one relation recurs across rows is anti-unification) and the structural primitives. Contributes nothing new -- the review tested whether matrix reasoning's 'correspondence finding' needed its own slug and found it folds into abstraction-naming plus structure-walk-query plus constraint-propagation with no residue."
+
+[checks.A6]
+verdict = "pass"
+reason = "One rule application per query; an out-of-grid position returns a fixed error token."
+
+[checks.A7]
+verdict = "unknown"
+reason = "Not designed. L2 is withheld from the levels list rather than assumed, consistent with how subgoal-segmentation was handled."
+repair = "Design a cell-selection q* before promoting this row past translated. A structure walk over the rule set is the obvious candidate and is probably cheap; 'probably' is not a verdict."
