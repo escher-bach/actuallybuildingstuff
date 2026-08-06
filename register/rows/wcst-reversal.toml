@@ -1,0 +1,110 @@
+id = "wcst-reversal"
+title = "Piecewise-stationary rule identification -- silent mid-episode rule change"
+vein = "2.3"
+their_term = "Wisconsin Card Sorting Test; reversal learning; set-shifting"
+substrate = "card sorting over d anonymized dimensions with v values"
+status = "lead"
+levels = ["L1", "L2", "L3"]
+complexity_modes = ["state_width", "input_entropy"]
+contents = ["structure_induction", "state", "selection"]
+asymmetries = ["evaluate/search"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "belief-state-reset",
+    "posterior-enumeration",
+    "informative-query-selection",
+]
+predicted_block = "the clinical literature groups these by executive-function constructs (perseveration, set-shifting) measured on populations. That is an ontology about people, not about tasks, and it makes no prediction we should import."
+notes = """
+**The row that broke the primitive vocabulary, which is why it is worth having.**
+
+Every primitive in the register assumed MONOTONE belief refinement:
+`belief-state-maintenance` says so in its gloss, `hypothesis-elimination` only
+ever cuts, and nothing could restore a hypothesis once removed. This paradigm
+requires the opposite -- the rule changes silently mid-episode, so a converged
+belief must be discarded and possibilities previously eliminated brought back.
+That is `belief-state-reset`, accepted as the eleventh primitive on the strength
+of this row and the drifting-parameter case appearing independently.
+
+**It is also the closest thing in the register to the programme's stated
+priority.** Task Spec section 5 names recovery from error as what a text corpus
+teaches worst. This is recovery at the level of belief rather than action, and it
+arrived from the one vein built by people studying organisms that must do it to
+survive. The register did not have it before, and would not have got it from the
+computational veins -- both 2.2 and 2.5 assume a fixed theta throughout.
+
+**A reveal policy our four levels do not cover.** Not L1: theta is not fixed for
+the episode. Not L3: theta IS identifiable, just not stably. The dial in Task
+Spec section 2 is 'how much does the context determine y', and this paradigm
+varies something else -- how long the context stays valid. Recorded as a finding
+rather than forced into a level, per Task Spec section 8 step 5's expectation
+that the named cuts are in the wrong places.
+"""
+
+[[sources]]
+citation = "Berg, E. A., 'A simple objective technique for measuring flexibility in thinking', Journal of General Psychology 39:15-22, 1948 -- the card-sorting apparatus"
+year = 1948
+kind = "paper"
+url = ""
+verified = false
+
+[[sources]]
+citation = "T. Miconi, 'Procedural generation of meta-reinforcement learning tasks', arXiv:2302.05583 -- parametrized space covering bandits, Harlow, T-mazes, Daw two-step. Curator-checked 2026-08-06"
+year = 2023
+kind = "paper"
+url = "https://arxiv.org/abs/2302.05583"
+verified = true
+
+[form]
+theta = "Which dimension is currently the sorting rule, PLUS a switch schedule: the trial indices at which the rule silently changes and what it changes to. The schedule is part of theta, which is the repair that makes the family generable."
+p_theta = "k sets d, v, and the number of switches per episode. Sample the initial rule, then sample a switch schedule independent of the solver's behaviour."
+query_space = "cards to be classified"
+oracle = "Classify the card by the rule active at the current trial index. O(1), and it needs the trial index -- which is the one place this family asks something of the harness that the others do not."
+encodings = [
+    "abstract dimension and value tokens",
+    "object-description prose with anonymized features",
+]
+k_semantics = "d, v, switches per episode, and run length between switches. Short runs make identification impossible and turn the family into noise; long runs make the switch a rare event. Expect an interior optimum and sweep it rather than guessing."
+teacher_query = "informative-query-selection over the surviving dimension set, with the wrinkle that after a switch the teacher must probe to re-identify. The teacher knows the schedule, so it knows when to reset -- another instance of the teacher's advantage being knowledge of theta rather than superior reasoning."
+posterior = "Enumerable over dimensions x switch schedules, provided the schedule space is kept small. This is where the L3 target gets expensive, and the honest statement is that L3 here needs the schedule space constrained."
+trace = "Steps: current rule, the card's value on it, the resulting category. After a switch, the trace shows the rule changing -- which makes trace-thinning interesting, since the switch is the one step you cannot drop."
+stochastic = false
+episode_length = "Long enough for at least two regimes, or the paradigm's content is absent."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "Rule plus switch schedule is the hidden parameter, once the schedule is decoupled from solver behaviour -- see A1."
+
+[checks.A1]
+verdict = "repairable"
+reason = "Fails as classically administered. The rule switch is triggered by the SUBJECT'S own run of correct answers, so generation would have to simulate the solver to know when the switch occurs -- a solver on the generation path, which A1 forbids outright."
+repair = "Pre-sample a switch schedule independent of performance: switch every T trials with T itself drawn from a distribution. This preserves the phenomenon that matters -- a silent regime change the learner must detect from evidence -- while restoring backward generation. Note the repair changes what is being measured slightly: the classic version adapts to the subject, ours does not, so ours cannot measure how quickly a learner reaches criterion. We do not need that measurement."
+
+[checks.A2]
+verdict = "repairable"
+reason = "Fails as published. Colour, shape and number carry salience asymmetries, and the literature itself reports that shifts between particular dimension pairs differ in difficulty -- direct evidence the dimensions are not interchangeable."
+repair = "Anonymize dimension identities to symbol tokens."
+
+[checks.A3]
+verdict = "pass"
+reason = "Two renderings. Thin; a third varying how the trial index is presented would be worth adding, since this family uniquely depends on position in the episode."
+
+[checks.A4]
+verdict = "repairable"
+reason = "Fails at the published size -- three dimensions is a trivial hypothesis space."
+repair = "Scale d and v, and combine with graded Boolean-complexity rules so the target space is richer than 'which of three dimensions'. Note this family gets headroom from a second source the others lack: the switch schedule multiplies the hypothesis space without touching the rule space."
+
+[checks.A5]
+verdict = "pass"
+reason = "Introduces belief-state-reset, which is new, and shares the rest. The new primitive is the row's main contribution and its falsifier is recorded on the slug."
+
+[checks.A6]
+verdict = "pass"
+reason = "One classification per query; malformed cards return a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "Computable in one pass given theta, including knowing when the rule has switched. Note the teacher's q* is trivial in a way the learner's is not -- the teacher never has to detect the switch."

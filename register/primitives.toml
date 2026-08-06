@@ -18,7 +18,7 @@
 # hypothesis, and hiding the difference is how a vocabulary quietly becomes a
 # theory nobody agreed to.
 #
-# STATE, after 3 sources: 10 primitives. Vein 2.2 proposed 6 and yielded 3 new.
+# STATE, after 5 sources: 11 primitives. Vein 2.2 proposed 6 and yielded 3 new.
 # Vein 2.5 (four substrates: programs, circuits, proofs, plans) yielded ZERO new
 # -- every solver-side operation in mutation testing, model-based diagnosis,
 # formal proof checking and plan validation was expressible in the existing set.
@@ -63,6 +63,36 @@ blocks. Note that the vein 2.2 CHEAP/EXPENSIVE boundary runs along exactly this
 line, so the fold is under real strain: it survives only if the representation
 difference is a cost difference and not an operational one. Split it if the
 blocks split.
+"""
+
+[belief-state-reset]
+gloss = "Detect that accumulated evidence contradicts an already-converged hypothesis, and REPLACE the belief state rather than refine it further -- restoring possibilities previously eliminated. Discrete variant: a run of errors after high confidence signals the rule has silently changed. Continuous variant: the belief must decay and track a drifting parameter rather than converge and hold."
+first_seen = "wcst-reversal"
+aliases = [
+    "set-shifting (Wisconsin Card Sorting)",
+    "reversal learning",
+    "perseverative-error recovery",
+    "changepoint detection over a hypothesis space",
+]
+falsifier = """
+ACCEPTED as new, and for a stronger reason than 'it did not fit'. Every other
+primitive in this file assumes MONOTONE refinement: belief-state-maintenance
+says so in its gloss, and hypothesis-elimination only ever cuts. Nothing in the
+vocabulary could restore a hypothesis once eliminated. Piecewise-stationary
+theta -- the rule changes silently mid-episode -- requires exactly that, so this
+was a structural gap in the vocabulary rather than a missing synonym.
+
+Worth noting it is also close to the programme's stated priority. Task Spec
+section 5 names recovery from error as the thing a text corpus teaches worst;
+this is error recovery at the level of belief rather than of action, and it
+arrived from the one vein built by people studying organisms that have to do it.
+
+Fold it back into hypothesis-elimination if families that need reset do not
+separate from families that never do. The vein 2.3 reviewer flagged the call as
+borderline and proposed it because the same gap appeared twice independently
+(discrete in reversal learning, continuous in drifting-reward tasks); that
+repetition is the evidence, and if the matrix does not see the distinction, the
+repetition was a coincidence of one literature's interests.
 """
 
 [constraint-propagation]

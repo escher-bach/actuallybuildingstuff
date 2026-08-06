@@ -1,0 +1,108 @@
+id = "probability-matching"
+title = "Hidden Bernoulli parameter -- outcome prediction under irreducible noise"
+vein = "2.3"
+their_term = "probability matching; partial reinforcement; probability learning"
+substrate = "binary outcome sequences from a hidden rate"
+status = "lead"
+levels = ["L1", "L3"]
+complexity_modes = ["input_entropy"]
+contents = ["structure_induction"]
+asymmetries = ["evaluate/search"]
+plant_role = "independent"
+plant_pair = "shj-type-i"
+primitives = [
+    "belief-state-maintenance",
+    "posterior-enumeration",
+    "majority-predict",
+]
+predicted_block = "the judgment-and-decision-making literature groups this with choice-behaviour phenomena and explains it in terms of strategy selection. That is an account of why humans deviate from optimality, not a claim about task structure, and predicts nothing for us."
+notes = """
+Three jobs at once, which is why it earns a row despite being the simplest
+family in the register.
+
+**1. The independent-pair plant**, against `shj-type-i`. Different Theta topology
+(a continuous or finely-discretized rate vs a small finite rule set), different
+oracle behaviour (a noisy draw vs a deterministic label), different target (a
+distribution vs a point rule). Two literatures that, as far as the review found,
+never cite each other for this comparison. Off-diagonal transfer should be near
+zero in both directions; if it is not, the instrument is finding structure where
+none was planted, and that is a calibration problem worth catching before the
+real matrix is read.
+
+**2. The cleanest L3 exemplar in the register**, and the only family so far whose
+posterior genuinely cannot collapse. Truncating observations makes other families
+L3 artificially -- here non-identifiability is intrinsic, because no finite number
+of draws resolves a rate.
+
+**3. It discharges Task Spec section 1.3.** The spec asks that at least one family
+exercise a genuinely stochastic oracle, and warns that with deterministic f only,
+all uncertainty in the system is epistemic, so a model that has never seen noisy
+input given a known rule will be miscalibrated on input that is actually noisy.
+`junk-random` is stochastic but carries no signal; this family is stochastic AND
+learnable, which is the combination the warning is about.
+
+**A contrast worth keeping in the register rather than discarding.** The
+paradigm's own finding is that humans do NOT use `majority-predict` even though
+it maximizes expected score -- they match the base rate instead. Our L3 target is
+the exact posterior, so the correct behaviour under our loss is calibration, not
+maximization. The family therefore encodes a place where the human result and the
+normative target come apart, and it is a useful reference point when interpreting
+whether a model is 'matching' because it is calibrated or because it is confused.
+"""
+
+[[sources]]
+citation = "Grant, Hake & Hornseth, probability-matching in binary prediction, 1951, and the subsequent partial-reinforcement literature"
+year = 1951
+kind = "paper"
+url = ""
+verified = false
+
+[form]
+theta = "A hidden Bernoulli rate p, or a vector of rates over options. Discretized to a grid so the posterior is enumerable."
+p_theta = "k sets the grid precision and the number of options. Sample p from the grid under a stated prior."
+query_space = "predict the next outcome, or choose an option"
+oracle = "Distribution-valued: returns the Bernoulli distribution at the queried option. The harness samples, exactly as with the junk-random plant -- and the fact that the same mechanism serves a junk family and a real one is evidence the interface is carrying stochasticity properly."
+encodings = [
+    "binary outcome tokens",
+    "urn or draw narrative over anonymized option labels",
+]
+k_semantics = "Grid precision and option count. Finer grids make identification slower without making the task structurally harder, so precision is a knob on residual entropy specifically -- which makes this family a natural candidate for the Task Spec section 8 step 5 dial sweep."
+teacher_query = "majority-predict is the score-maximizing point prediction; the L3 target is the posterior itself. With one option there is no query choice to make, so L2 is not claimed."
+posterior = "Exact and cheap: Beta-Binomial conjugate update over the discretized grid, or direct enumeration. Among the easiest exact L3 targets available, which makes this the right family for unit-testing the L3 machinery against brute force."
+trace = "Counts of each outcome so far. Minimal but honest."
+stochastic = true
+episode_length = "Never sufficient for identification, by design. That is the family's content."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The rate is the hidden parameter."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sample a rate, return the distribution. O(1)."
+
+[checks.A2]
+verdict = "pass"
+reason = "Outcome labels are arbitrary and the family is defined over the rate, so relabelling is an exact symmetry. One of the few rows in this vein that passes A2 without repair, because there are no perceptual stimuli to leak through."
+
+[checks.A3]
+verdict = "pass"
+reason = "Two renderings. Minimal, appropriate to a family this simple."
+
+[checks.A4]
+verdict = "fail"
+reason = "There is no structure to resist brute force with -- counting outcomes IS the optimal solver. The family carries irreducible noise rather than hidden structure."
+repair = "None that preserves the row's purpose, and none wanted for the plant role. If a capability-bearing version is wanted, link option rates through a shared latent category so the model must infer group structure rather than count; that is a different family and should get its own row."
+
+[checks.A5]
+verdict = "pass"
+reason = "Uses only primitives already defined; contributes none."
+
+[checks.A6]
+verdict = "pass"
+reason = "One draw per query; an invalid option returns a fixed error token."
+
+[checks.A7]
+verdict = "fail"
+reason = "L2 is not claimed. With a single hidden rate there is no informative query to choose between -- every trial is equally informative, which makes A7 vacuous rather than satisfied. Recorded as a fail rather than a degenerate pass because unlike junk-random this is a family with real content, and marking it L2-capable would put a family with no query structure into the L2 column of the coverage grid."
+repair = "The multi-option version does admit a real q* (which arm to sample), and would be a separate row."

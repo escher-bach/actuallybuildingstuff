@@ -1,0 +1,112 @@
+id = "shj-type-i"
+title = "Shepard-Hovland-Jenkins Type I -- single relevant dimension"
+vein = "2.3"
+their_term = "Type I category structure; unidimensional rule"
+substrate = "Boolean concepts over d anonymized binary dimensions (canonically d=3, 8 stimuli)"
+status = "lead"
+levels = ["L0", "L1", "L2", "L3"]
+complexity_modes = ["description_length"]
+contents = ["structure_induction"]
+asymmetries = ["evaluate/search"]
+plant_role = "prerequisite"
+plant_pair = "shj-type-vi"
+primitives = [
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "basis-probe",
+    "posterior-enumeration",
+]
+predicted_block = "the categorization literature would group all six SHJ types together as one paradigm and order them by difficulty within it. Our own prediction is that Type I and Type VI do NOT land in the same block: Type I is single-dimension selection, Type VI is parity, and parity shares more with the vein 2.2 parity family than with its own paradigm-mate."
+notes = """
+The **A** of the planted prerequisite pair. Its partner is `shj-type-vi`.
+
+**Why this is the best plant available.** Repertoire Spec section 5 says a
+prerequisite pair with a published, replicated human difficulty ordering is a
+stronger plant than one we merely find obvious. This is that: the ordering
+I < II < III=IV=V < VI was measured in 1961 and the replication states its
+results mirrored the original with the same ordering (curator-checked; see
+register/verification-log.md).
+
+**The caveat that must travel with it.** This is *empirical acquisition-speed
+precedence*, not logical containment. Nothing shows Type VI's rule contains Type
+I's as a substructure. So the plant tests whether our transfer measurement
+recovers an ordering humans reliably show -- not whether it recovers a logical
+nesting. If the antisymmetric part comes out flat here, the honest reading is
+'human difficulty ordering does not transfer to an inducer', which is Hazard 1
+of this vein confirmed rather than the instrument failing. That ambiguity is
+real and is the price of using an externally-attested plant instead of a
+constructed one; it is still a better trade than a plant whose answer we
+invented.
+
+**Prediction, recorded before measurement.** Type I should transfer to Type VI
+weakly at best. Type I is selection of a relevant dimension; Type VI is parity
+over all of them. If anything, the vein 2.2 `parity-identification` family should
+be a stronger prerequisite for Type VI than its own paradigm-mate is -- and if
+the matrix shows that, it is a direct hit on the 'paradigms are not the natural
+joints' claim.
+"""
+
+[[sources]]
+citation = "Shepard, Hovland & Jenkins, 'Learning and memorization of classifications', Psychological Monographs 75(13), 1961 -- the original six types and difficulty ordering"
+year = 1961
+kind = "paper"
+url = ""
+verified = false
+
+[[sources]]
+citation = "Nosofsky, Gluck, Palmeri, McKinley & Glauthier, 'Comparing models of rule-based classification learning: a replication and extension of Shepard, Hovland, and Jenkins (1961)', Memory & Cognition 22(3):352-369, 1994 -- abstract confirms the ordering matched the original. Curator-checked 2026-08-06 via PubMed"
+year = 1994
+kind = "paper"
+url = "https://pubmed.ncbi.nlm.nih.gov/8007837/"
+verified = true
+
+[form]
+theta = "Which single dimension is relevant, and which of its values maps to which category. Generalizes to d anonymized binary dimensions."
+p_theta = "k sets d. Sample the relevant dimension uniformly and the polarity uniformly."
+query_space = "the 2^d stimuli, each an assignment over the d dimensions"
+oracle = "Read the relevant dimension's value and return its category. O(1)."
+encodings = [
+    "attribute-value tuples over abstract symbols",
+    "object-description prose over anonymized feature names",
+    "tabular row with permuted dimension order",
+]
+k_semantics = "d, the number of dimensions. At the canonical d=3 the task is trivial for an inducer; the knob exists to move it away from the human-calibrated regime."
+teacher_query = "basis-probe: vary one dimension at a time from an anchor stimulus. The dimension whose flip changes the category is the relevant one. O(d), no belief state touched -- the same schedule as the vein 2.2 conjunction family, which is itself a small piece of evidence for the near-duplicate claim in `bruner-concept-attainment`."
+posterior = "Enumerable trivially: 2d hypotheses (dimension x polarity). L3 available by allowing too few observations to disambiguate."
+trace = "Steps: read the relevant dimension, map to category. Barely a trace -- which is consistent with it being the easy end of the pair."
+stochastic = false
+episode_length = "O(d) queries under the probe schedule; a handful at canonical sizes."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The relevant dimension and polarity are the hidden parameter, and the paradigm is built around the subject recovering exactly that."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sample the dimension, sample a stimulus, look it up. O(1)."
+
+[checks.A2]
+verdict = "repairable"
+reason = "Fails as published. Canonical stimuli use size, colour and shape, which carry human salience priors -- and a pretrained model may encode the same folk priors, e.g. that shape is more diagnostic than colour."
+repair = "Anonymize dimensions to abstract symbol tokens with no perceptual reading. This is not cosmetic: the paradigm's own literature reports that shifts between specific dimension pairs differ in difficulty, which is direct evidence that the dimensions are not interchangeable as published."
+
+[checks.A3]
+verdict = "pass"
+reason = "Three renderings, including one that permutes dimension order so position cannot be relied on."
+
+[checks.A4]
+verdict = "repairable"
+reason = "Fails outright at the published size: 8 stimuli is a truth table a model memorizes instantly. Expected -- the paradigm was designed for organisms with limited working memory."
+repair = "Scale d. The structural solver is O(d) while the truth table is 2^d, so headroom appears quickly; the family is admissible once d is past roughly 8-10, the same threshold the vein 2.2 conjunction family needs."
+
+[checks.A5]
+verdict = "pass"
+reason = "Shares basis-probe with the conjunction and parity families, and the belief-state primitives with everything."
+
+[checks.A6]
+verdict = "pass"
+reason = "One lookup per query; a stimulus outside the space returns a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "One-pass dimension-varying schedule given theta."

@@ -1,0 +1,110 @@
+id = "shj-type-vi"
+title = "Shepard-Hovland-Jenkins Type VI -- full parity, no dimension droppable"
+vein = "2.3"
+their_term = "Type VI category structure; three-way parity / biconditional"
+substrate = "Boolean concepts over d anonymized binary dimensions (canonically d=3, 8 stimuli)"
+status = "lead"
+levels = ["L0", "L1", "L2", "L3"]
+complexity_modes = ["description_length"]
+contents = ["structure_induction", "manipulation"]
+asymmetries = ["evaluate/search"]
+plant_role = "dependent"
+plant_pair = "shj-type-i"
+primitives = [
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "basis-probe",
+    "posterior-enumeration",
+    "modular-add",
+]
+predicted_block = "the categorization literature keeps all six types in one paradigm block. We predict Type VI leaves it: parity over d dimensions IS mod-2 addition, which puts it with the vein 2.2 parity family rather than with its paradigm-mate `shj-type-i`."
+notes = """
+The **B** of the planted prerequisite pair, and separately the most interesting
+fold this vein produced.
+
+**Type VI is parity.** The three-way biconditional over binary dimensions is
+literally mod-2 addition over a subset of dimensions, which means it shares
+`modular-add` with the calibration row and shares its whole solver shape with
+`parity-identification` from vein 2.2. Two fields -- 1961 categorization
+psychology and 1980s computational learning theory -- built the same object
+without contact. That was not planted by us; it fell out of the primitive
+vocabulary when both were written into the same form, which is precisely the kind
+of unification Repertoire Spec section 1 says the novelty lives in.
+
+**It also sets up a sharp test.** If the measured blocks put `shj-type-vi` with
+`shj-type-i` (its paradigm-mate) rather than with `parity-identification` (its
+structural twin), then paradigm membership predicts transfer better than
+structure does, and our whole approach of translating across fields into one form
+is buying less than it appears to. If it goes the other way, the translation is
+doing real work. Either result is worth having and neither is available without
+the pairing being recorded first.
+
+Human difficulty ordering places this at the hard end (Type VI hardest of the
+six, replicated). Hazard 1 applies in full: that is a human ordering and the
+whole point of the plant is to test whether it transfers.
+"""
+
+[[sources]]
+citation = "Shepard, Hovland & Jenkins, Psychological Monographs 75(13), 1961"
+year = 1961
+kind = "paper"
+url = ""
+verified = false
+
+[[sources]]
+citation = "Nosofsky et al., Memory & Cognition 22(3):352-369, 1994 -- ordering replicated. Curator-checked 2026-08-06 via PubMed"
+year = 1994
+kind = "paper"
+url = "https://pubmed.ncbi.nlm.nih.gov/8007837/"
+verified = true
+
+[form]
+theta = "Which subset of dimensions participates in the parity, and the output polarity. At the canonical d=3 all three participate, which is what makes no dimension droppable."
+p_theta = "k sets d and the participating-subset size. Sample the subset and polarity uniformly."
+query_space = "the 2^d stimuli"
+oracle = "XOR the values on the participating dimensions, apply polarity. O(d)."
+encodings = [
+    "attribute-value tuples over abstract symbols",
+    "object-description prose over anonymized feature names",
+    "tabular row with permuted dimension order",
+]
+k_semantics = "d, and the size of the participating subset. Difficulty for a human is maximal when no dimension can be dropped; whether that is where an inducer finds it hardest is exactly what the plant asks."
+teacher_query = "basis-probe: the fixed standard-basis schedule, identical to the parity family's. Does not depend on the history."
+posterior = "Enumerable: subsets times polarity. L3 available by truncating observations."
+trace = "Steps: running XOR accumulation across participating dimensions -- the same trace as the parity family, which is further evidence they are one object."
+stochastic = false
+episode_length = "d queries under the basis schedule."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The participating subset is the hidden parameter."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sample the subset, sample a stimulus, XOR."
+
+[checks.A2]
+verdict = "repairable"
+reason = "Same failure as `shj-type-i`: canonical size/colour/shape stimuli carry salience priors a pretrained model may share."
+repair = "Anonymize dimensions to abstract symbol tokens."
+
+[checks.A3]
+verdict = "pass"
+reason = "Three renderings including permuted dimension order."
+
+[checks.A4]
+verdict = "repairable"
+reason = "Fails at the published 8-stimulus size for the usual reason -- the truth table is the whole function."
+repair = "Scale d. Note the headroom argument is stronger here than for Type I: parity has no compressed representation shorter than the participating subset, so a structure-ignoring solver must hold 2^d while the intended solver holds d."
+
+[checks.A5]
+verdict = "pass"
+reason = "Shares modular-add with the calibration row and basis-probe with parity and conjunction. The A5 check is doing real work here rather than rubber-stamping: it is what surfaced that this row and `parity-identification` are the same operation."
+
+[checks.A6]
+verdict = "pass"
+reason = "One evaluation; out-of-space stimuli return a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "Fixed basis schedule, computable without reference to history."

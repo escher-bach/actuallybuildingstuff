@@ -36,6 +36,21 @@ Dasgupta 2004/2005 self-describes as **pool-based** active learning, and "pool-b
 
 ---
 
+## Pass 2 — 2026-08-06, sources from vein §2.3
+
+The §2.3 review was notably more careful than §2.5: it marked most of its own sources LEAD rather than VERIFIED (the psychology primaries are largely paywalled), refused to promote the near-duplicate plant past MODERATE evidence, and **caught an internal inconsistency in one of its own sources** — flagging that a paper's quoted bit-pattern table did not cross-check against a canonical XOR construction, and telling us to distrust those specific patterns while keeping the qualitative claims. That is the behaviour this log exists to encourage.
+
+| Source | Claim checked | Outcome |
+|---|---|---|
+| Nosofsky, Gluck, Palmeri, McKinley (+ Glauthier), *Memory & Cognition* 22(3):352–369, 1994 | That it replicates the Shepard–Hovland–Jenkins difficulty ordering | ✅ **Confirmed** from the PubMed record. Exact title "Comparing models of rule-based classification learning: a replication and extension of Shepard, Hovland, and Jenkins (1961)", and the abstract states "our main results mirrored those of Shepard et al., with the ordering of task difficulty being the same as in the original study". Note the paper has **five** authors — the review listed four. The ordering itself (VI hardest, III=IV=V equal, then II, then I easiest) is not in the PubMed abstract; it is corroborated across the Springer listing and the `catlearn` R package, which ships the `nosof94` dataset |
+| Miconi, "Procedural generation of meta-reinforcement learning tasks", arXiv:2302.05583 | Parametrized meta-RL task space covering bandits, Harlow, T-mazes, Daw two-step | ✅ **Exact**, including the list of special cases, near-verbatim |
+
+**The prerequisite plant stands.** SHJ Type I vs Type VI is externally attested and replicated, which is what §5 asks of a planted ordering. The review's own caveat is retained and is important: this is *empirical acquisition-speed precedence*, not logical containment. Nothing shows Type VI's rule contains Type I's as a substructure. "A required for B" in the plant table should be read as "A is reliably mastered before B", and the plant tests whether our transfer measurement recovers an ordering that humans reliably show — not whether it recovers a logical nesting.
+
+**Still LEAD, and the vein's main limitation:** Shepard/Hovland/Jenkins 1961, Harlow 1949, Feldman 2000, Berg 1948, and Bruner chs. 4–6 are all paywalled or unreachable. The §2.3 rows are correspondingly held at `lead`. This is a library-access problem, not a literature gap, and it is the same blocker already logged for Angluin 1987/1988.
+
+---
+
 ## Consequences applied
 
 - `mutant-localization.toml` — the 26.5% claim removed and replaced with the paper's actual figures. **This materially weakens the row's A1 argument** and the correction is recorded in the row itself, not silently swapped: unit-level FEP being ~0% means the "corruption might be invisible" hazard is much smaller in the regime we would actually train in.

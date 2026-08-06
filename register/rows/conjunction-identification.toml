@@ -8,8 +8,8 @@ levels = ["L0", "L1", "L2", "L3"]
 complexity_modes = ["description_length"]
 contents = ["structure_induction", "selection"]
 asymmetries = ["evaluate/search"]
-plant_role = "none"
-plant_pair = ""
+plant_role = "near_duplicate"
+plant_pair = "bruner-concept-attainment"
 primitives = [
     "belief-state-maintenance",
     "hypothesis-elimination",
@@ -32,14 +32,19 @@ hearsay.
 blocker: obtain Angluin 1988 in readable form and promote. Recorded here so it
 does not get mistaken for a gap in the literature.
 
-**Strong near-duplicate candidate, deliberately noted before vein 2.3 is read.**
-Bruner, Goodnow & Austin's conjunctive concept attainment (1956) is, if the lead
-is accurate, the same object arrived at independently in a different field three
-decades earlier. Repertoire Spec section 5 wants near-duplicate plants that are
-'two independent reinventions found in different veins', and this would be the
-best available instance. Pairing is NOT recorded yet because vein 2.3 is unread
-and asserting the identity now would be exactly the stipulation this whole method
-exists to avoid. Check it when 2.3 lands.
+**Near-duplicate pairing now recorded, after vein 2.3 was read.** Paired with
+`bruner-concept-attainment`. The hypothesis was written down here before that
+vein was opened, precisely so that confirming it could not be a post-hoc
+rationalization; the 2.3 review was asked to check it rather than to assume it,
+and reported the two algorithms as structurally the same -- anchor on a known
+positive, vary one attribute, read relevance off the label flip -- while
+refusing to call the evidence better than MODERATE, since neither primary was
+read in full and no existing publication connects them.
+
+That last point is worth keeping: the absence of a connecting citation
+strengthens the 'independently reinvented' framing and weakens citability at the
+same time. See the partner row for the disanalogy still to resolve (Bruner's
+array is 4 attributes x 3 values, not a Boolean hypercube).
 """
 
 [[sources]]

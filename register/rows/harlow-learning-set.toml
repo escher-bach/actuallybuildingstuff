@@ -1,0 +1,92 @@
+id = "harlow-learning-set"
+title = "Harlow learning set -- REJECTED as a family, retained as a curriculum protocol"
+vein = "2.3"
+their_term = "learning set; learning to learn"
+substrate = "object-pair discrimination, 344 problems in the original"
+status = "rejected"
+levels = []
+complexity_modes = []
+contents = []
+asymmetries = []
+plant_role = "none"
+plant_pair = ""
+primitives = []
+predicted_block = ""
+notes = """
+**Rejected as a task family, and the rejection is the useful part.**
+
+A single Harlow discrimination problem hides one bit: which of two stimuli is
+rewarded. That is trivial by construction and it is trivial ON PURPOSE -- the
+paradigm's object of study is not the problem, it is the *curve* of within-episode
+learning rate measured across hundreds of freshly-sampled problems. Percent
+correct on trial 2 rises from chance toward near-one-trial learning as problems
+accumulate.
+
+So this row fails A4 in a way that is not repairable and not a defect: there is
+no hidden structure to make resistant, because the content was never in the
+episode.
+
+**What it actually is: the measurement protocol for our primary metric, with a
+1949 apparatus behind it.** Task Spec section 4's within-episode acquisition
+slope and section 9's claim that it is the primary controller signal -- 'if it
+does not rise across a curriculum, nothing else in this section matters' -- is
+Harlow's learning-set curve, measured on macaques, seventy-seven years earlier.
+That is not a coincidence to note in passing; it means the programme's headline
+metric has an externally-validated precedent, including evidence about what the
+curve looks like when the thing works.
+
+**Repair, which is conceptual rather than parametric:** treat Harlow as a
+*curriculum wrapper* applicable to any admissible family -- repeat it across many
+episodes with fresh theta and score the within-episode learning-rate curve across
+the sequence. That belongs in the harness, not in the register, so this row is
+terminal here.
+
+Retained rather than deleted because Repertoire Spec section 4.1 says a rejected
+family with a named reason is a result, and this particular reason -- 'the
+content is in the protocol, not the episode' -- is a category we should expect to
+meet again in behavioural veins.
+"""
+
+[[sources]]
+citation = "H. F. Harlow, 'The Formation of Learning Sets', Psychological Review 56:51-65, 1949 -- 344 object-pair discrimination problems; trial-2 percent correct as a function of cumulative problem number"
+year = 1949
+kind = "paper"
+url = ""
+verified = false
+
+[form]
+theta = "Which of the presented stimuli is rewarded this problem. One bit."
+p_theta = "Resampled every problem; that resampling IS the paradigm."
+query_space = "choose one of the presented stimuli"
+oracle = "Reward iff the chosen stimulus is theta's positive one."
+encodings = [
+    "arbitrary symbol pairs",
+    "described object pairs in prose",
+]
+k_semantics = "Number of episodes in the curriculum, and stimulus-pool novelty. Neither is a within-episode difficulty knob, which is precisely why this is not a family."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "Theta is explicit and minimal."
+
+[checks.A1]
+verdict = "pass"
+reason = "Trivially backward-generable."
+
+[checks.A2]
+verdict = "repairable"
+reason = "Original stimuli are real objects; anonymize to symbol pairs."
+repair = "Symbol pairs, as in the first encoding."
+
+[checks.A3]
+verdict = "pass"
+reason = "Two renderings."
+
+[checks.A4]
+verdict = "fail"
+reason = "A one-bit hidden parameter cannot resist anything. Not a flaw in the paradigm -- the paradigm's content is the across-episode learning curve, and the within-episode task is deliberately minimal so that curve is measurable without confound."
+repair = "None as a family. As a protocol: wrap any other admissible family and score the within-episode acquisition slope across episodes. This is Task Spec section 4's primary metric, and Harlow is its precedent."
+
+[checks.A5]
+verdict = "pass"
+reason = "Contributes nothing and conflicts with nothing."

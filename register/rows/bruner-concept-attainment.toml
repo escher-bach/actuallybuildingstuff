@@ -1,0 +1,120 @@
+id = "bruner-concept-attainment"
+title = "Bruner conjunctive concept attainment under the selection paradigm"
+vein = "2.3"
+their_term = "concept attainment; selection paradigm; conservative focusing"
+substrate = "attribute-value cards, d attributes x v values (canonically 4 x 3, 81 cards)"
+status = "lead"
+levels = ["L0", "L1", "L2", "L3"]
+complexity_modes = ["description_length"]
+contents = ["structure_induction", "selection"]
+asymmetries = ["evaluate/search"]
+plant_role = "near_duplicate"
+plant_pair = "conjunction-identification"
+primitives = [
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "informative-query-selection",
+    "basis-probe",
+    "constraint-propagation",
+    "posterior-enumeration",
+]
+predicted_block = "cognitive psychology treats this as concept attainment and groups it with categorization; computational learning theory treats its twin as exact learning of monotone conjunctions and groups it with query complexity. Neither field's taxonomy predicts the other's family is the same object."
+notes = """
+**The near-duplicate plant, paired with `conjunction-identification` from vein
+2.2.** Repertoire Spec section 5 wants two families with different surfaces and
+the same latent operation, ideally *two independent reinventions found in
+different veins*. This is the best candidate available, and it is exactly the
+shape the spec describes.
+
+**The case.** The selection paradigm has the learner pick a card and be told only
+positive or negative for that card -- a membership-query oracle, verbatim. The
+conservative focusing strategy begins from a known positive instance and selects
+instances differing in exactly one attribute, reading relevance off whether the
+label flips. That is the standard membership-query algorithm for learning a
+conjunction, published as a description of human strategy in 1956 and formalized
+in learning theory three decades later.
+
+**Evidence strength: MODERATE, and deliberately not upgraded.** The reviewing
+agent could not read Bruner chapters 4-6 (only front matter reached) or Angluin
+1988 in full, and searched for any publication connecting the two and found none.
+That absence cuts both ways: it strengthens 'independently reinvented' and
+weakens citability, because there is no third party to point at. **Before this
+plant is treated as load-bearing, both primaries must be read in full to confirm
+the algorithms are identical rather than merely similar.** Logged as a task.
+
+**One known disanalogy to resolve on that read.** Bruner's array is 4 attributes
+x 3 values; the learning-theory setup is usually a Boolean hypercube. They are
+isomorphic only if 'differs in one feature' means 'differs in the value taken on
+one attribute', which is how conservative focusing is described -- but the
+generalization to v > 2 has not been checked against a primary source.
+
+**What the plant tests.** If these two rows do not cluster tightly, the
+instrument cannot see identity through a surface change, and the whole
+translate-across-fields method loses its warrant. This is the single most
+diagnostic pair in the register.
+"""
+
+[[sources]]
+citation = "Bruner, Goodnow & Austin, 'A Study of Thinking' (1956) -- reception vs selection paradigms; conservative focusing, focus gambling, successive and simultaneous scanning"
+year = 1956
+kind = "book"
+url = "https://archive.org/details/in.ernet.dli.2015.139127"
+verified = false
+
+[[sources]]
+citation = "D. Angluin, 'Queries and Concept Learning', Machine Learning 2:319-342 (1988) -- the membership-query formalization"
+year = 1988
+kind = "paper"
+url = ""
+verified = false
+
+[form]
+theta = "A conjunction of literals over d attributes with v values each -- which attributes are constrained, and to which value."
+p_theta = "k sets d and v. Sample which attributes are relevant and their required values."
+query_space = "the v^d cards"
+oracle = "Membership test: does the card satisfy every literal in the conjunction. O(d)."
+encodings = [
+    "card array with attributes as abstract symbol IDs",
+    "object-description prose over anonymized feature names",
+    "tabular row with permuted attribute order",
+]
+k_semantics = "d and v. Headroom is available for free: conservative focusing needs O(d) queries while brute enumeration needs O(v^d)."
+teacher_query = "Conservative focusing -- anchor on a known positive, vary one attribute at a time. Recorded as informative-query-selection AND basis-probe because the strategy catalogue spans both: focusing is a fixed schedule, focus gambling is the same primitive at higher risk tolerance (multi-attribute flips), and the paradigm's four strategies are a ready-made catalogue of q* variants."
+posterior = "Enumerable while (v+1)^d is affordable. L3 available by truncating observations."
+trace = "Steps: which attribute was varied and whether the label flipped. Clean, and thins by dropping the flip outcome."
+stochastic = false
+episode_length = "O(d) under conservative focusing. Bruner's own strategy catalogue is effectively a study of episode-length-vs-cognitive-load tradeoffs, which is a framing we have no equivalent of."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The conjunction is the hidden parameter and the paradigm exists to have subjects recover it."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sample literals, sample a card, test membership."
+
+[checks.A2]
+verdict = "repairable"
+reason = "Fails as published: the canonical array uses shape, colour, border count and number, which carry salience priors."
+repair = "Anonymize to abstract symbol attributes with arbitrary value tokens."
+
+[checks.A3]
+verdict = "pass"
+reason = "Three renderings, one permuting attribute order."
+
+[checks.A4]
+verdict = "repairable"
+reason = "Fails at the published 4x3 array: roughly 256 hypotheses over 81 cards is brute-forceable by an automated solver holding the whole table."
+repair = "Scale d and v. The gap the constraint wants is available without invention here, since the intended solver is O(d) and enumeration is O(v^d) -- they just need to be far enough apart to bite."
+
+[checks.A5]
+verdict = "pass"
+reason = "Shares every primitive with `conjunction-identification`, which is the point of the pairing and also the check that the pairing is real rather than asserted -- if the two rows needed different primitives, the near-duplicate claim would already be dead."
+
+[checks.A6]
+verdict = "pass"
+reason = "One membership test per query; a malformed card returns a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "Conservative focusing is one-pass given theta, and the paradigm supplies three documented alternatives to compare it against."

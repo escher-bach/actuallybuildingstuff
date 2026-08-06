@@ -61,3 +61,30 @@ Curator verification pass found 1 fabricated statistic and 2 numeric drifts amon
 the sources promoted to rows; see register/verification-log.md. Rows corrected in
 place with the correction left visible.
 """
+
+[[entry]]
+n = 3
+date = "2026-08-06"
+source = "Vein 2.3 -- hidden-rule paradigms from psychology and meta-RL: Bruner/Goodnow/Austin, Harlow, Shepard-Hovland-Jenkins, WCST/reversal, Daw two-step, bandits, probability matching"
+vein = "2.3"
+rows = [
+    "shj-type-i",
+    "shj-type-vi",
+    "bruner-concept-attainment",
+    "wcst-reversal",
+    "probability-matching",
+    "harlow-learning-set",
+]
+note = """
+1 new primitive: belief-state-reset. Accepted because the whole vocabulary
+assumed monotone belief refinement and piecewise-stationary theta requires
+non-monotonic replacement -- a structural gap, not a missing synonym. This is the
+vein that supplied all three plants (prerequisite pair, near-duplicate pair,
+independent pair), which is what Repertoire Spec section 5 predicted it would do.
+
+Most primaries here are paywalled, so most rows are held at `lead`. The blocker
+is library access, same as for Angluin.
+
+One CONTAMINATION logged against the seal: a non-primate animal cognition paper
+was fetched during this pass. See docs/00-heldout-partition.md section 4.
+"""

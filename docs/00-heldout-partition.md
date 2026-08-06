@@ -83,3 +83,17 @@ One sub-area per vein of §2, held out. Each was chosen to be *plausibly rich* �
 **2026-08-06 — boundary call, not an unsealing.** Dasgupta, "Analysis of a greedy active learning strategy" (NeurIPS 2004) was read and cited during the §2.2 pass. The paper self-describes as **pool-based** active learning, and pool-based active learning for labels sits on the held-out list. §2's carve-out is explicit that "classical *theory* of query learning and of optimal experimental design is IN SCOPE" and that what is sealed is the *applied* label-efficiency literature; this is a theoretical query-complexity analysis, and the reviewing agent independently flagged the same boundary and stopped before the applied material.
 
 **Judged in scope. The seal stands.** Recorded because a defensible boundary call is still a call, and seals erode through the ones nobody wrote down.
+
+---
+
+**2026-08-06 — CONTAMINATION, logged. Non-primate animal cognition (§2 vein table).**
+
+During the §2.3 pass the reviewing agent fetched and read PMC11628440, a study applying Harlow's learning-set task to **wolves and dogs**. Non-primate animal cognition is sealed. The brief stated the boundary explicitly — "Harlow's primate learning-set work is IN SCOPE; corvid/cephalopod paradigms are not" — and the agent, having read the paper, restricted its use to corroborating Harlow's original task structure (344 object pairs, trial-2 percent-correct metric) and explicitly declined to report the paper's own cross-species findings. It separately and correctly stopped short of a pigeon SHJ-replication paper on the same grounds.
+
+**This is still a contamination and is recorded as one.** The seal covers what gets *read*, not only what gets *used*; a self-imposed limit on use is not equivalent to not having read it, because what was read cannot be un-read and the agent's later judgments are no longer independent of it.
+
+*Scope of damage:* narrow. One paper, in a sub-area whose value as held-out evidence is testing whether new primitives appear when non-primate paradigms are read after the basis is frozen. That test is now weakened for the learning-set corner specifically, not for the sub-area as a whole. The corvid and cephalopod literature remains untouched.
+
+*What I am not doing:* quietly reclassifying wolves-and-dogs as in-scope to make the problem disappear. My own rule in §3 says a contaminated item is worthless as evidence but an unrecorded contamination is worse, and that applies to me as much as to a subagent.
+
+*Change to prevent recurrence:* future briefs must state the seal boundary as an instruction about **fetching**, not about using — "do not open it" rather than "do not rely on it". The §2.3 brief said the boundary but not the verb.

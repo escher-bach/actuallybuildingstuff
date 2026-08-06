@@ -304,11 +304,12 @@ def validate(row: RegisterRow) -> list[str]:
         # Leads are allowed to be empty; they are the reading queue, not claims.
         return problems
 
-    # From REGISTERED onward the source must be a claim, not a lead.
-    if not any(s.verified for s in r.sources):
-        problems.append("no verified primary source (section 2: names and dates are leads)")
-
     if r.status is Status.REJECTED:
+        # A rejection does NOT require a verified source. Requiring one would make
+        # it harder to reject a family than to accept it, which is backwards --
+        # and the reasons that matter are usually structural ("a one-bit hidden
+        # parameter cannot resist brute force"), readable off the form itself
+        # rather than off anyone's citation. What a rejection owes is the reason.
         failed = [n for n, c in r.checks.items() if c.verdict is Verdict.FAIL]
         if not failed:
             problems.append("rejected row records no failing check")
@@ -316,6 +317,10 @@ def validate(row: RegisterRow) -> list[str]:
             if not r.checks[n].reason:
                 problems.append(f"{n} failed with no reason -- a rejection needs one")
         return problems
+
+    # From REGISTERED onward the source must be a claim, not a lead.
+    if not any(s.verified for s in r.sources):
+        problems.append("no verified primary source (section 2: names and dates are leads)")
 
     # --- translated / implemented rows carry the full form ---
     f = r.form
