@@ -24,9 +24,12 @@ The best-sourced A4 pass in the corrupt/localize schema, and the row where the
 vein's most interesting q* question was settled.
 
 **A7, and what the literature actually supplies.** GDE selects its next probe by
-minimizing expected entropy over candidate diagnoses -- confirmed, with the
-primary source partially readable and a secondary source quoting the mechanism
-directly. That is a published instance of informative-query-selection, and it
+minimizing expected entropy over candidate diagnoses. **Verification status,
+2026-08-06: this rests on a secondary source quoting GDE's body, and neither
+Reiter nor de Kleer & Williams has been curator-checked directly** -- the claim
+is textbook-standard rather than novel-sounding, but it is load-bearing for the
+A7 argument below and must be confirmed before this row is promoted past
+`translated`. That is a published instance of informative-query-selection, and it
 validates expected information gain as the right OBJECTIVE for this domain. But
 it is explicitly NOT one-pass: every possible outcome at every candidate probe
 must be scored against every surviving diagnosis, i.e. O(belief state). The

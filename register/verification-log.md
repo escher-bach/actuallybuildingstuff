@@ -22,7 +22,13 @@
 | arXiv:2209.09819 — Efficient Model Based Diagnosis | Title, probing-point selection, O(n²) worst case | ✅ **Confirmed.** ⚠️ But the GDE-entropy quote the report relies on is *not* in the abstract; it was attributed to the body via an HTML mirror and remains **unconfirmed by this pass** |
 | Dasgupta, "Analysis of a greedy active learning strategy" | Title, authorship, greedy-within-a-log-factor result | ✅ **Confirmed** from the PDF: Sanjoy Dasgupta, UCSD, Jan 2005, NeurIPS 2004 summary. Abstract: the greedy rule is "approximately as good as any other strategy". ⚠️ The **per-query cost "linear in version-space size"** claim was not located in the pages read and is now recorded as unconfirmed |
 
-**Score: 5 clean, 3 with drift, 1 fabricated.** The failure mode is specific and predictable — real paper, real topic, invented or mangled number — and it is exactly the kind of error that survives a plausibility read.
+| Golovin & Krause, arXiv:1003.3967 — Adaptive Submodularity | Title, adaptive submodularity, greedy competitive with optimal | ✅ **Confirmed.** ⚠️ The applications the review attributed to it — equivalence class determination, optimal decision tree — are **not in the abstract**, which lists sensor placement, viral marketing and active learning. The review did hedge this as snippet-corroborated. May be in the body; **unconfirmed** |
+| Goldman & Kearns, "On the Complexity of Teaching" | Title, authors, and the teaching-dimension definition | ✅ **Exact**, near-verbatim on the definition |
+| mCoq, github.com/EngineeringSoftware/mcoq | live/killed definitions; mutates definitions not proof scripts | ✅ **Exact** on both, including that it mutates *definitions* rather than proof scripts — which is the distinction the proof row depends on |
+
+**Score across the pass: 8 clean, 4 with drift or unconfirmed detail, 1 fabricated.** The failure mode is specific and predictable — real paper, real topic, invented or mangled number — and it is exactly the kind of error that survives a plausibility read.
+
+**Not independently checked, and flagged as such:** Reiter 1987 and de Kleer & Williams 1987. Both are canonical, both were reported as partially readable by the reviewing agent, and the claims drawn from them (hitting-set characterization of diagnoses; exponential worst case; GDE's entropy-based probe selection) are textbook-standard rather than novel-sounding. The GDE entropy quote in particular is load-bearing for the `circuit-fault-localization` A7 discussion and rests on a secondary source's quotation of the body. **Check before that row is promoted past `translated`.**
 
 ### Boundary call, recorded rather than buried
 

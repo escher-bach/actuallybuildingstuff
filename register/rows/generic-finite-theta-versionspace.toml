@@ -61,7 +61,7 @@ url = "https://openscholarship.wustl.edu/cse_research/591/"
 verified = true
 
 [[sources]]
-citation = "D. Golovin, A. Krause, 'Adaptive Submodularity', JAIR 2011 / arXiv:1003.3967"
+citation = "D. Golovin, A. Krause, 'Adaptive Submodularity: Theory and Applications in Active Learning and Stochastic Optimization', JAIR 2011 / arXiv:1003.3967 -- greedy adaptive policies competitive with optimal. Curator-checked 2026-08-06; the equivalence-class-determination application attributed by the review is NOT in the abstract and remains unconfirmed"
 year = 2011
 kind = "paper"
 url = "https://arxiv.org/abs/1003.3967"
