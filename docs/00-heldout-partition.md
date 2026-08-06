@@ -78,4 +78,8 @@ One sub-area per vein of §2, held out. Each was chosen to be *plausibly rich* �
 
 ## 4. Unsealing log
 
-*(empty — append: date, item unsealed, state of the basis at that moment, reason)*
+*(append: date, item unsealed, state of the basis at that moment, reason)*
+
+**2026-08-06 — boundary call, not an unsealing.** Dasgupta, "Analysis of a greedy active learning strategy" (NeurIPS 2004) was read and cited during the §2.2 pass. The paper self-describes as **pool-based** active learning, and pool-based active learning for labels sits on the held-out list. §2's carve-out is explicit that "classical *theory* of query learning and of optimal experimental design is IN SCOPE" and that what is sealed is the *applied* label-efficiency literature; this is a theoretical query-complexity analysis, and the reviewing agent independently flagged the same boundary and stopped before the applied material.
+
+**Judged in scope. The seal stands.** Recorded because a defensible boundary call is still a call, and seals erode through the ones nobody wrote down.

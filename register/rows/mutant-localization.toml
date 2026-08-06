@@ -1,0 +1,147 @@
+id = "mutant-localization"
+title = "Mutant localization -- find the injected fault in a program"
+vein = "2.5"
+their_term = "mutation testing; mutation operators; fault seeding"
+substrate = "imperative source code (Fortran/Mothra, Java/MuJava and PIT, C/Proteum). Substrate recorded because operator catalogues do not transfer between languages."
+status = "translated"
+levels = ["L0", "L1", "L2"]
+complexity_modes = ["description_length", "state_width"]
+contents = ["state", "selection"]
+asymmetries = ["corrupt/localize"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "posterior-enumeration",
+    "informative-query-selection",
+    "structure-walk-query",
+    "majority-predict",
+]
+predicted_block = "mutation testing's own theory would group families by test-suite adequacy and the coupling effect -- claims about test quality, not about which capability is exercised. It makes no prediction we can use, which is itself worth noting."
+notes = """
+First row on the corrupt/localize schema, and the vein's central A1 trap lives
+here.
+
+**The equivalence trap.** A mutant is *equivalent* if it is syntactically
+different but semantically identical, so no test can kill it. Detecting
+equivalence is undecidable, which means exact filtering cannot sit on the
+generation path -- that would be a solver, and A1 forbids it. Repair is
+probabilistic: probe with a bounded budget of sampled inputs and redraw theta if
+nothing distinguishes the mutant. This leaves residual contamination that must be
+budgeted rather than assumed away.
+
+**How large that residual is -- corrected 2026-08-06, and the correction cuts
+against the row.** The vein 2.5 review reported a Defects4J study finding 26.5%
+of fault-test pairs exhibit failed error propagation, and that number was used
+here to argue the hazard is one-in-four. **The figure is fabricated; it does not
+appear in the paper** (see register/verification-log.md). The paper's actual
+findings are close to the opposite: unit-level FEP with real faults occurred in
+**0%** of 258,372 executions, and the authors describe unit-level prevalence as
+negligible. System-level FEP was **11.4%** of executions across 4 bugs, and
+mutants showed 1.6% internal / 3.7% external.
+
+Consequence for this row: since our query space is *test inputs to a program* --
+unit-level interrogation -- the invisible-corruption hazard is **much smaller
+than argued**, and the probabilistic repair is correspondingly cheaper and more
+reliable than first recorded. The hazard is real at system level, which is a
+reason to keep the family's observation point close to the mutated site rather
+than at the end of a long pipeline. Left visible rather than silently corrected,
+because a row whose A-check rested on an invented statistic should show that it
+did.
+
+**Composing mutation order is NOT a free difficulty knob, and this is the
+counter-intuitive part.** The obvious dial -- more simultaneous faults -- is
+undercut by the coupling effect: test sets adequate for 1st-order mutants kill
+over 99% of 2nd- and 3rd-order ones. Higher-order composition may buy almost no
+difficulty against an informed solver. Contrast the circuit row, where multiple
+faults genuinely do get harder through masking. Same-sounding knob, opposite
+behaviour, different substrate. Do not assume one k means one thing.
+"""
+
+[[sources]]
+citation = "PIT mutation-testing operator catalogue, pitest.org/quickstart/mutators/ -- 11 default, 8 optional, 7 experimental. Curator-checked 2026-08-06; the review's '18 optional' merged two groups"
+year = 2026
+kind = "code"
+url = "https://pitest.org/quickstart/mutators/"
+verified = true
+
+[[sources]]
+citation = "'An Empirical Study on Failed Error Propagation in Java Programs with Real Faults', arXiv:2011.10787 -- 0% unit-level FEP with real faults across 258,372 executions; 11.4% system-level; 1.6%/3.7% for mutants. Curator-checked 2026-08-06"
+year = 2020
+kind = "paper"
+url = "https://arxiv.org/abs/2011.10787"
+verified = true
+
+[[sources]]
+citation = "Offutt et al., sufficient mutant operator set {ABS, AOR, LCR, ROR, UOI}: 99.5% mutation score at >75% cost reduction (TOSEM 1996; restated in Offutt & Untch, 'Mutation 2000')"
+year = 1996
+kind = "paper"
+url = ""
+verified = false
+
+[[sources]]
+citation = "DeMillo, Lipton & Sayward, 'Hints on Test Data Selection', IEEE Computer 11(4) 1978 -- competent programmer hypothesis, coupling effect"
+year = 1978
+kind = "paper"
+url = ""
+verified = false
+
+[[sources]]
+citation = "Budd & Angluin -- undecidability of equivalent-mutant detection"
+year = 0
+kind = "paper"
+url = ""
+verified = false
+
+[form]
+theta = "A (site, operator) pair: which AST location was mutated, using which catalogued operator. At order m, a set of m such pairs."
+p_theta = "Draw uniformly (or corpus-frequency-weighted) over eligible sites x operator classes. The operator catalogue IS the sampler -- Offutt's sufficient five, or PIT's default eleven, are two independently-derived minimal sets and give two P_Theta to compare."
+query_space = "test inputs to the program"
+oracle = "Execute the mutant on the input, return its output. One execution, no search."
+encodings = [
+    "source text with the mutation embedded and unlabelled",
+    "black-box call notation with the source withheld entirely -- the model interrogates only by calling",
+    "execution-trace rendering with intermediate states exposed",
+]
+k_semantics = "Program size / candidate-site count is the sound knob. Mutation order is NOT -- see notes; the coupling effect undercuts it. Fault-to-observation distance is a strong factor but behaves as a validity gate (detectability collapsing to zero) rather than a smooth dial."
+teacher_query = "structure-walk-query: the teacher knows the true (site, operator) and synthesizes a test input that exercises that site's data-flow path. One pass, no scan over surviving candidates. The learner's version -- selecting a kill-maximizing test -- is informative-query-selection and costs O(belief state); the gap between them is the teacher's advantage."
+posterior = "Enumerable at 1st order: |Theta| ~ sites x operator classes, roughly linear in program size. Combinatorial at order m, which is a real growth knob for the posterior even though it is a poor difficulty knob for the solver."
+trace = "Steps: the execution path through the mutated site, and the state at each point. Rich; thin by dropping intermediate states first, leaving only the output."
+stochastic = false
+episode_length = "Enough tests to discriminate the site. Not bounded in the literature in a form we can import -- mutation testing measures suite adequacy, not identification length."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The (site, operator) pair is exactly the hidden parameter, and mutation testing already treats it as one -- the mutant is generated FROM it."
+
+[checks.A1]
+verdict = "repairable"
+reason = "Instance construction is O(1) -- apply the operator at the site. But filtering equivalent mutants is undecidable, and an unfiltered pool contains corruptions no query can detect."
+repair = "Do not filter exactly. Probe with a bounded budget of sampled inputs and redraw theta if none distinguishes the mutant from the original. This is a cheap probabilistic proxy that keeps generation O(1); it leaves residual contamination which must be budgeted, at roughly the 26.5% scale the failed-error-propagation study measured for real faults."
+
+[checks.A2]
+verdict = "repairable"
+reason = "Fails as published. ROR (relational operator replacement) depends on the real total-order semantics of < and <=, which are not permutable symbols, and identifier names leak intent constantly. This is the vein's most common silent failure."
+repair = "Restrict to a small closed operator vocabulary treated as fixed non-permutable primitives -- the same treatment arithmetic operators get in the vein 2.2 algebraic families -- and anonymize every identifier. Passes only under that restriction, and the restriction must be part of the family definition rather than a preprocessing step someone might skip."
+
+[checks.A3]
+verdict = "pass"
+reason = "Source-text, black-box call notation, and execution-trace renderings are structurally different, not merely differently punctuated. The black-box rendering is the interesting one: it changes what the model can even attend to."
+
+[checks.A4]
+verdict = "repairable"
+reason = "Fails at 1st order on small programs. |Theta| grows only linearly in program size, so a solver that simulates every candidate against every test is not meaningfully worse than the intended structural solver -- brute force and intent coincide."
+repair = "Grow program size and candidate-site count so O(C) enumeration per query becomes the real cost. Note the obvious alternative repair -- compose to higher mutation order -- is undercut by the coupling effect and should not be relied on without measuring it first."
+
+[checks.A5]
+verdict = "pass"
+reason = "Shares belief-state-maintenance, hypothesis-elimination and posterior-enumeration with the other three corrupt/localize substrates and with the vein 2.2 identification families. Contributed no new primitive, which is the notable part."
+
+[checks.A6]
+verdict = "pass"
+reason = "One test execution per query; wrong-arity or wrong-type input returns a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "structure-walk-query is one-pass given theta. The teacher knows where the fault is and can write a test that reaches it; the learner cannot, which is the asymmetry the family is built on."

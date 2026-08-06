@@ -1,0 +1,119 @@
+id = "circuit-fault-localization"
+title = "Component-fault localization in a circuit by probing"
+vein = "2.5"
+their_term = "model-based diagnosis; diagnosis from first principles; sequential diagnosis"
+substrate = "combinational gate circuits with component behaviour models; fault vocabulary is stuck-at-0/1 per gate, not a typed edit menu"
+status = "translated"
+levels = ["L0", "L1", "L2", "L3"]
+complexity_modes = ["state_width", "serial_depth"]
+contents = ["state", "selection", "structure_induction"]
+asymmetries = ["corrupt/localize"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "posterior-enumeration",
+    "constraint-propagation",
+    "informative-query-selection",
+    "structure-walk-query",
+]
+predicted_block = "model-based diagnosis organizes around conflict sets, minimal hitting sets, and diagnosis minimality (fewest faulty components). Its own framework would predict diagnosis CARDINALITY -- single-fault vs multi-fault -- as the primary difficulty axis. Score our measured ordering against that rather than assuming it."
+notes = """
+The best-sourced A4 pass in the corrupt/localize schema, and the row where the
+vein's most interesting q* question was settled.
+
+**A7, and what the literature actually supplies.** GDE selects its next probe by
+minimizing expected entropy over candidate diagnoses -- confirmed, with the
+primary source partially readable and a secondary source quoting the mechanism
+directly. That is a published instance of informative-query-selection, and it
+validates expected information gain as the right OBJECTIVE for this domain. But
+it is explicitly NOT one-pass: every possible outcome at every candidate probe
+must be scored against every surviving diagnosis, i.e. O(belief state). The
+follow-on literature exists largely to approximate it, which is independent
+evidence that the exact version does not scale.
+
+So A7 does not pass by importing GDE. It passes because we hold something GDE's
+designers did not: we own theta. A teacher who knows the faulty component can
+bisect along the circuit's signal-flow graph from the known fault site -- the
+classical half-split isolation heuristic -- in one pass, O(log N). GDE is the
+right reference for what a LEARNER should be doing at L2, which is useful for
+calibrating what 'hard query selection' looks like; it is not our q*.
+
+**Contrast with the program row on the multi-fault knob.** Here, more
+simultaneous faults genuinely raises difficulty, because faults mask and
+compensate each other and diagnosability falls. In the program row the coupling
+effect makes the same-sounding knob nearly inert. Two substrates, one intuition,
+opposite behaviour -- which is the strongest available argument for measuring
+knobs rather than reasoning about them.
+"""
+
+[[sources]]
+citation = "R. Reiter, 'A Theory of Diagnosis from First Principles', Artificial Intelligence 32(1) 1987 -- conflict sets, minimal hitting sets, exponential worst case"
+year = 1987
+kind = "paper"
+url = ""
+verified = true
+
+[[sources]]
+citation = "J. de Kleer & B. C. Williams, 'Diagnosing Multiple Faults', Artificial Intelligence 32(1) 1987 -- GDE"
+year = 1987
+kind = "paper"
+url = "https://dekleer.org/Publications/"
+verified = true
+
+[[sources]]
+citation = "'Efficient Model Based Diagnosis', arXiv:2209.09819 -- quotes GDE's expected-entropy probe selection and positions its own contribution as an approximation to it"
+year = 2022
+kind = "paper"
+url = "https://arxiv.org/abs/2209.09819"
+verified = true
+
+[form]
+theta = "The subset of components declared abnormal, optionally with a fault mode per component (stuck-at-0, stuck-at-1). Not a typed edit -- this substrate has no operator catalogue in the mutation-testing sense, and that difference is itself informative about how much of a 'catalogue' a corrupt/localize family actually needs."
+p_theta = "Sample circuit topology (component count N, connectivity), then sample which m components are abnormal. k = (N, m)."
+query_space = "probe points -- which wire or node to measure"
+oracle = "Simulate the circuit under the fault assignment and return the value at the probed node. One simulation, no search."
+encodings = [
+    "structural netlist / gate-list text, e.g. `AND(g7, w3, w5)`",
+    "anonymized device framing (rooms, switches, pipes) over the same topology",
+]
+k_semantics = "N and m. Both raise difficulty here, and m genuinely does -- faults mask and compensate, reducing diagnosability. Contrast the program row where the analogous knob is inert."
+teacher_query = "structure-walk-query: bisect along the signal-flow graph from the known fault site. One pass, O(log N). GDE's entropy-minimizing selection is the learner-side counterpart and costs O(belief state) -- see notes."
+posterior = "Enumerable, and this is exactly what Reiter/GDE candidate generation computes: minimal hitting sets over conflict sets. Worst-case exponential in N, which Reiter states explicitly, but tractable at the sizes we would train on."
+trace = "Steps: predicted values propagated forward through component models, and the conflict detected when a prediction meets an observation. This IS constraint propagation, and it is a natural trace."
+stochastic = false
+episode_length = "Number of probes to isolate the fault. Bisection gives O(log N) for a single fault; multi-fault is where the belief-state cost appears."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The fault set is the hidden parameter and the literature names it as one -- Reiter's whole formulation is about recovering it."
+
+[checks.A1]
+verdict = "repairable"
+reason = "Generation is O(1): sample topology, sample a fault set, simulate. The substrate analogue of equivalent mutants exists though -- some fault assignments are undetectable at any probe point, because redundant logic masks them."
+repair = "Same pattern as the program row: reject-on-non-detection within a bounded probe budget rather than exact filtering. Note this substrate has an established name for the phenomenon (untestable faults, from the ATPG literature), which suggests the trap is general to corrupt/localize rather than a quirk of any one substrate."
+
+[checks.A2]
+verdict = "pass"
+reason = "The least leaky substrate of the four. Boolean gate semantics is a small genuinely abstract vocabulary, and node and wire identifiers are entirely arbitrary. Both renderings respect this without needing the anonymization surgery the program row requires."
+
+[checks.A3]
+verdict = "pass"
+reason = "Netlist and device framing are structurally different renderings over one topology."
+
+[checks.A4]
+verdict = "pass"
+reason = "Brute force means enumerating candidate fault sets and checking consistency, which Reiter shows is worst-case exponential in N. Passes cleanly once N moves past single digits. This is the strongest A4 pass among the four substrates and the only one that rests on a complexity result rather than an estimate."
+
+[checks.A5]
+verdict = "pass"
+reason = "constraint-propagation folds directly -- ATMS prediction through component models IS the primitive, and this is its term of art. posterior-enumeration folds onto minimal-hitting-set generation, likewise. Both are cases where the source literature named our primitive before we did."
+
+[checks.A6]
+verdict = "pass"
+reason = "One probe reading per query, matching GDE's own single-measurement-per-step model. A probe at a nonexistent node returns a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "Passes via teacher-side structure-walk, NOT by importing GDE's entropy computation, which is O(belief state) and fails the one-pass bar. Recorded this way because the distinction is the whole content of the finding."

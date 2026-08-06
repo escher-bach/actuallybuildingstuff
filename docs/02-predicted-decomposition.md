@@ -39,7 +39,7 @@ Blocks alone are cheap to be vaguely right about. These are the falsifiable clai
 | §2.1 | | |
 | §2.3 | | |
 | §2.4 | | |
-| §2.5 | | |
+| §2.5 | **Test-suite adequacy and the coupling effect** (mutation testing): operators grouped by how well killing simple mutants predicts killing complex ones. **Diagnosis minimality** (model-based diagnosis): conflict sets, minimal hitting sets, and a preference for fewest faulty components. **Failure mode** (plan validation): inexecutable vs non-goal-reaching. **Error type** (proof-failure taxonomy): 10 categories of naturally-occurring model errors | Mutation testing predicts nothing usable — its theory is about test-suite quality, not about which capability a task exercises, which is itself worth noting. Model-based diagnosis predicts **diagnosis cardinality** (single- vs multi-fault) as the primary difficulty axis. Plan validation predicts a clean binary split. If our blocks come out as a single corrupt/localize cluster spanning all four substrates, all four of these taxonomies are wrong together, and that would be the more interesting result |
 | §2.6 | | |
 
 **The scoring rule, fixed now:** after the matrix runs, compute how well each of (a) our §1–§2 prediction and (b) each source taxonomy in this table recovers the measured blocks, by the same clustering-agreement measure, chosen before seeing the matrix. If a source's inherited taxonomy beats our prediction, that is a real finding and gets reported as one. The temptation this rule exists to block is reading the measured blocks, noticing they resemble *some* taxonomy in the table, and reporting that as convergent validation.

@@ -23,8 +23,9 @@ This row is the direct answer to the review's central question -- when does q*
 stay affordable -- and it is filed as SUSPECTED JUNK on purpose.
 
 The greedy halving rule (query the point that splits the surviving hypothesis set
-most evenly) is provably within a log|H| factor of the optimal adaptive policy,
-and costs O(|surviving Theta|) per query because it must score every candidate.
+most evenly) is proved "approximately as good as any other strategy" for
+minimizing label count, and costs O(|surviving Theta|) per query because it must
+score every candidate -- the first claim is the source's, the second is ours.
 That is cheap while |Theta| is polynomial in k and dies the moment |Theta| is
 exponential. Every CHEAP verdict elsewhere in the vein is an escape from this
 cost via structure the class happens to have; this row is what is left when there
@@ -76,7 +77,7 @@ encodings = [
     "permuted feature order with a different separator token",
 ]
 k_semantics = "|Theta| directly. This is the one row where k is the belief-state size rather than a property of the rule, which is why it is the right instrument for measuring where q* cost becomes prohibitive."
-teacher_query = "informative-query-selection: score each candidate query by how evenly it splits the surviving set, take the argmax. O(|surviving Theta|) per call. Cheap while |Theta| <= ~1e4-1e5; prohibitive once |Theta| is exponential in the natural parameter."
+teacher_query = "informative-query-selection: score each candidate query by how evenly it splits the surviving set, take the argmax. Cost is O(|surviving Theta|) per call by inspection of the rule itself -- scoring requires touching every survivor. NOTE (curator-checked 2026-08-06): the review attributed this cost statement to Dasgupta explicitly; the paper's title, authorship and its 'approximately as good as any other strategy' result are confirmed, but the linear-in-version-space cost claim was NOT located in the source and is recorded here as our own reading, not a citation. Cheap while |Theta| <= ~1e4-1e5; prohibitive once |Theta| is exponential in the natural parameter."
 posterior = "Enumerable by construction -- this family exists precisely to exercise posterior maintenance at controlled sizes. L3 targets are exact and cheap here, which also makes it the natural place to unit-test the L3 machinery against brute force."
 trace = "Steps: which hypotheses were eliminated by the last observation. Honest but uninformative; thinning is not meaningful."
 stochastic = false

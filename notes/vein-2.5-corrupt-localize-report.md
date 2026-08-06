@@ -1,3 +1,20 @@
+> **CORRECTIONS — curator spot-check, 2026-08-06.** This report is retained as the reviewing agent's
+> artifact and is otherwise unedited. Three of its claims did not survive independent checking; see
+> `register/verification-log.md` for the full pass.
+>
+> - **§1.1 / §2.1 / §4 — the "26.5% of fault-test pairs exhibit failed error propagation" figure is
+>   FABRICATED.** It does not appear in arXiv:2011.10787. The paper reports **0%** unit-level FEP with
+>   real faults across 258,372 executions, **11.4%** system-level, and 1.6%/3.7% for mutants — and
+>   describes unit-level prevalence as *negligible*, which points the opposite way from the argument
+>   the number was used to support.
+> - **§1.1 — PIT's optional-mutator count is 8, plus 7 experimental**, not 18. The 11 defaults are
+>   exactly right.
+> - **§1.3 / §8 — the proof-error taxonomy has 10 categories, not 11.**
+>
+> Everything else checked came back exact, including the decision-tree query bounds, the k-term DNF
+> result and its Blum–Rudich framing, Alchemy's Mathlib figures, and the monotone-DNF characterization.
+> The failure mode is specific: real paper, real topic, invented or mangled number.
+
 # Vein 2.5 — Corrupt/Localize: Mutation Testing, Model-Based Diagnosis, Proof Errors, Plan Faults
 
 Schema: take a correct artifact, apply a catalogued corruption, ask where the fault is. `theta` = the

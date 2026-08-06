@@ -40,3 +40,24 @@ on the saturation curve. Three rows held at `lead` because their primary sources
 could not be rendered (Angluin 1987/1988 PDFs); the blocker is a library run, not
 more reading.
 """
+
+[[entry]]
+n = 2
+date = "2026-08-06"
+source = "Vein 2.5a -- corrupt/localize across four substrates: mutation testing, model-based diagnosis, proof errors, plan faults (29 sources: 9 verified by the reviewer, of which 5 survived curator checking clean)"
+vein = "2.5"
+rows = [
+    "mutant-localization",
+    "circuit-fault-localization",
+    "proof-step-localization",
+    "plan-fault-localization",
+]
+note = """
+ZERO new primitives across four unrelated substrates -- the strongest saturation
+signal so far, and a fair test since nothing about mutation testing, circuit
+diagnosis, proof checking and plan validation forced them to share vocabulary.
+
+Curator verification pass found 1 fabricated statistic and 2 numeric drifts among
+the sources promoted to rows; see register/verification-log.md. Rows corrected in
+place with the correction left visible.
+"""

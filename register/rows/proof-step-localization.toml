@@ -1,0 +1,130 @@
+id = "proof-step-localization"
+title = "Corrupted proof-step localization on a formal backbone"
+vein = "2.5"
+their_term = "mutation analysis for proofs; first-wrong-step identification; proof error taxonomy"
+substrate = "formal proof terms / tactic scripts (Coq, Lean, Isabelle) or a small closed toy calculus. NOT natural-language proof -- see A1."
+status = "translated"
+levels = ["L0", "L1", "L2", "L3"]
+complexity_modes = ["serial_depth", "description_length"]
+contents = ["state", "structure_induction", "selection"]
+asymmetries = ["corrupt/localize"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "posterior-enumeration",
+    "constraint-propagation",
+    "structure-walk-query",
+]
+predicted_block = "the nearest published taxonomy is a 10-category grouping of how large reasoning models currently fail at proofs, over a 200-problem dataset. That is a grouping of naturally-occurring model errors, not of injectable corruptions, and it would predict difficulty groups by error TYPE. Score against it; do not adopt it. (Curator-checked 2026-08-06: the review said 11 categories; the paper reports 10.)"
+notes = """
+**The one substrate where no operator catalogue exists, and we would have to
+author P_Theta ourselves.** Programs have four decades of validated mutation
+operators; circuits have a small fault-mode vocabulary; plans get a catalogue
+free from their validator. Proofs have nothing comparable. The closest artifacts
+found: mCoq mutates the DEFINITIONS a proof is about rather than the proof's own
+inference steps; one Lean robustness study uses an ad hoc three-way split
+(number edits, symbol edits, proof-step edits); the process-supervision datasets
+annotate naturally-occurring first-wrong-steps rather than injected ones. None is
+a validated minimal-sufficient set.
+
+The constructive route is to re-target mutation testing's three-way split at
+inference rules: statement-level (delete or reorder a step), operand-level (swap
+the cited premise or lemma), operator-level (swap the inference rule applied).
+That is a design proposal by analogy, not an import, and it should be recorded as
+ours rather than attributed.
+
+**The sharpest cross-substrate contrast in the vein.** The A1 equivalence trap is
+undecidable for programs and nearly absent here: kernel type-checking terminates
+and is fast, and it is not the general equivalence problem. So the corruption's
+invalidity is CHEAP to confirm at generation time -- provided the family sits on a
+formal backbone. On natural-language proofs there is no O(1) oracle for 'is this
+step actually wrong', and the family collapses into needing a judge, which is a
+straight A1 violation. The repair is not to grade natural language better; it is
+to generate on a formal backbone and render natural language as a display
+encoding that is never the ground truth.
+
+Also worth flagging so it is not miscategorized later: Alchemy-style 'symbolic
+mutation' produces new VALID theorems to train a prover. Same word, opposite task
+shape. It is not a corrupt/localize instance.
+"""
+
+[[sources]]
+citation = "A. Celik et al., 'Mutation Analysis for Coq' (ASE 2019) + github.com/EngineeringSoftware/mcoq -- live/killed mutant definitions confirmed from the README"
+year = 2019
+kind = "code"
+url = "https://github.com/EngineeringSoftware/mcoq"
+verified = true
+
+[[sources]]
+citation = "'Alchemy: Amplifying Theorem-Proving Capability through Symbolic Mutation', arXiv:2410.15748 -- generation-quantity tool, NOT corrupt/localize; recorded to prevent miscategorization"
+year = 2024
+kind = "paper"
+url = "https://arxiv.org/abs/2410.15748"
+verified = true
+
+[[sources]]
+citation = "'Mathematical Proof as a Litmus Test: Revealing Failure Modes of Advanced Large Reasoning Models', arXiv:2506.17114 -- 10 fine-grained error types over a 200-problem dataset. Curator-checked 2026-08-06"
+year = 2025
+kind = "paper"
+url = "https://arxiv.org/abs/2506.17114"
+verified = true
+
+[[sources]]
+citation = "ProcessBench (arXiv:2412.06559) and PRM800K -- human-annotated first-wrong-step; establishes the task shape"
+year = 2024
+kind = "paper"
+url = "https://arxiv.org/abs/2412.06559"
+verified = false
+
+[form]
+theta = "A (step index, corruption operator) pair in an N-step proof. The operator catalogue must be authored by us -- see notes -- by re-targeting mutation testing's statement/operand/operator split at inference rules."
+p_theta = "k sets proof depth N and catalogue breadth; sample (step, operator) pairs. Because the proof is generated first and corrupted after, generation never searches for a proof."
+query_space = "'is step i valid given steps 1..i-1', or 'what is the correct continuation at step i'"
+oracle = "Kernel type-check of the step against its cited premises. Exact, mechanical, terminating. This is the whole reason the family works."
+encodings = [
+    "formal proof-script text (tactic sequence)",
+    "natural-language rendering of the same underlying formal derivation -- display only, never the ground truth",
+]
+k_semantics = "Proof depth N and catalogue breadth. Weakly evidenced -- taken by analogy to the program row's (site, operator) count, with no independent support found in the proof literature. Flagged rather than asserted."
+teacher_query = "structure-walk-query: the teacher knows the corrupted step and synthesizes a check targeting it directly. One pass."
+posterior = "Enumerable when the (step, operator) space is small -- same shape as the program row, linear in proof length times catalogue breadth."
+trace = "Steps: the kernel's check of each inference against its premises. Natural, and thins cleanly by dropping premise-level detail first."
+stochastic = false
+episode_length = "Bounded by proof depth under a scan; shorter under a bisection strategy. Not established in the literature found."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The (step, operator) pair is the hidden parameter by construction, since we apply the corruption."
+
+[checks.A1]
+verdict = "repairable"
+reason = "PASSES on a formal backbone and FAILS on natural-language proofs. Formally, corruption is an O(1) AST or tactic edit and confirming the corruption is genuinely invalid is a fast decidable kernel check -- crucially NOT the undecidable general-equivalence problem that bites the program row. On natural language there is no O(1) validity oracle and grading needs a judge, which is a solver on the generation path."
+repair = "Always generate on a formal backbone -- Lean, Coq, Isabelle, or a small closed toy calculus such as natural deduction over anonymized propositional atoms -- and render natural language only as a display encoding whose validity is never checked."
+
+[checks.A2]
+verdict = "repairable"
+reason = "Fails for proofs over concrete mathematical objects: whether a corrupted step is wrong can depend on real facts like x+1 > x, which are not permutable symbols."
+repair = "Restrict Theta to proofs over abstract uninterpreted systems -- an anonymized propositional or first-order calculus, or an abstract algebraic theory with symbol-generic axioms. Note this repair aligns with the held-out partition rather than fighting it, since real analysis and Euclidean geometry are sealed anyway."
+
+[checks.A3]
+verdict = "pass"
+reason = "Formal script and natural-language surface are genuinely different renderings over one verified backbone."
+
+[checks.A4]
+verdict = "repairable"
+reason = "Fails at small proof depth. Re-running the kernel check at every candidate step is cheap, so exhaustive checking is barely worse than a smart localization strategy -- the same shape of failure as the program row, and for the same underlying reason: both the intended and the brute solver are cheap point-checks."
+repair = "Require a large product of proof depth and catalogue breadth, or impose a query budget so the model cannot check every step for free. The query-budget repair is the more interesting one and is borrowed from the plan row, where it is the only repair available."
+
+[checks.A5]
+verdict = "pass"
+reason = "constraint-propagation folds onto kernel checking against cited premises -- propagation over a proof DAG. Shares the rest with the other corrupt/localize rows."
+
+[checks.A6]
+verdict = "pass"
+reason = "One kernel check per query; a malformed step reference returns a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "structure-walk-query, one pass given theta."

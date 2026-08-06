@@ -1,0 +1,120 @@
+id = "plan-fault-localization"
+title = "Corrupted-plan fault localization under a query budget"
+vein = "2.5"
+their_term = "plan validation; plan verification; inexecutable vs non-goal-reaching plans"
+substrate = "STRIPS / PDDL classical planning"
+status = "lead"
+levels = ["L0", "L1", "L2", "L3"]
+complexity_modes = ["serial_depth", "state_width"]
+contents = ["state", "selection"]
+asymmetries = ["corrupt/localize"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "posterior-enumeration",
+    "constraint-propagation",
+    "basis-probe",
+    "structure-walk-query",
+]
+predicted_block = "the plan-validation literature splits failures into 'inexecutable' (a precondition problem) and 'non-goal-reaching' (a completeness problem), and treats that binary as the natural typology. Score our measured difficulty against that split rather than assuming it is the right cut."
+notes = """
+Held at `lead`: every source for this row (VAL's error taxonomy, PlanBench's
+corruption split) is snippet-corroborated only, and the curator verification pass
+of 2026-08-06 did not reach them. The ANALYSIS below is ours and stands
+independently of that; the imported claims do not yet.
+
+**The most structurally interesting A4 failure in the register, and it is a
+different KIND of failure from the others.** The program and proof rows fail A4
+at small k and pass at large k. This row fails at *every* plan length under full
+visibility, because the brute-force check -- scan the plan from the start,
+checking preconditions action by action -- IS the intended solver. Plan length
+cannot drive difficulty when finding the fault costs the same order as generating
+the instance.
+
+**The repair is the interesting part: the difficulty knob has to be
+observability, and that knob exists only because of the interface.** Do not hand
+the model the whole trace. Make it spend queries to inspect specific steps or
+states -- which is exactly what the L1/L2 'oracle answers only what was asked'
+structure already provides. The planning literature had no reason to name this
+knob, because a validator is always given the whole plan. So this is a case where
+the reveal-policy design created a difficulty parameter the source domain does
+not have, rather than importing one. Worth watching for elsewhere: it suggests
+'what does this family look like when the artifact is not fully visible' is a
+generic move for rescuing a family that fails A4 by having too cheap a brute
+force.
+
+Until query-budgeting is imposed this family is NOT admissible. That is a build
+condition, not a caveat.
+"""
+
+[[sources]]
+citation = "Howey, Long & Fox, 'VAL: Automatic Plan Validation, Continuous Effects and Mixed Initiative Planning using PDDL', ICTAI 2004 -- error taxonomy: unsatisfied precondition / unmet goal / invalid parameter, plus repair advice"
+year = 2004
+kind = "paper"
+url = ""
+verified = false
+
+[[sources]]
+citation = "Valmeekam et al., PlanBench -- corrupted plans split into inexecutable vs non-goal-reaching"
+year = 2023
+kind = "benchmark"
+url = ""
+verified = false
+
+[[sources]]
+citation = "Random-walk / backward-from-goal planning-instance generation (standard technique, no single canonical reference isolated)"
+year = 0
+kind = "paper"
+url = ""
+verified = false
+
+[form]
+theta = "Which action in a valid plan was altered, and how: deletion, reordering, or substitution with a precondition-violating action. The validator's own error taxonomy doubles as the operator catalogue, which is why this substrate needs no catalogue of its own."
+p_theta = "k sets plan length, domain branching factor, number of simultaneous corruptions, and -- decisively -- the observability budget. Sample a valid plan by forward random walk, then corrupt it; the plan is the answer, so generation never searches."
+query_space = "'check state consistency / precondition satisfaction at step i'"
+oracle = "Forward-simulate the plan to step i and return the check result. O(1) per step, and it is exactly a validator's own core loop."
+encodings = [
+    "PDDL-style action list",
+    "anonymized recipe or story rendering of the same problem",
+]
+k_semantics = "Plan length is NOT a real knob here -- see notes. Observability budget is. Multi-fault also works, since a single linear scan cannot then disambiguate which of several overlapping corruptions is present."
+teacher_query = "basis-probe (a fixed forward scan, which is the validator's own algorithm) or structure-walk-query (probe the known corrupted action directly). Both one-pass."
+posterior = "Enumerable: |Theta| ~ plan length x small catalogue, linear."
+trace = "Steps: the state after each action, and the precondition that failed. Natural; thin by dropping intermediate states."
+stochastic = false
+episode_length = "Under full visibility, one scan. Under a query budget, that is the whole design question and is what the family exists to vary."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The corrupted action and its corruption type are the hidden parameter, applied by us."
+
+[checks.A1]
+verdict = "pass"
+reason = "The cleanest A1 of the four corrupt/localize substrates. Corrupting a valid plan is an O(1) edit and confirming the corruption took effect is one forward simulation. Uniquely among the four, the equivalence trap is FULLY resolvable at generation time rather than probabilistically mitigated -- an accidentally-still-valid edit (deleting a no-op, reordering commuting actions) is detected by the same single forward pass. Worth contrasting with the program row, where the analogous question is undecidable."
+
+[checks.A2]
+verdict = "pass"
+reason = "PDDL predicate and object names are fully anonymizable, and this is already standard practice in planning benchmarks. Tied with the circuit row as the least leaky substrate."
+
+[checks.A3]
+verdict = "pass"
+reason = "Action-list and story renderings are genuinely different surfaces; the dual rendering is already precedented in the planning-benchmark literature."
+
+[checks.A4]
+verdict = "fail"
+reason = "Fails at every plan length under full plan visibility. A linear precondition scan is simultaneously the intended solver and the brute-force solver, so no growth in plan length makes the structure-ignoring route relatively more expensive. Structurally unlike the program and proof rows, which fail small and pass large."
+repair = "Impose a query budget so the model must pay to inspect steps rather than reading the whole trace -- the L1/L2 reveal structure supplies this directly -- and/or compose with multi-fault k so one scan cannot disambiguate. Recorded as fail rather than repairable because the repair changes what the family IS, and a row that quietly assumed the repair would be building something the source literature never validated."
+
+[checks.A5]
+verdict = "pass"
+reason = "constraint-propagation folds onto STRIPS progression -- pushing preconditions and effects through state. basis-probe folds onto the validator's linear forward scan, which is a fixed non-adaptive complete schedule and the clearest instance of that primitive in the register."
+
+[checks.A6]
+verdict = "pass"
+reason = "One state check per query; an out-of-range step index returns a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "Both candidate policies are one-pass given theta."
