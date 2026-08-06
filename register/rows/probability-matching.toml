@@ -3,7 +3,7 @@ title = "Hidden Bernoulli parameter -- outcome prediction under irreducible nois
 vein = "2.3"
 their_term = "probability matching; partial reinforcement; probability learning"
 substrate = "binary outcome sequences from a hidden rate"
-status = "lead"
+status = "implemented"
 levels = ["L1", "L3"]
 complexity_modes = ["input_entropy"]
 contents = ["structure_induction"]
@@ -17,6 +17,20 @@ primitives = [
 ]
 predicted_block = "the judgment-and-decision-making literature groups this with choice-behaviour phenomena and explains it in terms of strategy selection. That is an account of why humans deviate from optimality, not a claim about task structure, and predicts nothing for us."
 notes = """
+Implemented at src/repertoire/families/stochastic.py. Tests assert the
+property that makes it worth having: the L3 target stays a genuine distribution
+under mixed evidence rather than collapsing to the majority outcome, and never
+fully resolves however long the history.
+
+**A design flaw the tests caught.** The rate grid originally included the
+endpoints 0 and 1. A rate of exactly 0 or 1 is deterministic -- it carries no
+irreducible noise and IS fully resolvable from a finite history -- so after a
+long run of one outcome the posterior collapsed to a point and the family
+silently stopped being an L3 exemplar, on exactly the histories most likely to
+arise. The grid is now strictly interior. Recorded because the family would have
+looked fine: it ran, it was stochastic, and only the assertion that the posterior
+never fully resolves distinguished it from a family that quietly becomes L1.
+
 Three jobs at once, which is why it earns a row despite being the simplest
 family in the register.
 
@@ -51,7 +65,14 @@ whether a model is 'matching' because it is calibrated or because it is confused
 """
 
 [[sources]]
-citation = "Grant, Hake & Hornseth, probability-matching in binary prediction, 1951, and the subsequent partial-reinforcement literature"
+citation = "Repertoire Specification section 5, plant table row 'Known independent pair'. The family AS IMPLEMENTED is our construction -- a discretized Bernoulli rate with an exact enumerable posterior -- and none of the claims this row rests on (independent-plant role, stochastic oracle, exact L3 target) depend on the psychology literature. That literature supplied the shape, not the warrant"
+year = 2026
+kind = "internal"
+url = ""
+verified = true
+
+[[sources]]
+citation = "Grant, Hake & Hornseth, probability-matching in binary prediction, 1951, and the subsequent partial-reinforcement literature -- the paradigm this family's shape came from; NOT load-bearing for any claim here"
 year = 1951
 kind = "paper"
 url = ""
@@ -59,7 +80,7 @@ verified = false
 
 [form]
 theta = "A hidden Bernoulli rate p, or a vector of rates over options. Discretized to a grid so the posterior is enumerable."
-p_theta = "k sets the grid precision and the number of options. Sample p from the grid under a stated prior."
+p_theta = "k sets the grid precision. Sample p uniformly from a STRICTLY INTERIOR grid -- endpoints excluded, since p=0 or p=1 is deterministic and resolvable, which would break the intrinsic non-identifiability the family exists for."
 query_space = "predict the next outcome, or choose an option"
 oracle = "Distribution-valued: returns the Bernoulli distribution at the queried option. The harness samples, exactly as with the junk-random plant -- and the fact that the same mechanism serves a junk family and a real one is evidence the interface is carrying stochasticity properly."
 encodings = [

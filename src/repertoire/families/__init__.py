@@ -7,11 +7,13 @@ from .concepts import (
     SHJTypeVIFamily,
 )
 from .junk import ConstantTargetFamily, RandomTargetFamily
+from .stochastic import ProbabilityMatchingFamily
 
 __all__ = [
     "BrunerConjunctionFamily",
     "ConjunctionFamily",
     "ConstantTargetFamily",
+    "ProbabilityMatchingFamily",
     "RandomTargetFamily",
     "SHJTypeIFamily",
     "SHJTypeVIFamily",
