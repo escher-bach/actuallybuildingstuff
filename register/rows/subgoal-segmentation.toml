@@ -1,0 +1,118 @@
+id = "subgoal-segmentation"
+title = "Subgoal segmentation -- recover the macro structure of a flat action sequence"
+vein = "2.5"
+their_term = "options; parametric macros; macro-plan decomposition"
+substrate = "STRIPS-style action sequences over opaque action and macro names"
+status = "translated"
+levels = ["L0", "L1", "L3"]
+complexity_modes = ["serial_depth", "state_width"]
+contents = ["composition", "state"]
+asymmetries = ["compose/decompose"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "abstraction-naming",
+    "constraint-propagation",
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "posterior-enumeration",
+]
+predicted_block = "the planning literature groups by domain and by subgoal taxonomy; the options literature groups by whether a macro is a temporally extended action. Neither predicts anything about our capability decomposition."
+notes = """
+Third of the compose/decompose set, and the one that also carries `state` --
+segmentation depends on preconditions holding, so the solver must track the world
+forward rather than pattern-match the surface.
+
+**Generation inherits the planning literature's backward trick, one level up.**
+Standard practice generates a planning instance by applying a random action
+sequence and then asking for the plan. Here we sample a random *macro* sequence
+and concatenate the expansions, so the segmentation is known by construction and
+the flat sequence is valid without any search. Same trick, applied to structure
+rather than to states.
+
+**A4 is a repairable fail, and the repair is the interesting part.** If macro
+templates have visibly different fixed lengths, boundaries can be read straight
+off the length pattern and the family collapses into surface segmentation --
+which is not the capability we want. The repair is to require several macros to
+share an output length, so boundaries are not locally decodable and the solver
+must use preconditions. Worth noting because the naive version would still look
+like it works.
+
+**A7 is genuinely UNKNOWN, not assumed.** The reviewer did not design a teacher
+policy for this family to completion, and it is not obvious that one is cheap:
+choosing the query that best disambiguates a segmentation may require reasoning
+over segmentations, which is the O(belief state) shape rather than the walk. So
+L2 is NOT claimed here. Task Spec A7 warns that discovering which families cannot
+support L2 late is expensive, and the honest position now is that we do not know
+for this one -- which is itself the kind of result section 3 says to record.
+
+**Do not conflate two difficulty parameters.** The planning literature has a real
+easy-hard-easy non-monotonicity in the operators-to-state-variables ratio of
+randomly sampled instances. That is a different parameter from macro-composition
+depth here, and the sourced non-monotonicity says nothing about ours. Open
+question, flagged rather than answered.
+"""
+
+[[sources]]
+citation = "Ellis et al., DreamCoder, arXiv:2006.08381 -- parametric options (arch, pyramid, wall, bridge) as fixed-length parametric action sequences, citing the options framework. Curator-checked at abstract level 2026-08-07; the specific tower-domain figures are body-sourced and not curator-confirmed"
+year = 2020
+kind = "paper"
+url = "https://arxiv.org/abs/2006.08381"
+verified = true
+
+[[sources]]
+citation = "Rintanen, phase-transition behaviour in randomly generated STRIPS instances -- easy-hard-easy in the operators/state-variables ratio. Read directly by the reviewer; a DIFFERENT parameter from this family's k"
+year = 2004
+kind = "paper"
+url = ""
+verified = false
+
+[form]
+theta = "A library M of m macro templates, each a deterministic map from a small parameter tuple to a fixed-length primitive action sequence, plus a hidden ordered macro sequence with sampled parameters."
+p_theta = "Sample k macros with parameters from M and concatenate their expansions into one flat action sequence. Valid by construction; no planner is ever invoked."
+query_space = "states reachable by executing a prefix of the flat sequence, or a proposed action to validity-check"
+oracle = "Forward-simulate to the requested prefix and return the state, or check one action's preconditions. O(1) per step, no search."
+encodings = [
+    "flat primitive-action sequence string",
+    "sequence of intermediate states",
+]
+k_semantics = "Number of macros composed. Monotonicity NOT established -- explicitly open, and not answered by the planning literature's non-monotonicity result, which concerns a different parameter."
+teacher_query = "Not designed. A7 unknown -- see notes. L2 is not claimed for this row."
+posterior = "Enumerable for small m and k over candidate macro sequences, pruned to segmentations consistent with the templates' fixed lengths. Constraint propagation over span boundaries does most of the work."
+trace = "Steps: the state after each primitive action, and which macro instance the action belongs to. The macro label is the part worth thinning last, since it is the answer."
+stochastic = false
+episode_length = "Scales with the flat sequence length."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The macro sequence is sampled first and the flat sequence derived from it."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sampling and concatenation are O(total length); forward simulation is O(1) per query. The plan is valid by construction, which is the whole point of generating from macros rather than searching for a plan."
+
+[checks.A2]
+verdict = "pass"
+reason = "Action and macro names are opaque; predicates are anonymized, which is already standard in planning benchmarks."
+
+[checks.A3]
+verdict = "pass"
+reason = "Action-sequence and intermediate-state renderings expose genuinely different information."
+
+[checks.A4]
+verdict = "repairable"
+reason = "Fails if macro templates have distinguishable fixed lengths -- boundaries become readable off the length pattern, and the task degenerates into surface segmentation rather than compositional recovery."
+repair = "Require several macros to share an output length so boundaries are not locally decodable, forcing the solver to use preconditions and state. Necessary, not optional: the unrepaired version still runs and still looks reasonable."
+
+[checks.A5]
+verdict = "pass"
+reason = "Shares abstraction-naming with the abstraction-extraction row -- the same constructive operation over plans rather than over programs, which is a genuine cross-substrate reuse and part of why that primitive is not a one-family artifact."
+
+[checks.A6]
+verdict = "pass"
+reason = "One simulation step per query; an out-of-range prefix index returns a fixed error token."
+
+[checks.A7]
+verdict = "unknown"
+reason = "No teacher policy designed. Disambiguating a segmentation may require reasoning over segmentations, which is the O(belief state) shape rather than a cheap structure walk. Recorded as unknown rather than guessed, and L2 is withheld from the levels list accordingly."
+repair = "Determine before this row is promoted to implemented. If q* turns out to be expensive, this is a family that supports L0, L1 and L3 but not L2 -- which Task Spec section 3 says is a result worth having, not a defect."

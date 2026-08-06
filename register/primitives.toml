@@ -18,7 +18,7 @@
 # hypothesis, and hiding the difference is how a vocabulary quietly becomes a
 # theory nobody agreed to.
 #
-# STATE, after 5 sources: 11 primitives. Vein 2.2 proposed 6 and yielded 3 new.
+# STATE, after 6 sources: 12 primitives. Vein 2.2 proposed 6 and yielded 3 new.
 # Vein 2.5 (four substrates: programs, circuits, proofs, plans) yielded ZERO new
 # -- every solver-side operation in mutation testing, model-based diagnosis,
 # formal proof checking and plan validation was expressible in the existing set.
@@ -93,6 +93,39 @@ borderline and proposed it because the same gap appeared twice independently
 (discrete in reversal learning, continuous in drifting-reward tasks); that
 repetition is the evidence, and if the matrix does not see the distinction, the
 repetition was a coincidence of one literature's interests.
+"""
+
+[abstraction-naming]
+gloss = "Given two or more concrete structures sharing a substructure at possibly different positions, produce a generalized template with the shared part factored out and bound to a fresh name, such that each original is recovered by substituting into the template's slots. Anti-unification."
+first_seen = "abstraction-extraction"
+aliases = [
+    "anti-unification",
+    "generalization (in the term-rewriting sense)",
+    "library learning / abstraction refactoring",
+    "option discovery (parametric macro extraction)",
+]
+falsifier = """
+ACCEPTED, and the reason is structural rather than 'it did not fit'.
+
+Every other primitive in this file is either ELIMINATIVE (narrows a belief state
+against evidence: hypothesis-elimination, constraint-propagation, belief-state-*)
+or INTERROGATIVE (produces a query: informative-query-selection,
+structure-walk-query, basis-probe) or a READOUT (posterior-enumeration,
+majority-predict). None of them CONSTRUCTS a new reusable unit. Anti-unification
+does, and it takes several already-answered instances as input rather than one
+new observation -- different arity and a different direction of information flow.
+
+That absence was not a small gap. Task Spec section 1.1 argues composition is
+what lets a finite basis cover an infinite target space; a vocabulary with no
+constructive operation cannot express how the basis grows. This is the primitive
+that makes that claim operational, and it took a compositional vein to expose it,
+which is a small piece of evidence that the coverage grid is pointing the review
+at the right places.
+
+Fold it back if families that need it do not separate from families that only
+narrow. The sharpest test available: the abstraction-extraction family should
+transfer to composition-chain if this is one capability, and not if the
+constructive step is doing independent work.
 """
 
 [constraint-propagation]

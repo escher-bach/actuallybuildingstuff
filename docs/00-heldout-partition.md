@@ -97,3 +97,15 @@ During the §2.3 pass the reviewing agent fetched and read PMC11628440, a study 
 *What I am not doing:* quietly reclassifying wolves-and-dogs as in-scope to make the problem disappear. My own rule in §3 says a contaminated item is worthless as evidence but an unrecorded contamination is worse, and that applies to me as much as to a subagent.
 
 *Change to prevent recurrence:* future briefs must state the seal boundary as an instruction about **fetching**, not about using — "do not open it" rather than "do not rely on it". The §2.3 brief said the boundary but not the verb.
+
+---
+
+**2026-08-07 — CONTAMINATION, self-reported. Graph-colouring phase transitions (§2 vein table).**
+
+During the §2.5b pass the reviewing agent opened "Parametrized Families of Hard Planning Problems from Phase Transitions" before recognising that its second problem family is built on graph-colouring phase transitions, which is sealed. On recognising it, the agent excluded the paper from all use and sourced its planning non-monotonicity evidence entirely from an independently-reached alternative (Rintanen 2004).
+
+**Recorded as a contamination, and the handling was correct.** The brief for this pass stated the seal as a prohibition on *fetching* — the fix adopted after the previous contamination — and the agent both complied with the spirit and self-reported the breach rather than quietly dropping it. That is the behaviour the log is meant to produce: the fix worked in the sense that mattered, since the failure surfaced instead of hiding.
+
+*Scope of damage:* minimal, and smaller than the §2.3 case. The title does not announce its graph-colouring content, so this was not avoidable by title inspection; the sealed material was reached through a planning search, not sought. The quasigroup/Latin-square half of that sealed sub-area is untouched, and the substitute source is independent.
+
+*No further process change.* Prohibiting the fetch is already the strongest instruction available short of an allowlist, and an allowlist would defeat the purpose of a literature search. Some leakage through mis-titled sources is a residual risk of the method and should be budgeted rather than engineered away.

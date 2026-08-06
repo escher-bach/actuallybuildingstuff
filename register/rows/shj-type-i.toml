@@ -3,7 +3,7 @@ title = "Shepard-Hovland-Jenkins Type I -- single relevant dimension"
 vein = "2.3"
 their_term = "Type I category structure; unidimensional rule"
 substrate = "Boolean concepts over d anonymized binary dimensions (canonically d=3, 8 stimuli)"
-status = "lead"
+status = "implemented"
 levels = ["L0", "L1", "L2", "L3"]
 complexity_modes = ["description_length"]
 contents = ["structure_induction"]
@@ -18,6 +18,12 @@ primitives = [
 ]
 predicted_block = "the categorization literature would group all six SHJ types together as one paradigm and order them by difficulty within it. Our own prediction is that Type I and Type VI do NOT land in the same block: Type I is single-dimension selection, Type VI is parity, and parity shares more with the vein 2.2 parity family than with its own paradigm-mate."
 notes = """
+Implemented at src/repertoire/families/concepts.py; tests in
+tests/test_concepts.py assert the plant property itself (Type VI really computes
+parity, Type I really depends on exactly one dimension), not merely that the
+code runs. Promoted past `lead` on the strength of the curator-checked
+replication, even though the 1961 original remains unreachable.
+
 The **A** of the planted prerequisite pair. Its partner is `shj-type-vi`.
 
 **Why this is the best plant available.** Repertoire Spec section 5 says a

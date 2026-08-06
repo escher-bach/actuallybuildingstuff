@@ -88,3 +88,34 @@ is library access, same as for Angluin.
 One CONTAMINATION logged against the seal: a non-primate animal cognition paper
 was fetched during this pass. See docs/00-heldout-partition.md section 4.
 """
+
+[[entry]]
+n = 4
+date = "2026-08-07"
+source = "Vein 2.5b -- library learning, grammatical inference, planning generators, and synthetic-pretraining precedents (13 sources: 7 read as full text, 6 abstract-only, all distinguished by the reviewer)"
+vein = "2.5"
+rows = [
+    "abstraction-extraction",
+    "composition-chain",
+    "subgoal-segmentation",
+]
+note = """
+1 new primitive: abstraction-naming (anti-unification). Accepted because every
+prior primitive was eliminative, interrogative, or a readout -- none CONSTRUCTED
+a new reusable unit, and a vocabulary without a constructive operation cannot
+express how a finite basis covers an infinite space. The gap was exposed by the
+one vein the coverage grid pointed at, which is a small piece of evidence that
+the grid is steering the review correctly.
+
+Fills the last two empty cells: `composition` content and `compose/decompose`
+asymmetry. All four coverage axes now have entries.
+
+This review was markedly more careful than the earlier ones -- it distinguished
+full-text reads from abstract-only, caught a fetch-tool misattribution in one of
+its own sources, and self-reported a seal breach. The accuracy directive added
+after the fabricated-statistic incident appears to have worked.
+
+One CONTAMINATION, self-reported: a graph-colouring phase-transition paper was
+opened before its sealed content was recognised, then excluded from all use with
+an independent substitute source found. See docs/00-heldout-partition.md.
+"""

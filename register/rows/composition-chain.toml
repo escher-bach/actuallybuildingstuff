@@ -1,0 +1,105 @@
+id = "composition-chain"
+title = "Function-pipeline decomposition -- recover the ordered stages of a composed map"
+vein = "2.5"
+their_term = "(constructed to exercise composition directly; PCFG-SET's operator grammar is the nearest published substrate)"
+substrate = "bijections on a finite set, or Z_n under addition; opaque primitive labels"
+status = "translated"
+levels = ["L0", "L1", "L2", "L3"]
+complexity_modes = ["serial_depth", "description_length"]
+contents = ["composition", "manipulation"]
+asymmetries = ["compose/decompose"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "bijection-invert",
+    "modular-add",
+    "structure-walk-query",
+    "basis-probe",
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "constraint-propagation",
+    "posterior-enumeration",
+]
+predicted_block = "the compositional-generalization literature groups tasks by which systematicity split they test (novel primitive, longer sequence, deeper recursion). That is a taxonomy of held-out sets, not of capabilities."
+notes = """
+The purest instance of Task Spec section 1.1's composition operator in the
+register: theta IS an ordered pipeline and k IS its depth, so this is the family
+where 'depth is the difficulty knob that does not require inventing a new family
+per level' is literally true rather than analogous.
+
+**A trap worth the whole row, and it is easy to hit by accident.** If the
+primitive library is drawn from a COMMUTATIVE operation -- all stages are
+modular-adds, say -- the composition collapses: g reduces to a single net
+modular-add regardless of k. Brute-force enumeration cost keeps climbing in k
+while *identifiability* of the individual stages hits a fixed low ceiling, so the
+knob looks like it is working while the L1 and L3 targets quietly stop being
+learnable. The family would appear to have a difficulty dial and would in fact
+have a degeneracy dial.
+
+Fix: require a non-commuting primitive library, e.g. general permutations. Cheap
+to do, easy to omit, and invisible in any metric that only watches brute-force
+cost. Recorded as a build condition, not a caveat. Note this is a design-time
+degeneracy rather than an emergent phase transition -- flagged as the reviewer's
+inference, not a sourced result -- but it is the same family of caution the
+planning literature's genuine easy-hard-easy findings warrant.
+
+The oracle deliberately exposes NO intermediate readout by default. End-to-end
+evaluation only is what forces decomposition rather than reading the answer off a
+trace.
+"""
+
+[[sources]]
+citation = "Hupkes, Dankers, Mul & Bruni, 'Compositionality Decomposed: How do Neural Networks Generalise?', arXiv:1908.08351 -- the PCFG-SET operator grammar (copy, reverse, shift, swap, repeat, echo, append, prepend, remove_first, remove_second) read from the body"
+year = 2019
+kind = "paper"
+url = "https://arxiv.org/abs/1908.08351"
+verified = true
+
+[form]
+theta = "A triple (S, P0, pipeline): a finite domain S, a library P0 of m opaque primitive bijections on S, and a hidden ordered sequence of k primitive labels. g is their composition."
+p_theta = "Sample the k labels from P0; g = f_k after ... after f_1. Generation is one pass over the pipeline."
+query_space = "elements of S"
+oracle = "Evaluate g(x) end to end. No intermediate readout by default -- that absence is the design."
+encodings = [
+    "explicit expression string with permuted primitive names",
+    "black-box query-response access to g, structure entirely hidden",
+]
+k_semantics = "Composition depth k. Brute-force cost is O(m^k) and strictly increasing, but identifiability is NOT monotone if P0 commutes -- see notes. Require non-commuting P0."
+teacher_query = "structure-walk-query: because the stages are bijections, the teacher peels from the outside in, choosing probes that isolate the outermost unknown stage by inverting the known suffix. One pass given theta. basis-probe applies instead when P0 carries fixed group structure."
+posterior = "Enumerable over m^k candidate pipelines for small m and k; past that, maintain it incrementally by propagating per-stage constraints rather than enumerating flat."
+trace = "Steps: the intermediate value after each stage. The natural trace, and the thinning schedule is obvious -- drop interior stages as k rises, which is exactly the section 1.2 default."
+stochastic = false
+episode_length = "Grows with k; peeling one stage per probe gives O(k) under the teacher policy."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The pipeline is the hidden parameter and is sampled first."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sampling is O(k), evaluation O(k) per query, and neither searches."
+
+[checks.A2]
+verdict = "pass"
+reason = "Primitive labels are opaque and the domain is a finite set with no privileged elements, so relabelling is an exact symmetry."
+
+[checks.A3]
+verdict = "pass"
+reason = "Expression string versus black-box access differ in what is observable at all, not merely in punctuation."
+
+[checks.A4]
+verdict = "pass"
+reason = "A structure-ignorant solver must search the label sequence blind, O(m^k). A solver that decomposes peels stages one at a time. The gap is exactly the composition argument Task Spec section 1.1 makes, instantiated."
+repair = "Conditional on non-commuting P0 -- with a commuting library the family degenerates and A4's apparent pass is an artifact. See notes."
+
+[checks.A5]
+verdict = "pass"
+reason = "Shares bijection-invert and modular-add with the calibration row, and the query primitives with the vein 2.2 families. This row is where those algebraic primitives stop being incidental to one worked example and start recurring."
+
+[checks.A6]
+verdict = "pass"
+reason = "One evaluation per query; an x outside S returns a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "Outside-in peeling is one-pass given theta, and exploits invertibility rather than search."

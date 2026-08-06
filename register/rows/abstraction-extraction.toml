@@ -1,0 +1,115 @@
+id = "abstraction-extraction"
+title = "Abstraction extraction -- recover the shared subprogram from several programs that embed it"
+vein = "2.5"
+their_term = "library learning; abstraction refactoring; anti-unification"
+substrate = "syntax trees over a fixed opaque combinator alphabet; lambda-calculus-shaped DSL"
+status = "translated"
+levels = ["L0", "L1", "L2", "L3"]
+complexity_modes = ["description_length", "serial_depth"]
+contents = ["composition", "structure_induction"]
+asymmetries = ["compose/decompose"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "abstraction-naming",
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "constraint-propagation",
+    "structure-walk-query",
+    "posterior-enumeration",
+]
+predicted_block = "library learning's own framing groups by description-length compression and would predict difficulty tracks the MDL gain of the abstraction. That is a claim about the compression objective, not about which capability is exercised."
+notes = """
+Fills the `composition` content axis and the `compose/decompose` asymmetry, both
+of which were empty across every earlier vein. It is also the family that forced
+the twelfth primitive.
+
+**The A1 trap, and the repair that defines the family.** The source system's
+actual objective is to find the MDL-*optimal* abstraction, which is a search --
+its own worked example puts a single refactoring at an enormous candidate count,
+and it needed a bespoke version-space structure and a bounded search depth to be
+tractable at all. That objective is inadmissible here: A1 forbids a solver on the
+generation path, and Task Spec section 3's known limit says families whose
+difficulty is 'find the best' fall outside the interface unless optimality is
+engineered in.
+
+The repair is to change the question. We sample the abstraction `g` FIRST and
+embed it, so we own it; the solver proposes *a* candidate abstraction and the
+oracle verifies it against the `g` baked into theta. Find-a, not find-the-best.
+That is the same move that rescued the vein 2.2 families -- the teacher's
+advantage is knowing theta, not reasoning better -- and it is what makes an
+otherwise search-shaped literature admissible.
+
+**Why the primitive was needed.** Every prior primitive is eliminative,
+interrogative, or a readout. None constructs a new reusable unit from several
+already-answered instances. Task Spec section 1.1 argues composition is what lets
+a finite basis cover an infinite space; without a constructive operation the
+vocabulary could not express how the basis grows. See the falsifier on
+`abstraction-naming`.
+
+**Monotonicity in k is NOT established.** The reviewer flagged this explicitly as
+inference rather than sourced fact. Treat composition depth as a swept parameter.
+"""
+
+[[sources]]
+citation = "Ellis, Wong, Nye, Sable-Meyer, Cary, Morales, Hewitt, Solar-Lezama & Tenenbaum, 'DreamCoder: Growing generalizable, interpretable knowledge with wake-sleep Bayesian program learning', arXiv:2006.08381. Curator-checked 2026-08-07: title, authorship, wake/sleep abstraction learning and the physics-law rediscovery claim all confirmed from the abstract. The reviewer additionally read the main text; its specific figures (refactoring counts, library-depth correlation) are body-sourced and NOT curator-confirmed"
+year = 2020
+kind = "paper"
+url = "https://arxiv.org/abs/2006.08381"
+verified = true
+
+[[sources]]
+citation = "Bowers et al., 'Top-Down Synthesis for Library Learning' (Stitch), arXiv:2211.16605 -- abstract only"
+year = 2022
+kind = "paper"
+url = "https://arxiv.org/abs/2211.16605"
+verified = false
+
+[form]
+theta = "A pair (P0, g): a fixed alphabet of m opaque combinators whose semantics are fixed by a lookup table, and a hidden abstraction g -- one syntax tree over P0 of depth d_g."
+p_theta = "Sample g, then sample n(k) surface programs, each embedding one call to g at a random position inside a larger random tree over P0 of total depth k. More embeddings means more evidence that g is reusable."
+query_space = "input tuples to any surface program, or to a proposed abstraction"
+oracle = "Two modes, both evaluate-only: execute a given program tree on an input under the fixed P0 semantics; or verify a proposed abstraction by checking a candidate subtree against the actual shared subtree at its claimed positions. Neither searches."
+encodings = [
+    "explicit symbolic tree / prefix string with permuted primitive names",
+    "input-output table per surface program, structure entirely hidden",
+]
+k_semantics = "Composition depth of the surface programs, and n(k) the number of independent embeddings. Monotonicity in k is INFERENCE, not sourced -- sweep it rather than assuming."
+teacher_query = "structure-walk-query: the teacher owns g, so it presents surface programs placing g's occurrences at maximally distinguishing positions -- vary the filler context per embedding while holding g fixed. One pass."
+posterior = "Enumerable for small m and d_g. Grows combinatorially past that, and the source's own experience is that flat enumeration dies quickly while a compressed representation stays tractable -- direct evidence that posterior-enumeration needs a compressed belief state at scale, not that L3 is unavailable."
+trace = "Steps: the evaluation of each subtree bottom-up. Rich, and thins by dropping interior nodes."
+stochastic = false
+episode_length = "Enough embeddings that g's occurrences are jointly identifying. The source reports a moderate number of tasks suffices in its own setting, which is a useful prior on T."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "g is sampled before anything is generated, so it is the hidden parameter by construction rather than by recovery. This is the inversion that makes the family admissible at all."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sample g, embed it, evaluate. O(1) per query. Passes only because the question was changed from find-the-best to find-a; the source's own MDL-optimal objective would fail A1 outright."
+repair = "Already applied in the form above -- recorded here because the unrepaired version is the natural way to write this family and it is inadmissible."
+
+[checks.A2]
+verdict = "pass"
+reason = "P0 combinators are opaque tokens with semantics fixed by lookup table, so consistent relabelling is an exact symmetry. Note this is a design choice, not an inherited property: the source literature's primitives are named things like map and fold, which would leak."
+
+[checks.A3]
+verdict = "pass"
+reason = "The two renderings differ in what is even visible -- symbolic tree versus black-box input-output table. Stronger than a punctuation change, and the source itself contrasts these two views."
+
+[checks.A4]
+verdict = "pass"
+reason = "A solver ignoring composition must test candidate subtrees at all positions across all surface programs, combinatorial in tree size. A solver exploiting the fact that the SAME subtree recurs across independent programs intersects candidate sets instead, roughly linear in the number of embeddings. That gap is the family's content."
+
+[checks.A5]
+verdict = "pass"
+reason = "Contributes abstraction-naming and shares the rest. The A5 check is where the gap surfaced: attempting to write this family's solver in the existing vocabulary was what showed nothing constructive existed in it."
+
+[checks.A6]
+verdict = "pass"
+reason = "One evaluation or one verification per query; ill-typed trees return a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "One-pass given theta, since the teacher knows g and needs no search to place it distinguishingly."

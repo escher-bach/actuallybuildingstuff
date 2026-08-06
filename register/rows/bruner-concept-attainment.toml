@@ -20,6 +20,13 @@ primitives = [
 ]
 predicted_block = "cognitive psychology treats this as concept attainment and groups it with categorization; computational learning theory treats its twin as exact learning of monotone conjunctions and groups it with query complexity. Neither field's taxonomy predicts the other's family is the same object."
 notes = """
+CODE EXISTS but the row stays at `lead`: implemented in
+src/repertoire/families/concepts.py with tests asserting the two families
+compute the same latent function under different surfaces. The blocker is
+evidential, not technical -- Bruner chs. 4-6 is still unread, and status tracks what the
+register can claim, not what has been built. Worth stating plainly because the
+coverage tool reports this plant as missing, and that report is correct.
+
 **The near-duplicate plant, paired with `conjunction-identification` from vein
 2.2.** Repertoire Spec section 5 wants two families with different surfaces and
 the same latent operation, ideally *two independent reinventions found in

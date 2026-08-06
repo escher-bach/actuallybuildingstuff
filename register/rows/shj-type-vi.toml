@@ -3,7 +3,7 @@ title = "Shepard-Hovland-Jenkins Type VI -- full parity, no dimension droppable"
 vein = "2.3"
 their_term = "Type VI category structure; three-way parity / biconditional"
 substrate = "Boolean concepts over d anonymized binary dimensions (canonically d=3, 8 stimuli)"
-status = "lead"
+status = "implemented"
 levels = ["L0", "L1", "L2", "L3"]
 complexity_modes = ["description_length"]
 contents = ["structure_induction", "manipulation"]
@@ -19,6 +19,12 @@ primitives = [
 ]
 predicted_block = "the categorization literature keeps all six types in one paradigm block. We predict Type VI leaves it: parity over d dimensions IS mod-2 addition, which puts it with the vein 2.2 parity family rather than with its paradigm-mate `shj-type-i`."
 notes = """
+Implemented at src/repertoire/families/concepts.py; tests in
+tests/test_concepts.py assert the plant property itself (Type VI really computes
+parity, Type I really depends on exactly one dimension), not merely that the
+code runs. Promoted past `lead` on the strength of the curator-checked
+replication, even though the 1961 original remains unreachable.
+
 The **B** of the planted prerequisite pair, and separately the most interesting
 fold this vein produced.
 
