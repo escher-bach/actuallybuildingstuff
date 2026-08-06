@@ -1,0 +1,97 @@
+id = "decision-tree-identification"
+title = "Bounded-depth decision tree identification from membership queries"
+vein = "2.2"
+their_term = "exact learning of decision trees from membership queries"
+substrate = "Boolean functions over {0,1}^n; tree DSL (internal node = variable test, leaf = 0/1)"
+status = "translated"
+levels = ["L0", "L1", "L2", "L3"]
+complexity_modes = ["serial_depth", "description_length"]
+contents = ["structure_induction", "selection"]
+asymmetries = ["evaluate/search", "execute/infer"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "structure-walk-query",
+    "majority-predict",
+]
+predicted_block = "vein 2.2's own taxonomy would group this with other MQ-learnable classes by oracle access pattern, i.e. with conjunctions and parity and against DFA (which needs EQ). That is a grouping by the analyst's access situation, not by task content."
+notes = """
+The strongest instance in vein 2.2 of the asymmetry the whole programme runs on.
+
+Properly PAC-learning decision trees WITH query access is NP-hard for a learner
+that does not know theta (arXiv:2307.04093, 2023). The teacher who owns theta
+pays O(d) per query: it walks its own tree to an untested root-to-leaf path. Same
+family, same queries, and the cost gap is the difference between owning the rule
+and not.
+
+This is what A1's note means by 'search the asymmetric direction', and it is why
+this row is a better A7 case than anything in the enumerable-posterior group:
+q* here does not touch the belief state at all, so its cost is independent of how
+much is still unknown.
+"""
+
+[[sources]]
+citation = "N. H. Bshouty et al., 'Adaptive Exact Learning of Decision Trees from Membership Queries', arXiv:1901.07750 (ALT/AISTATS 2019)"
+year = 2019
+kind = "paper"
+url = "https://arxiv.org/abs/1901.07750"
+verified = true
+
+[[sources]]
+citation = "'Properly Learning Decision Trees with Queries Is NP-Hard', arXiv:2307.04093"
+year = 2023
+kind = "paper"
+url = "https://arxiv.org/abs/2307.04093"
+verified = false
+
+[form]
+theta = "A decision tree of depth <= d over n Boolean variables: internal nodes labelled by a variable, leaves by 0/1."
+p_theta = "k ramps d primarily and n secondarily. Sample the tree structure first, then label nodes -- backward generation is immediate because the tree IS the answer."
+query_space = "assignments in {0,1}^n"
+oracle = "Walk the tree from the root following the query's bits; return the leaf value. O(d), one pass, no search."
+encodings = [
+    "raw bit-vector query, leaf value as answer",
+    "anonymized switch-check sequence (each internal node presented as an unnamed switch state)",
+    "tabular assignment row",
+]
+k_semantics = "d primarily, n secondarily. Non-monotonicity is plausible near d ~ n where the tree saturates the domain; check rather than assume (the section 2.4 phase-transition warning generalizes)."
+teacher_query = "structure-walk-query: the teacher, owning the tree, emits an assignment tracing a root-to-leaf path not yet exercised, or one distinguishing two leaves the history has not yet separated. O(d) per call, independent of the surviving hypothesis set. Query complexity for a from-scratch learner is randomized ~O(2^{2d}) + 2^d log n by contrast."
+posterior = "NOT enumerable at realistic d, n -- the number of depth-<=d trees over n variables is enormous. L3 is available only by restricting Theta to a small template library, or by computing the posterior over a coarser statistic than the full tree. Recorded as a real limit, not a gap to be filled later."
+trace = "Steps: the sequence of variable tests taken from root to leaf. Natural and cheap. Thin by dropping interior tests as k rises, leaving only the leaf."
+stochastic = false
+episode_length = "Scales with 2^d rather than with d; T must grow with tree size, not depth, for identification. Teaching dimension not found in closed form."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The tree is the hidden parameter and the source literature already treats it as one."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sample a tree, sample an assignment, walk it. No solver on the generation path."
+
+[checks.A2]
+verdict = "pass"
+reason = "Variable identities are positional and carry no semantics; consistent permutation of variable labels and of the symbol alphabet leaves the family invariant."
+
+[checks.A3]
+verdict = "pass"
+reason = "Three renderings listed, structurally different (vector vs. sequence vs. table) rather than merely differently punctuated."
+
+[checks.A4]
+verdict = "pass"
+reason = "At depth d the tree has at most 2^d leaves against a domain of size 2^n. Once d is a small fraction of n the structure-ignoring solver must store the 2^n-row table while the intended solver is O(2^d)."
+repair = "Holds at, say, n = 20, d = 6. Fails at d ~ n where the tree becomes the table; keep d/n bounded away from 1."
+
+[checks.A5]
+verdict = "pass"
+reason = "Shares belief-state-maintenance and hypothesis-elimination with the mod-arith calibration row and with the other vein 2.2 families; contributes structure-walk-query, which is expected to recur wherever theta has walkable structure (automata, grammars, plans)."
+
+[checks.A6]
+verdict = "pass"
+reason = "One tree walk per query. An assignment of the wrong length is rejected with a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "structure-walk-query is computable in one pass given theta and costs O(d). Note this passes for the teacher precisely where the learner's problem is NP-hard -- A7 is a constraint on the teacher, and reading it as a constraint on difficulty would have wrongly excluded this row."

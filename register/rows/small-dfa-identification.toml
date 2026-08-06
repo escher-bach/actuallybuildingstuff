@@ -1,0 +1,108 @@
+id = "small-dfa-identification"
+title = "Small-DFA identification from membership queries (restricted template family)"
+vein = "2.2"
+their_term = "learning regular sets from queries; L*; grammatical inference"
+substrate = "deterministic finite automata over a small anonymized alphabet"
+status = "lead"
+levels = ["L0", "L1", "L2"]
+complexity_modes = ["serial_depth", "state_width"]
+contents = ["state", "structure_induction"]
+asymmetries = ["evaluate/search", "execute/infer"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "structure-walk-query",
+]
+predicted_block = "vein 2.2 separates DFA from the rest by oracle-access pattern: membership queries alone are provably insufficient, equivalence queries are required. If our measured blocks respect that separation it would be evidence the access-pattern taxonomy tracks something real; the prediction in docs/02 is that they will not."
+notes = """
+Held at `lead`: Angluin 1987 (L*) and the Balcazar-Diaz-Gavalda-Watanabe query
+complexity results were reached only through secondary sources during the vein
+2.2 pass.
+
+**This is the row where importing the source's machinery would have been a
+mistake, and the rejection is more useful than the row.** L* requires an
+EQUIVALENCE oracle -- 'is this hypothesis automaton correct, and if not give me a
+counterexample'. Our L2 oracle answers only the query the model actually asked;
+it is a pure membership oracle. Importing L*'s query-complexity bounds as our
+cost model would overclaim, and membership queries alone are provably
+insufficient for DFA identification in general.
+
+What survives the translation is L*'s internal CONSTRUCTION, not its bounds. The
+access-string plus distinguishing-suffix pair that L* needs an equivalence query
+to discover, our teacher can simply compute -- it owns the automaton and
+simulates it forward. This is the same move as the decision-tree row: the
+learner's hard problem and the teacher's easy one are different problems, and A7
+is a constraint on the teacher only.
+
+**Cross-vein note: this row is the natural bridge to section 2.5's grammatical
+inference material (Tomita, Abbadingo), which has published difficulty
+parametrizations. Expect a near-duplicate or a merge when 2.5 is read; do not
+pre-empt it.**
+"""
+
+[[sources]]
+citation = "D. Angluin, 'Learning Regular Sets from Queries and Counterexamples', Information and Computation 75(2) (1987)"
+year = 1987
+kind = "paper"
+url = ""
+verified = false
+
+[[sources]]
+citation = "J. L. Balcazar, J. Diaz, R. Gavalda, O. Watanabe, 'The Query Complexity of Learning DFA', New Generation Computing 12 (1994)"
+year = 1994
+kind = "paper"
+url = ""
+verified = false
+
+[form]
+theta = "A DFA of at most N states over a small alphabet, drawn from a RESTRICTED enumerable template family -- not 'all DFAs with <= N states', whose size is roughly N^(N|Sigma|) and which is intractable to enumerate or to hold a posterior over."
+p_theta = "k sets N and |Sigma|. Sample the transition table and accepting set within the template."
+query_space = "strings over Sigma up to a length bound"
+oracle = "Run the string through the automaton; accept or reject. O(length)."
+encodings = [
+    "string as a token sequence over an anonymized alphabet",
+    "sequence of anonymized 'moves' with a different separator",
+]
+k_semantics = "N and |Sigma|. Difficulty is not expected monotone in the length bound -- short strings underdetermine, very long ones are redundant -- so sweep it."
+teacher_query = "structure-walk-query: the teacher simulates its own automaton to synthesize an access string plus a distinguishing suffix, the same construction L* builds an observation table to infer. O(N * length) per call. Cheap because it is computed forward from a known automaton, not inferred backward from an unknown one."
+posterior = "Enumerable ONLY under a small fixed template library (N <= 4, |Sigma| <= 2). Unrestricted DFA space is not enumerable, so L3 is not claimed for this row as specified."
+trace = "Steps: the state sequence visited. Natural, and a good candidate for the trace-thinning schedule since interior states drop cleanly."
+stochastic = false
+episode_length = "Not found in closed form. L*'s bounds do not transfer, since they assume an equivalence oracle we do not have."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The automaton is the hidden parameter."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sample a transition table, sample a string, run it. No search."
+
+[checks.A2]
+verdict = "pass"
+reason = "Alphabet symbols anonymized; relabelling acts on both the alphabet and the transition table."
+
+[checks.A3]
+verdict = "pass"
+reason = "Two renderings. Thin -- a third that varies how the string is delimited would strengthen it."
+repair = "Add a rendering where the delimiter itself must be inferred, so notation and rule are disentangled together."
+
+[checks.A4]
+verdict = "repairable"
+reason = "At small N the transition table (about N|Sigma| entries) is small enough that a generic string-matching heuristic can memorize the accepted set."
+repair = "Estimated threshold N >= 6-8 at |Sigma| = 2. Estimate only; measure it."
+
+[checks.A5]
+verdict = "pass"
+reason = "Contributes state-carrying content that no other vein 2.2 row has, and shares structure-walk-query with the decision-tree and monotone-DNF rows -- three different substrates, one operation, which is the kind of unification A5 is meant to protect."
+
+[checks.A6]
+verdict = "pass"
+reason = "One run per query; strings containing out-of-alphabet symbols rejected with a fixed error token."
+
+[checks.A7]
+verdict = "repairable"
+reason = "Passes via structure-walk on a restricted template family. FAILS if implemented as posterior enumeration over unrestricted DFA space, where |Theta| is roughly N^(N|Sigma|)."
+repair = "Restrict Theta to an enumerable template library, and implement q* as a forward simulation of theta rather than as a search over candidates. Recorded because getting this wrong is silent: the family still runs, it just becomes unaffordable at the third k step."

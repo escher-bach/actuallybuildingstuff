@@ -1,0 +1,107 @@
+id = "conjunction-identification"
+title = "Conjunction / monomial identification from membership queries"
+vein = "2.2"
+their_term = "learning monomials; learning conjunctions of literals"
+substrate = "Boolean functions over {0,1}^n; conjunction normal form"
+status = "lead"
+levels = ["L0", "L1", "L2", "L3"]
+complexity_modes = ["description_length"]
+contents = ["structure_induction", "selection"]
+asymmetries = ["evaluate/search"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "basis-probe",
+    "posterior-enumeration",
+    "majority-predict",
+]
+predicted_block = "vein 2.2 groups this with monotone DNF (a monomial is a one-term monotone DNF) and, by oracle-access pattern, with parity."
+notes = """
+**Held at `lead`, not promoted, and the reason is the point.** Every claim in
+this row traces to Angluin's 'Queries and Concept Learning' (1988), whose PDF
+failed to render on every fetch attempt during the vein 2.2 pass; the content
+here is reconstructed from secondary citations. Repertoire Spec section 2 is
+explicit that names and dates are leads to verify against primary sources, and
+that the register is where they become claims. Promoting this row on a secondary
+description would make the register look like evidence while resting on
+hearsay.
+
+**Next action is a library run, not more reading.** This is a cheap, well-defined
+blocker: obtain Angluin 1988 in readable form and promote. Recorded here so it
+does not get mistaken for a gap in the literature.
+
+**Strong near-duplicate candidate, deliberately noted before vein 2.3 is read.**
+Bruner, Goodnow & Austin's conjunctive concept attainment (1956) is, if the lead
+is accurate, the same object arrived at independently in a different field three
+decades earlier. Repertoire Spec section 5 wants near-duplicate plants that are
+'two independent reinventions found in different veins', and this would be the
+best available instance. Pairing is NOT recorded yet because vein 2.3 is unread
+and asserting the identity now would be exactly the stipulation this whole method
+exists to avoid. Check it when 2.3 lands.
+"""
+
+[[sources]]
+citation = "D. Angluin, 'Queries and Concept Learning', Machine Learning 2 (1988)"
+year = 1988
+kind = "paper"
+url = ""
+verified = false
+
+[[sources]]
+citation = "Procaccia et al., exact VC-dimension of monotone formulas (VC-dim of monotone monomials over n variables = n)"
+year = 0
+kind = "paper"
+url = ""
+verified = false
+
+[form]
+theta = "An assignment of each of n variables to {absent, positive, negated}; |Theta| = 3^n general, 2^n monotone."
+p_theta = "k sets n, and optionally a sparsity bound on relevant literals."
+query_space = "assignments in {0,1}^n"
+oracle = "True iff the assignment satisfies every literal in theta. O(n)."
+encodings = [
+    "raw bit-vector",
+    "anonymized switch panel (`s3=ON, s7=OFF, ...`)",
+    "tabular row/column form",
+]
+k_semantics = "n, and sparsity. Expected monotone; unverified."
+teacher_query = "basis-probe: establish a positive anchor, then flip one variable at a time to test each literal's relevance. O(1) per query, O(n) total, no belief state maintained."
+posterior = "Enumerable while 3^n is affordable -- roughly n <= 12-15 unrestricted, considerably higher under a sparsity-biased prior. L3 available in that band."
+trace = "Steps: which literal the assignment violated. Cheap. Thin to the bare truth value as n rises."
+stochastic = false
+episode_length = "O(n) queries to identification under the anchor-and-flip schedule."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The conjunction is the hidden parameter."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sample literals, sample an assignment, evaluate."
+
+[checks.A2]
+verdict = "pass"
+reason = "Variable identities positional and permutable, provided the surface form does not name them semantically."
+
+[checks.A3]
+verdict = "pass"
+reason = "Three renderings listed."
+
+[checks.A4]
+verdict = "repairable"
+reason = "Fails at small n (n <= ~5): the 2^n truth table is memorizable and the intended solver is only O(n), so the structure-ignoring route is affordable."
+repair = "Holds from n >= ~8-10, where 2^n clearly outgrows the O(n) structural solver. Threshold is an estimate and should be measured, not assumed -- it is exactly what Task Spec section 8 step 5 is for."
+
+[checks.A5]
+verdict = "pass"
+reason = "Shares belief-state and elimination primitives with the rest of the vein; contributes basis-probe jointly with parity."
+
+[checks.A6]
+verdict = "pass"
+reason = "One evaluation; wrong-length assignments rejected with a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "One of the cheapest q* in the whole vein: O(1) per call, no posterior touched."

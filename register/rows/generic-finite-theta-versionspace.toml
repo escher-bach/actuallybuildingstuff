@@ -1,0 +1,116 @@
+id = "generic-finite-theta-versionspace"
+title = "Generic finite-Theta version-space identification (halving / generalized binary search)"
+vein = "2.2"
+their_term = "Halving Algorithm; generalized binary search; version-space learning"
+substrate = "arbitrary explicit finite hypothesis set over feature vectors; no algebraic structure assumed"
+status = "translated"
+levels = ["L0", "L1", "L2", "L3"]
+complexity_modes = ["description_length", "input_entropy"]
+contents = ["structure_induction", "selection"]
+asymmetries = ["evaluate/search"]
+plant_role = "suspected_junk"
+plant_pair = ""
+primitives = [
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "informative-query-selection",
+    "posterior-enumeration",
+    "majority-predict",
+]
+predicted_block = "vein 2.2 treats this as the fallback case rather than a class, so its taxonomy makes no prediction. That absence is itself informative: the field organizes by exploitable structure, and this row is the residue with none."
+notes = """
+This row is the direct answer to the review's central question -- when does q*
+stay affordable -- and it is filed as SUSPECTED JUNK on purpose.
+
+The greedy halving rule (query the point that splits the surviving hypothesis set
+most evenly) is provably within a log|H| factor of the optimal adaptive policy,
+and costs O(|surviving Theta|) per query because it must score every candidate.
+That is cheap while |Theta| is polynomial in k and dies the moment |Theta| is
+exponential. Every CHEAP verdict elsewhere in the vein is an escape from this
+cost via structure the class happens to have; this row is what is left when there
+is no structure to escape into.
+
+Why suspected_junk rather than a production family: with no exploitable
+structure, the shortest structure-ignoring solver IS the intended solver, so A4
+fails at exactly the sizes where L3 is enumerable. Repertoire Spec section 5 says
+to include candidates you cannot defend, because that is where you learn
+something -- and the genuinely open question here is whether 'maintain a set and
+cut it' is a transferable capability or merely a description of what any learner
+does. The matrix answers that; argument will not.
+
+Prediction, recorded before measurement: if this row shows real structural
+content AND transfers to the structured families, then belief-state maintenance
+is a capability in its own right. If it reads near-zero while the structured
+families transfer to each other, then the capability lives in the structure and
+not in the bookkeeping. Both outcomes are worth the row.
+"""
+
+[[sources]]
+citation = "S. Dasgupta, 'Analysis of a Greedy Active Learning Strategy', NeurIPS 2004"
+year = 2004
+kind = "paper"
+url = "https://cseweb.ucsd.edu/~dasgupta/papers/greedy.pdf"
+verified = true
+
+[[sources]]
+citation = "S. A. Goldman, M. J. Kearns, 'On the Complexity of Teaching', JCSS 1995 / COLT 1991"
+year = 1995
+kind = "paper"
+url = "https://openscholarship.wustl.edu/cse_research/591/"
+verified = true
+
+[[sources]]
+citation = "D. Golovin, A. Krause, 'Adaptive Submodularity', JAIR 2011 / arXiv:1003.3967"
+year = 2011
+kind = "paper"
+url = "https://arxiv.org/abs/1003.3967"
+verified = true
+
+[form]
+theta = "One member of an explicitly enumerated finite hypothesis set -- e.g. an arbitrary Boolean function over a small number of anonymized features."
+p_theta = "k sets |Theta| directly, or the number of underlying features. Uniform over the enumerated set unless a prior is imposed."
+query_space = "feature vectors"
+oracle = "Table lookup. O(1)."
+encodings = [
+    "feature vector with anonymized feature names",
+    "permuted feature order with a different separator token",
+]
+k_semantics = "|Theta| directly. This is the one row where k is the belief-state size rather than a property of the rule, which is why it is the right instrument for measuring where q* cost becomes prohibitive."
+teacher_query = "informative-query-selection: score each candidate query by how evenly it splits the surviving set, take the argmax. O(|surviving Theta|) per call. Cheap while |Theta| <= ~1e4-1e5; prohibitive once |Theta| is exponential in the natural parameter."
+posterior = "Enumerable by construction -- this family exists precisely to exercise posterior maintenance at controlled sizes. L3 targets are exact and cheap here, which also makes it the natural place to unit-test the L3 machinery against brute force."
+trace = "Steps: which hypotheses were eliminated by the last observation. Honest but uninformative; thinning is not meaningful."
+stochastic = false
+episode_length = "Bounded by the teaching-dimension sandwich max{t0, log2|Theta|} <= #MQ <= t0 * log2|Theta|, which is a principled way to set T rather than guessing it -- and is one of the concrete things this vein supplies that the Task Spec left open."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "Theta is enumerated explicitly; separability is definitional."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sample an index into the hypothesis set, sample a query, look up. O(1)."
+
+[checks.A2]
+verdict = "pass"
+reason = "Feature identities anonymized; the family is defined over the index set, so relabelling is an exact symmetry."
+
+[checks.A3]
+verdict = "pass"
+reason = "Two renderings. Thin, but this row is an instrument rather than a capability-bearing family."
+
+[checks.A4]
+verdict = "fail"
+reason = "Fails outright at any size where the posterior is enumerable, which is the only size at which the row is usable. With no exploitable structure the structure-ignoring solver and the intended solver are the same program, so nothing grows faster than |f|. This is not an accident of parametrization -- it is what 'no structure' means."
+repair = "None that preserves the row's purpose. Retain as a calibrated instrument for measuring q* cost and for unit-testing L3 against brute force, NOT as a production member of the basis. Any repair that gives it exploitable structure turns it into one of the other rows in this vein."
+
+[checks.A5]
+verdict = "pass"
+reason = "It is where the generic primitives are defined most cleanly, so it anchors their meaning for every other row."
+
+[checks.A6]
+verdict = "pass"
+reason = "One lookup; out-of-range feature vectors rejected with a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "Computable in one pass at the sizes where the row is used. The verdict is size-relative and the row exists to locate that boundary."

@@ -1,0 +1,166 @@
+# Controlled vocabulary of primitives.
+#
+# Why this file exists: the saturation curve (Repertoire Spec section 7) counts
+# *distinct* primitives against sources processed, and is the review's stopping
+# rule. Two names for the same operation inflate that curve and make the basis
+# look unbounded when it is not -- which is the exact failure the curve is
+# supposed to detect. So every slug used in a register row must be declared here
+# first, with a definition tight enough that a second reader would not coin a
+# synonym for it.
+#
+# `gloss` is what the operation does, substrate-independently.
+# `first_seen` is the register row that introduced it.
+# `aliases` are the source-side names that were folded into it -- keep these,
+# they are the evidence that the unification is real rather than asserted.
+# `falsifier`, where present, records a fold that is a genuine CLAIM rather than
+# a synonym cleanup, and says what measurement would show the fold was wrong.
+# A fold with no falsifier is a bookkeeping decision; a fold with one is a
+# hypothesis, and hiding the difference is how a vocabulary quietly becomes a
+# theory nobody agreed to.
+#
+# STATE, after 3 sources: 10 primitives. Vein 2.2 proposed 6 and yielded 3 new.
+# Vein 2.5 (four substrates: programs, circuits, proofs, plans) yielded ZERO new
+# -- every solver-side operation in mutation testing, model-based diagnosis,
+# formal proof checking and plan validation was expressible in the existing set.
+# That is the first real evidence for the compactness claim in section 10
+# condition 2, and it is worth stating plainly that it could have gone the other
+# way: four unrelated substrates is a fair test.
+
+[modular-add]
+gloss = "Add two elements of a finite cyclic group; wrap at the modulus."
+first_seen = "mod-arith-hidden-permutation"
+aliases = []
+
+[bijection-invert]
+gloss = "Given a bijection between two finite sets, apply it in the unnamed direction."
+first_seen = "mod-arith-hidden-permutation"
+aliases = ["decode under a relabelling", "apply the key"]
+
+[belief-state-maintenance]
+gloss = "Carry a monotonically-refined representation of what is still possible across trials, and extend it as evidence arrives. Covers both the factored form (an incomplete symbol-to-value assignment) and the explicit form (a set of surviving candidate rules)."
+first_seen = "mod-arith-hidden-permutation"
+aliases = [
+    "partial-map-maintenance",
+    "variable binding",
+    "assignment table",
+    "version space (Mitchell)",
+    "candidate-elimination set",
+    "observation table (as state, not as update rule)",
+    "posterior-maintain",
+    "ATMS context maintenance (de Kleer, model-based diagnosis)",
+    "surviving-candidate-set tracking",
+]
+falsifier = """
+This slug folds 'hold a partial assignment' together with 'hold a set of
+surviving hypotheses' on the claim that a partial assignment IS a version space
+in factored form -- the same operation at a different representation
+granularity. That is a claim, not a synonym cleanup.
+
+It is wrong if the matrix separates families whose belief state is factored
+(hidden-permutation arithmetic, monomials) from families whose belief state is
+explicit (small-DFA, generic finite-Theta, circuit diagnosis) into different
+blocks. Note that the vein 2.2 CHEAP/EXPENSIVE boundary runs along exactly this
+line, so the fold is under real strain: it survives only if the representation
+difference is a cost difference and not an operational one. Split it if the
+blocks split.
+"""
+
+[constraint-propagation]
+gloss = "Push a newly learned binding through the constraints it participates in, deriving values not directly observed."
+first_seen = "mod-arith-hidden-permutation"
+aliases = [
+    "unit propagation",
+    "inference over partial assignment",
+    "ATMS constraint propagation through component models (circuits)",
+    "kernel type-checking against cited premises (formal proofs)",
+    "STRIPS progression -- precondition/effect propagation through state (plans)",
+]
+
+[hypothesis-elimination]
+gloss = "Given a new observation, cut the belief state down to what remains consistent with it. The hard 0/1 delete and the soft Bayesian reweighting are the same operation over different arithmetic."
+first_seen = "mod-arith-hidden-permutation"
+aliases = [
+    "version space update",
+    "consistency filtering",
+    "posterior-update",
+    "candidate elimination step",
+    "Bayesian reweighting",
+    "conflict-set-based candidate revision (Reiter, de Kleer)",
+    "killing a mutant with a discriminating test (mutation testing)",
+    "kernel-check-based step rejection (proofs)",
+    "precondition-failure rejection (VAL, plans)",
+]
+
+[posterior-enumeration]
+gloss = "Enumerate the surviving hypothesis set under its prior to obtain a DISTRIBUTION over the next answer, rather than a point prediction."
+first_seen = "mod-arith-hidden-permutation"
+aliases = [
+    "Bayes over a finite hypothesis class",
+    "minimal hitting set candidate generation (Reiter) -- the direct term of art",
+]
+
+[majority-predict]
+gloss = "Given the belief state, answer with the (weighted) majority vote over surviving hypotheses -- a POINT prediction."
+first_seen = "conjunction-identification"
+aliases = ["Halving Algorithm vote rule", "weighted-majority prediction"]
+falsifier = """
+Deliberately NOT folded into posterior-enumeration, even though the two differ
+only by taking an argmax at the end. Folding them would write prediction P1 of
+docs/02 -- 'L3 calibration merges into L1 hypothesis narrowing; they are one
+operation read out at different temperatures' -- into the vocabulary, and a
+prediction encoded in the measuring instrument cannot be tested by it.
+
+Keep separate until the matrix rules. If L1-heavy and L3-heavy families land in
+one block, fold then, and record it as P1 confirmed.
+"""
+
+[informative-query-selection]
+gloss = "Score candidate queries by how much each is expected to shrink the belief state, and take the argmax. Requires touching the belief state itself, so cost scales with its size."
+first_seen = "mod-arith-hidden-permutation"
+aliases = [
+    "membership query selection",
+    "optimal design",
+    "splitting the version space",
+    "split-score",
+    "splitting index (Dasgupta)",
+    "generalized binary search",
+    "halving criterion",
+    "expected information gain (Lindley, MacKay)",
+    "equivalence-class-determination objective (Golovin & Krause)",
+    "uncertainty sampling",
+    "GDE expected-entropy probe-point selection (de Kleer & Williams 1987)",
+    "mutation-adequate / subsuming-mutant-maximizing test selection",
+]
+
+[structure-walk-query]
+gloss = "Synthesize an informative query by walking the hidden rule's own COMPOSITIONAL structure -- a tree path, an automaton's transitions, a lattice move, a circuit's signal graph -- toward a part of it not yet exercised. Touches no belief state at all, so cost scales with the rule's size and not with how much is still unknown."
+first_seen = "decision-tree-identification"
+aliases = [
+    "L* access-string + distinguishing-suffix construction, run forward from a known automaton",
+    "decision-tree path probing",
+    "monotone-DNF lattice walk",
+    "boundary-following",
+    "half-split sequential fault isolation (circuits, classical)",
+    "generate an input exercising the known mutated site (mutation testing)",
+    "synthesize a check at the known corrupted step (proofs)",
+]
+
+[basis-probe]
+gloss = "Identify the hidden rule with a fixed or lightly-adaptive query schedule that exploits its structure -- a standard basis, a group action, a linear artifact order -- maintaining no belief state at all."
+first_seen = "parity-identification"
+aliases = [
+    "standard-basis / Gaussian-elimination query schedule",
+    "single-flip literal-elimination walk",
+    "VAL's linear forward-validation scan (plans)",
+]
+falsifier = """
+Kept separate from structure-walk-query on the vein 2.2 reviewer's argument:
+one needs the rule to have a walkable graph/tree structure, the other needs it
+to have linear/group structure permitting a schedule fixed in advance. Both
+avoid the O(|belief state|) cost of informative-query-selection, which is the
+property that matters for A7, so the temptation to merge them is real.
+
+Merge them if no family ever turns out to admit one and not the other. As of
+vein 2.5 the split is still doing work: parity and plan-scanning admit fixed
+schedules, decision trees and circuits admit walks and no fixed schedule.
+"""

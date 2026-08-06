@@ -1,0 +1,42 @@
+# Ordered log of sources processed. Feeds the saturation curve (Repertoire Spec section 7).
+#
+# One entry per source actually read, in the order read. `rows` names the register
+# rows that source produced -- an entry with no rows is not a failure to record,
+# it is a source that yielded nothing, and those are exactly the entries that make
+# the curve flatten honestly.
+
+[[entry]]
+n = 0
+date = "2026-08-06"
+source = "Task Specification section 6 (worked family, not excavated)"
+vein = "0"
+rows = ["mod-arith-hidden-permutation"]
+note = "Calibration row. Not a source; establishes what a filled row looks like."
+
+[[entry]]
+n = 0
+date = "2026-08-06"
+source = "Repertoire Spec section 5 plant table (constructed, not excavated)"
+vein = "0"
+rows = ["junk-random", "junk-trivial"]
+note = "Both implemented and tested. Contribute no primitives by construction, which validation now enforces."
+
+[[entry]]
+n = 1
+date = "2026-08-06"
+source = "Vein 2.2 -- query learning, teaching dimension, Bayesian optimal experimental design (18 sources: 9 verified, 11 lead)"
+vein = "2.2"
+rows = [
+    "conjunction-identification",
+    "parity-identification",
+    "monotone-dnf-identification",
+    "decision-tree-identification",
+    "small-dfa-identification",
+    "generic-finite-theta-versionspace",
+]
+note = """
+6 proposed primitives, 3 actually new after folding -- the first real data point
+on the saturation curve. Three rows held at `lead` because their primary sources
+could not be rendered (Angluin 1987/1988 PDFs); the blocker is a library run, not
+more reading.
+"""

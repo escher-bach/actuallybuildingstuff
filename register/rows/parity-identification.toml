@@ -1,0 +1,94 @@
+id = "parity-identification"
+title = "Parity identification from membership queries"
+vein = "2.2"
+their_term = "learning parity functions; GF(2) linear functions"
+substrate = "Boolean functions over GF(2)^n"
+status = "lead"
+levels = ["L0", "L1", "L2", "L3"]
+complexity_modes = ["description_length"]
+contents = ["manipulation", "structure_induction"]
+asymmetries = ["evaluate/search"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "basis-probe",
+    "hypothesis-elimination",
+    "posterior-enumeration",
+]
+predicted_block = "vein 2.2 groups parity apart from the lattice-structured classes (no monotone structure to walk) and with them by oracle-access pattern (MQ-only suffices). The two groupings disagree, which is itself a small argument that oracle-access pattern is not a natural joint."
+notes = """
+Held at `lead`: the results here are folklore in the source literature and no
+primary source was verified during the vein 2.2 pass. The mathematics is not in
+doubt; the citation is, and the register distinguishes those.
+
+**The cleanest Hazard-1 case in the vein, and worth citing whenever a family is
+about to be discarded on worst-case grounds.** Learning parity from noisy random
+examples is conjectured hard -- LPN is a cryptographic assumption. Exact learning
+from membership queries is trivial: n non-adaptive queries on the standard basis,
+which is Gaussian elimination wearing a different hat. Worst-case learnability
+from examples says nothing about teacher-side query cost, and a reviewer who
+imports the guarantee instead of the algorithm discards a family whose q* is a
+fixed schedule.
+
+Also the one row where q* does not depend on the history at all: the schedule
+e_1..e_n is fixed in advance. That makes it a useful degenerate case for the L2
+wrapper -- if the model's query channel cannot learn a fixed schedule, the L2
+supervision is broken and the fault is in the harness, not the family.
+"""
+
+[[sources]]
+citation = "Standard-basis query schedule for parity (Gaussian elimination over GF(2)); treated as folklore across the query-learning literature"
+year = 0
+kind = "paper"
+url = ""
+verified = false
+
+[form]
+theta = "A subset S of [n] -- which variables are XORed -- optionally with a constant offset bit."
+p_theta = "k sets n, or |S| if sparsity is the knob."
+query_space = "assignments in {0,1}^n"
+oracle = "XOR of the query's bits at positions in S, plus the offset. O(n)."
+encodings = [
+    "raw bit-vector",
+    "anonymized coin-flip framing (parity = odd/even count among the relevant switches)",
+    "GF(2) equation surface form",
+]
+k_semantics = "n, or sparsity |S|. Note the two knobs behave differently: n grows the hypothesis space, sparsity grows the search within it."
+teacher_query = "basis-probe: the non-adaptive schedule e_1..e_n. Does not depend on the history at all. O(1) per call, O(n) total."
+posterior = "Enumerable while 2^n is affordable, same band as the conjunction row. L3 available there."
+trace = "Steps: running XOR accumulation over the relevant positions. Cheap, and thins naturally by dropping intermediate accumulator states."
+stochastic = false
+episode_length = "Exactly n queries under the standard-basis schedule; teaching dimension n, since each basis vector is needed."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The subset S is the hidden parameter."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sample S, sample an assignment, XOR."
+
+[checks.A2]
+verdict = "pass"
+reason = "Positional variable identities, permutable."
+
+[checks.A3]
+verdict = "pass"
+reason = "Three renderings, structurally distinct."
+
+[checks.A4]
+verdict = "repairable"
+reason = "Same shape as the conjunction row -- the 2^n table is memorizable at small n while the structural solver is O(n)."
+repair = "Holds from n >= ~8. Composition with another family is the cheaper route to headroom than raising n alone, per Task Spec section 1.1."
+
+[checks.A5]
+verdict = "pass"
+reason = "Contributes basis-probe jointly with the conjunction row. Deliberately not folded into structure-walk-query: parity has algebraic structure permitting a fixed schedule but no walkable graph, and the split is currently doing work -- see the falsifier recorded on the slug."
+
+[checks.A6]
+verdict = "pass"
+reason = "One evaluation; malformed queries rejected with a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "Fixed schedule, computable without reference to theta or history. The cheapest q* in the register."

@@ -1,0 +1,99 @@
+id = "junk-random"
+title = "Random targets, independent of query and of theta"
+vein = "0"
+their_term = "(constructed plant, not excavated)"
+substrate = "none"
+status = "implemented"
+levels = ["L0", "L1", "L2", "L3"]
+complexity_modes = ["input_entropy"]
+contents = []
+asymmetries = []
+plant_role = "junk_random"
+plant_pair = ""
+primitives = []
+predicted_block = "none -- should not join any block"
+notes = """
+Expected measurement: structural content near zero, loss pinned at log(alphabet
+size) from the first token and never falling.
+
+Implemented at src/repertoire/families/junk.py, tests at
+tests/test_junk_families.py (18 tests, all passing).
+
+**A design error caught during implementation, recorded because it nearly
+shipped.** The first spec for this family required the answer to be a hash of
+(theta, query), so that repeating a query returned the same answer -- reasoning
+that a self-contradicting oracle is a bug. That is wrong and it would have
+destroyed the plant. An answer that is a fixed function of the query is a lookup
+table: unpredictable once, fully learnable twice. The model would identify it
+within the episode exactly as it identifies any other hidden rule, the loss would
+drop, and this row would have measured as a memorization family with real
+structural content while sitting in the matrix labelled 'junk, expect near-zero'.
+The instrument-validation gate would have passed while measuring the wrong thing,
+which is the worst available failure because it is silent.
+
+Correct construction: y_t is drawn fresh each trial, independent of query and of
+theta. Repeats disagree, and that is right -- there is no function here to be
+consistent with.
+
+Consequence: this is a genuine Task Spec section 1.3 distribution-valued oracle,
+so it also discharges the requirement that at least one family in the repertoire
+exercise stochasticity. At the degenerate end, but really.
+
+`primitives` is empty by construction and validation now enforces that for junk
+rows: a junk family with an operation worth naming is not junk.
+"""
+
+[[sources]]
+citation = "Repertoire Specification section 5, plant table row 'Junk -- random'"
+year = 2026
+kind = "internal"
+url = ""
+verified = true
+
+[form]
+theta = "A seed the oracle deliberately does not consult. Shaped like a real theta so the harness cannot distinguish junk from signal by inspection."
+p_theta = "k sets alphabet size; the seed is drawn uniformly and is causally inert."
+query_space = "single symbols from the alphabet"
+oracle = "Distribution-valued: returns the uniform distribution over the alphabet for every query and every theta. The harness samples. Returning a distribution rather than drawing in-place is what lets a stochastic family live inside a protocol whose evaluate() takes no rng."
+encodings = [
+    "infix: `q EQ a`",
+    "arrow: `q ARROW a`",
+]
+k_semantics = "k sets alphabet size only, which sets the loss floor at log(alphabet size). Difficulty is not a meaningful notion here; k moves the floor, not the difficulty."
+teacher_query = "Degenerate but present: no query is more informative than any other because none is informative at all. Returns a query cycled by history length -- deterministic, since the protocol hands teacher_query no rng. An L2 wrapper must still run over junk, or the instrument loses its floor at exactly the level that most needs one."
+posterior = "Exactly uniform, always, in closed form. This doubles as a calibration check on the L3 machinery: a correct model's loss must equal log(alphabet size) to numerical precision, so deviation is a harness bug rather than a fact about the model."
+trace = "None. No derivation exists because no rule is being applied."
+stochastic = true
+episode_length = "Irrelevant to identification -- there is nothing to identify. T is whatever the harness sets."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "theta exists and is explicitly inert. Separability is trivial and deliberate."
+
+[checks.A1]
+verdict = "pass"
+reason = "O(1) generation; nothing is computed."
+
+[checks.A2]
+verdict = "pass"
+reason = "A uniform distribution is permutation-invariant. permuted_alphabet_check passes, and a deliberately-broken subclass in the test suite confirms the check can actually fail -- a plant passing its own A2 check proves nothing unless failure is reachable."
+
+[checks.A3]
+verdict = "pass"
+reason = "Two encodings sampled per episode. Minimal by intent; this is a plant, not a showcase."
+
+[checks.A4]
+verdict = "pass"
+reason = "Vacuously: there is no structure to brute-force past. No shortest structure-ignoring solver exists because there is no structure."
+
+[checks.A5]
+verdict = "pass"
+reason = "Shares no primitives with anything, which is the intended relation. Coherence is preserved by contributing nothing."
+
+[checks.A6]
+verdict = "pass"
+reason = "One evaluation; malformed queries get the same uniform response, which is as sensible as anything can be here."
+
+[checks.A7]
+verdict = "pass"
+reason = "Degenerately satisfied -- computable in one pass, and any policy is optimal since all queries are equally uninformative."

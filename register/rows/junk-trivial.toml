@@ -1,0 +1,95 @@
+id = "junk-trivial"
+title = "Constant (or near-constant) targets, ignoring the query"
+vein = "0"
+their_term = "(constructed plant, not excavated)"
+substrate = "none"
+status = "implemented"
+levels = ["L0", "L1", "L2", "L3"]
+complexity_modes = ["description_length"]
+contents = []
+asymmetries = []
+plant_role = "junk_trivial"
+plant_pair = ""
+primitives = []
+predicted_block = "none -- should not join any block"
+notes = """
+Expected measurement: structural content near zero for the OPPOSITE reason to
+junk-random. The single bit of structure is absorbed in one trial and the curve
+flattens immediately. Both plants yield a small area under the loss curve; that
+they do so for opposite reasons is the discrimination the matrix must make, and
+a matrix that cannot tell them apart from a real family is not measuring
+structure.
+
+theta is identifiable from one observation, so the within-episode acquisition
+slope is a step function. That degenerate shape is useful rather than merely
+degenerate: it is the sharpest available test that the section 9 slope logger
+measures identification and not smoothness.
+
+Implemented at src/repertoire/families/junk.py alongside junk-random.
+
+**Second thing caught during implementation.** The convenient description of the
+L3 target -- 'after one observation, mass 1-epsilon on the observed symbol' -- is
+only correct at epsilon = 0. The true predictive distribution marginalizes over
+which constant theta is, and the observed symbol picks up mass by two routes:
+theta really is that symbol and the oracle did not slip, or theta is something
+else and the oracle slipped toward it. At epsilon = 0.1 the shorthand is off by
+enough to matter. A calibration plant that is itself miscalibrated is worse than
+no plant, so the exact Bayes computation is implemented and a unit test pins the
+exact value specifically to stop the shorthand creeping back in.
+"""
+
+[[sources]]
+citation = "Repertoire Specification section 5, plant table row 'Junk -- trivial'"
+year = 2026
+kind = "internal"
+url = ""
+verified = true
+
+[form]
+theta = "The constant symbol to emit. At epsilon > 0 the oracle slips to a different symbol with that probability, making the family near-constant rather than exactly constant."
+p_theta = "k sets alphabet size and epsilon; the constant is drawn uniformly."
+query_space = "single symbols from the alphabet (ignored by the oracle)"
+oracle = "Returns theta's constant, ignoring the query. Deterministic at epsilon = 0; distribution-valued above it."
+encodings = [
+    "infix: `q EQ a`",
+    "arrow: `q ARROW a`",
+]
+k_semantics = "k sets alphabet size and epsilon. Larger alphabet raises the pre-identification loss but not the post-identification loss, so k moves the size of the single step, not the difficulty of taking it."
+teacher_query = "Every query is maximally informative on trial 1 and useless thereafter. Returns a query cycled by history length; deterministic, as the protocol requires."
+posterior = "Exact Bayes over the next answer: uniform prior over constants, likelihood (1-epsilon) on a match and epsilon/(n-1) elsewhere, then marginalize. Implemented exactly, not by the 1-epsilon shorthand -- see notes."
+trace = "None. The derivation is 'emit the constant', which is not a step."
+stochastic = false
+episode_length = "One informative trial. T beyond that is measuring retention, not identification."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "theta is the constant. Named, hidden by default, revealed in the L0 preamble."
+
+[checks.A1]
+verdict = "pass"
+reason = "O(1) generation."
+
+[checks.A2]
+verdict = "pass"
+reason = "Relabelling acts on theta as well as on queries: the permuted family's constant is perm[constant], and answers permute accordingly. The check verifies this rather than asserting it."
+
+[checks.A3]
+verdict = "pass"
+reason = "Two encodings sampled per episode."
+
+[checks.A4]
+verdict = "fail"
+reason = "Fails completely and by design. The whole of f is one symbol; memorizing it IS the intended solver, so no structure-ignoring solver can grow faster than |f|."
+repair = "None, and none wanted. This row exists to occupy the degenerate end of the A4 axis. Repairing it would delete the plant."
+
+[checks.A5]
+verdict = "pass"
+reason = "Contributes no primitives, so it cannot conflict with any."
+
+[checks.A6]
+verdict = "pass"
+reason = "One evaluation; the query is ignored, so malformed queries are handled by definition."
+
+[checks.A7]
+verdict = "pass"
+reason = "Trivially computable in one pass."

@@ -1,0 +1,91 @@
+id = "mod-arith-hidden-permutation"
+title = "Modular arithmetic under a hidden alphabet permutation"
+vein = "0"
+their_term = "(none -- this is the worked example, not an import)"
+substrate = "finite cyclic group + symbol relabelling; no DSL"
+status = "translated"
+levels = ["L0", "L1", "L2", "L3"]
+complexity_modes = ["description_length", "input_entropy"]
+contents = ["manipulation", "structure_induction"]
+asymmetries = ["evaluate/search"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "modular-add",
+    "bijection-invert",
+    "belief-state-maintenance",
+    "constraint-propagation",
+    "hypothesis-elimination",
+    "posterior-enumeration",
+    "informative-query-selection",
+]
+predicted_block = "manipulation + hidden-rule identification; should sit adjacent to any concept-identification family and to any relabelling/cipher family"
+notes = """
+The calibration row. Every other row in this register is written by asking
+'what does this look like next to the worked family?', and every field below is
+filled to the standard other rows are held to.
+
+It is also the first place the A4 problem shows up honestly, and it is worth
+being blunt that the Task Spec says so itself: at small m the lookup table is
+memorizable and the family is a table, not a rule. That is not a defect of this
+row, it is the measurement target of Task Spec section 8 step 5. Recorded as
+REPAIRABLE with the repair named rather than as PASS with a hope.
+"""
+
+[[sources]]
+citation = "Task Specification section 6"
+year = 2026
+kind = "internal"
+url = ""
+verified = true
+
+[form]
+theta = "(m, pi): modulus m in 5..20, and pi a permutation of the symbol alphabet onto residues 0..m-1"
+p_theta = "k sets m and alphabet size; m ~ uniform over the k-band, pi ~ uniform over permutations of the alphabet onto Z_m"
+query_space = "ordered pairs of symbols (a, b)"
+oracle = "f((m,pi),(a,b)) = pi(pi^-1(a) + pi^-1(b) mod m). One table lookup and one addition; evaluates, never searches."
+encodings = [
+    "infix: `a + b = c`",
+    "prefix: `(+ a b) -> c`",
+    "tabular: `a, b -> c`",
+]
+k_semantics = "k raises m and alphabet size. Difficulty is expected monotone here, but section 2.4's phase-transition warning applies: check, do not assume."
+teacher_query = "q* = the pair maximizing expected posterior entropy reduction over (m, pi), computable by enumeration at these sizes. Cost is O(|X| * |surviving theta|) per call, which is affordable only because Theta is small -- this is exactly the scaling that kills A7 elsewhere."
+posterior = "Enumerate theta consistent with history under P_Theta; the answer distribution is the induced marginal. Exact, and the brute-force enumeration doubles as the unit test (Task Spec section 8 step 2)."
+trace = "Steps: decode a and b under pi^-1, add, reduce mod m, encode under pi. Thin by dropping the decode/encode steps first, then the reduction, as k rises."
+stochastic = false
+episode_length = "Identification needs roughly |alphabet| + O(1) informative pairs; T is a harness parameter (Task Spec section 7) and should be swept around that, not pinned to it."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "theta is named in the construction; the family was specified as a hidden parameter from the start."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sample (m, pi), sample a pair, evaluate. O(1) in k. No search, no rejection sampling."
+
+[checks.A2]
+verdict = "pass"
+reason = "Semantics are permutation-defined: pi IS an alphabet permutation, so consistent relabelling is an exact symmetry of the family by construction. The permuted_alphabet_check is a formality here, which is precisely why it is the right place to test that the check itself works."
+
+[checks.A3]
+verdict = "pass"
+reason = "Three renderings given, sampled per episode. Note these vary syntax only; a stronger E would vary arity order or introduce a separator that must itself be inferred."
+repair = "Consider adding a rendering where the operator symbol is itself drawn from the permuted alphabet, so notation and rule must be disentangled together."
+
+[checks.A4]
+verdict = "repairable"
+reason = "Fails at small m: the whole of f is an m x m table with m <= 20, which a learner can memorize outright once it can afford |alphabet|^2 entries. The shortest structure-ignoring solver does NOT grow faster than |f| here."
+repair = "Compose with a second family (Task Spec section 1.1) so the composite table is the product, or raise m past what the training budget can memorize. Composition is preferred: it is the difficulty knob that does not require inventing a new family, and it keeps generation O(1)."
+
+[checks.A5]
+verdict = "pass"
+reason = "Its primitives -- modular addition, bijection inversion, hypothesis elimination -- are the ones most likely to recur across the register, which is what makes it a usable reference point for A5 across other rows."
+
+[checks.A6]
+verdict = "pass"
+reason = "One evaluation per query. Malformed queries (symbols outside the alphabet) get a well-formed error response, which is itself a recovery lesson."
+
+[checks.A7]
+verdict = "pass"
+reason = "q* computable by enumeration over surviving theta at these sizes. Not optimal in any asymptotic sense and does not need to be -- Task Spec A7 explicitly accepts a documented one-pass heuristic."

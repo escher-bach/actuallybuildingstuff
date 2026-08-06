@@ -1,0 +1,93 @@
+id = "monotone-dnf-identification"
+title = "Monotone DNF identification from membership queries"
+vein = "2.2"
+their_term = "exact learning of monotone DNF"
+substrate = "Boolean functions over {0,1}^n; monotone DNF normal form"
+status = "translated"
+levels = ["L0", "L1", "L2"]
+complexity_modes = ["description_length", "state_width"]
+contents = ["structure_induction", "selection"]
+asymmetries = ["evaluate/search"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "structure-walk-query",
+]
+predicted_block = "vein 2.2 would group this with conjunctions (a monomial is a one-term monotone DNF) and separately from parity (no lattice structure). Grouping by algebraic form of the hypothesis class."
+notes = """
+Hazard-1 case, and the reason the vein's brief warned about importing guarantees
+instead of heuristics: monotone DNF is NOT known to be PAC-learnable from random
+examples at all -- open since 1984 -- yet is poly-time exactly learnable from
+queries. A reviewer reading worst-case learnability results would discard this
+family; a reviewer reading the query algorithms keeps it. It is retained
+specifically as the row that documents that failure mode.
+
+L3 is omitted deliberately: the posterior is not enumerable at useful sizes (see
+form.posterior). Claiming L3 here would have required a template restriction that
+turns the family into the generic finite-Theta row instead.
+"""
+
+[[sources]]
+citation = "'On Exact Learning Monotone DNF from Membership Queries', arXiv:1405.0792"
+year = 2014
+kind = "paper"
+url = "https://arxiv.org/abs/1405.0792"
+verified = true
+
+[[sources]]
+citation = "D. Angluin, 'Queries and Concept Learning', Machine Learning 2 (1988) -- the MQ+EQ monotone DNF algorithm"
+year = 1988
+kind = "paper"
+url = ""
+verified = false
+
+[form]
+theta = "A monotone DNF formula: m terms, each a conjunction of at most r positive literals over n variables."
+p_theta = "k ramps n and m together with r held small. Sample terms directly; the formula is the answer, so generation is backward by construction."
+query_space = "assignments in {0,1}^n"
+oracle = "Evaluate the DNF at the assignment: true iff some term is satisfied. O(mr), one pass."
+encodings = [
+    "raw bit-vector assignment",
+    "anonymized switch-panel listing which switches are on",
+    "tabular assignment row",
+]
+k_semantics = "(m, r, n). Difficulty rises with m and n; r held small keeps terms short and the lattice walk local."
+teacher_query = "structure-walk-query as a lattice walk: from a satisfying assignment, walk down toward a minimal satisfying assignment (Angluin's specify-then-generalize shape). Roughly O(n) per query -- a local lattice move, not an O(|Theta|) scan."
+posterior = "Not enumerable in general: the space of m-term r-literal monotone DNFs over n variables is combinatorially huge. Enumerable only under a fixed small template set (m, r fixed, n <= 6-8), which is a different family. L3 therefore NOT claimed for this row."
+trace = "Steps: which term fired, and which literal in it failed. Cheap. Thin to the bare truth value as k rises."
+stochastic = false
+episode_length = "Not found in closed form; empirically tracks m*n. A published incomplete-oracle variant reports expected O(m n^2) queries even with roughly half the membership queries missing, which is a useful robustness signal for L2 where the model asks poorly."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The formula is the hidden parameter throughout the source literature."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sample terms, sample an assignment, evaluate. No search."
+
+[checks.A2]
+verdict = "pass"
+reason = "Variable identities carry no semantics under consistent permutation. Note monotonicity is a property of the polarity structure, not of any particular labelling, so it survives relabelling."
+
+[checks.A3]
+verdict = "pass"
+reason = "Three renderings, structurally distinct."
+
+[checks.A4]
+verdict = "pass"
+reason = "The 2^n truth table outgrows the O(mn) structural solver quickly; this family stays admissible over a wide k range, which makes it one of the more durable rows in the vein."
+
+[checks.A5]
+verdict = "pass"
+reason = "Shares the belief-state and elimination primitives; its lattice walk folds into structure-walk-query alongside the decision-tree path probe and the automaton walk, which is a genuine cross-family unification rather than a naming convenience."
+
+[checks.A6]
+verdict = "pass"
+reason = "One evaluation; wrong-length assignments rejected with a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "Lattice walk is one-pass and class-specific. Not the generic split-score fallback -- which is the point: it is cheap precisely because it is specialized."
