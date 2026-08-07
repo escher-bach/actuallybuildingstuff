@@ -136,6 +136,16 @@ It now lives in prose in both rows and is **invisible to `register.py coverage`*
 
 *Not fixed yet:* the fix is a list of relations per row rather than a single role, which is a schema migration touching every row. Recorded so the coverage output is read with this caveat rather than trusted.
 
+## 16. A step marked complete that was not
+
+**🟠 Quiet. Occurred, self-caught.** §11 step 2 covers veins §2.1–§2.5. Six review passes ran — §2.2, §2.5a, §2.3, §2.5b, §2.1, §2.6 — and the README was updated to "all five veins registered". **§2.4 was never read.** The count of *passes* looked complete while the count of *veins* was not, because §2.5 was split into two passes and §2.6 was run out of order.
+
+*Why it nearly stuck:* every downstream artifact was consistent with the error. The coverage grid had no gaps, because §2.5b filled the axes §2.4 would have. The saturation curve looked healthy. The docs/02 quarantine table had an empty §2.4 row, which was the only visible symptom, and an empty cell reads as "not filled in yet" rather than "vein not read".
+
+*What was nearly lost:* §2.4 is the only vein that offers **A4 as a guarantee rather than an estimate** — every A4 verdict in the register currently rests on a threshold someone eyeballed, and this is the literature that could lower-bound one instead.
+
+*Fix:* README now tracks veins, not passes. General lesson: **when work is split or reordered, the completion criterion has to be restated in terms of the original units**, or the split silently redefines what done means.
+
 ---
 
 ## Standing hazards — not yet observed, watch for

@@ -14,7 +14,7 @@ The two specifications are the authority; everything else here serves them.
 | Step (Repertoire Spec §11) | Status |
 |---|---|
 | 1 — Held-out partition, sealed before inspection | **done** — [docs/00-heldout-partition.md](docs/00-heldout-partition.md) |
-| 2 — Register veins §2.1–§2.5, translate, triage | **done** — all five veins registered. 23 rows. Saturation curve: 7, 0, 3, 0, 1, 1, 0 → **12 primitives over 7 sources** |
+| 2 — Register veins §2.1–§2.5, translate, triage | **§2.4 outstanding** — was wrongly marked done; see [hazards §16](docs/07-hazards.md). 24 rows, saturation 14 entries over 8 sources |
 | 3 — §2.6 practice traces under an existing coding scheme | **read; gate NOT cleared** — no inter-annotator reliability figure traceable to a primary source, and §11 step 3's gate is exactly that. See [verification-log](register/verification-log.md) |
 | 4 — Paradigm coverage check | **done** — 7 of 10 paradigms fall out cleanly; 3 do not, clustering into exactly 2 missing axes. [docs/06](docs/06-paradigm-coverage.md) |
 | 5 — Candidate set, ~30 families incl. plants | 7 implemented; 5 of 6 plant roles live. 46 tests passing |
