@@ -291,8 +291,17 @@ def validate(row: RegisterRow) -> list[str]:
         problems.append("id must be a non-empty slug with no spaces")
     # "0" means not excavated from a vein: the Task Spec section 6 worked family,
     # and the constructed plants. Everything else must name where it came from.
-    if r.vein not in {"0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6"}:
-        problems.append(f"vein {r.vein!r} is not one of section 2.1-2.6 (or '0')")
+    #
+    # "2.7" is an ADDITION to the source document's six veins -- agentic harness
+    # engineering. Justified in docs/01: Task Spec section 5 names agent use as a
+    # target domain, every other vein is historical or academic, and section 10
+    # condition 3 judges the basis on coverage of established practice. Adding a
+    # vein is a deviation and the validator should not have accepted it silently,
+    # which is why it did not.
+    if r.vein not in {"0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7"}:
+        problems.append(
+            f"vein {r.vein!r} is not one of section 2.1-2.6, the added 2.7, or '0'"
+        )
 
     if r.status is Status.SEALED:
         # A sealed row is a deliberate non-read. It carries a reason and nothing else.
