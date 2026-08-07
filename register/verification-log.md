@@ -79,6 +79,18 @@ The guidance-fading chapter was read in full body text by the reviewer with page
 
 ---
 
+## Pass 5 — 2026-08-07, vein §2.4
+
+| Source | Claim checked | Outcome |
+|---|---|---|
+| Achlioptas, Jia & Moore, "Hiding Satisfying Assignments: Two are Better than One", JAIR 24:623 (2005) | Title, authorship, venue, and the mechanism: naive planting is easy, planting the complement too cancels the attractors | ✅ **Exact**, including the mechanism in the source's own framing — naive instances "tend to be relatively easy and can be solved efficiently by practical heuristics", and the fix forbids clauses violated by the complement so both are satisfying |
+
+**Explicitly NOT verified, and the review said so itself:** the planted-clique statistical–computational gap arithmetic (that the interval is empty below n ≈ 256) is the reviewer's own inference from two standard bounds, flagged as inference rather than sourced. It should be checked before being leaned on. The qualitative point it supports — that asymptotic separations can be *vacuous* at small n — does not depend on the exact number, which is why docs/08 rests on the qualitative claim.
+
+**Also not located, and this is the vein's key negative:** no reviewed source states the dimension at which the one genuine worst-case-to-average-case reduction becomes meaningful. Reported as "figure not located in fetched text" rather than estimated, which is the behaviour the accuracy directive asks for.
+
+---
+
 ## Consequences applied
 
 - `mutant-localization.toml` — the 26.5% claim removed and replaced with the paper's actual figures. **This materially weakens the row's A1 argument** and the correction is recorded in the row itself, not silently swapped: unit-level FEP being ~0% means the "corruption might be invisible" hazard is much smaller in the regime we would actually train in.

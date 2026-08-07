@@ -14,7 +14,7 @@ The two specifications are the authority; everything else here serves them.
 | Step (Repertoire Spec §11) | Status |
 |---|---|
 | 1 — Held-out partition, sealed before inspection | **done** — [docs/00-heldout-partition.md](docs/00-heldout-partition.md) |
-| 2 — Register veins §2.1–§2.5, translate, triage | **§2.4 outstanding** — was wrongly marked done; see [hazards §16](docs/07-hazards.md). 24 rows, saturation 14 entries over 8 sources |
+| 2 — Register veins §2.1–§2.5, translate, triage | **done, all six veins** (§2.4 recovered after being wrongly skipped — [hazard 16](docs/07-hazards.md)). 25 rows. Saturation: **14 entries over 9 sources**, four veins adding zero |
 | 3 — §2.6 practice traces under an existing coding scheme | **read; gate NOT cleared** — no inter-annotator reliability figure traceable to a primary source, and §11 step 3's gate is exactly that. See [verification-log](register/verification-log.md) |
 | 4 — Paradigm coverage check | **done** — 7 of 10 paradigms fall out cleanly; 3 do not, clustering into exactly 2 missing axes. [docs/06](docs/06-paradigm-coverage.md) |
 | 5 — Candidate set, ~30 families incl. plants | 7 implemented; 5 of 6 plant roles live. 46 tests passing |
@@ -32,6 +32,7 @@ docs/04-radical-incidental.md     The empirical test for k vs e, and what its fi
 docs/05-trace-thinning.md         Why the Task Spec's trace-thinning default may be backwards
 docs/06-paradigm-coverage.md      §11 step 4: which established paradigms fall out, and the two axes missing
 docs/07-hazards.md                HAZARD REGISTER. Everything that went, or nearly went, silently wrong
+docs/08-a4-guarantee.md           Why A4 cannot be certified at our scale, only measured
 register/README.md                Row lifecycle and the three rules that are expensive to skip
 register/rows/*.toml              D1. One prior family per file
 register/primitives.toml          Controlled vocabulary. Declare before use

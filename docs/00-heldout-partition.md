@@ -109,3 +109,15 @@ During the §2.5b pass the reviewing agent opened "Parametrized Families of Hard
 *Scope of damage:* minimal, and smaller than the §2.3 case. The title does not announce its graph-colouring content, so this was not avoidable by title inspection; the sealed material was reached through a planning search, not sought. The quasigroup/Latin-square half of that sealed sub-area is untouched, and the substitute source is independent.
 
 *No further process change.* Prohibiting the fetch is already the strongest instruction available short of an allowlist, and an allowlist would defeat the purpose of a literature search. Some leakage through mis-titled sources is a residual risk of the method and should be budgeted rather than engineered away.
+
+---
+
+**2026-08-07 — CONTAMINATION, self-reported. Graph-colouring phase transitions, second occurrence (§2 vein table).**
+
+During the §2.4 pass the reviewing agent fetched a paper on "quiet planting" which turned out to centre on graph colouring — the sealed sub-area, and the one that pass's brief had flagged as *the single highest-risk boundary in the whole review*. The agent disclosed it, used only the general non-colouring claims, and confined the colouring-specific numbers to the disclosure itself.
+
+**Third contamination overall, second on this same sub-area.** The pattern is now clear enough to state: **the seal fails on papers whose title does not name their content.** "Quiet planting" announces a technique, not a substrate. No instruction about fetching can prevent this, because the decision to fetch is made from the title.
+
+*Damage:* the graph-colouring half of this sealed sub-area is now substantially compromised as held-out evidence. The quasigroup/Latin-square half remains clean and is the part that still carries the test.
+
+*Assessment, recorded rather than deferred:* two of three contaminations have hit this one sub-area, which was also the most adjacent to the material being reviewed. That is not bad luck — **adjacency predicts contamination**, and sealing a sub-area that sits inside a vein being actively read is close to unenforceable. The lesson for any future seal is to prefer held-out items that are *topically distant* from what will be read, accepting that this makes them weaker tests, over items that are adjacent and therefore strong tests that will not survive contact.

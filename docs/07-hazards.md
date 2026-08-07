@@ -146,6 +146,32 @@ It now lives in prose in both rows and is **invisible to `register.py coverage`*
 
 *Fix:* README now tracks veins, not passes. General lesson: **when work is split or reordered, the completion criterion has to be restated in terms of the original units**, or the split silently redefines what done means.
 
+## 17. A4 cannot be certified, only measured
+
+**🔴 Silent, and structural.** Vein §2.4 was read because the source document calls it the one vein offering **A4 as a guarantee rather than a hope**. It does not, at our scale.
+
+Only one construction offers a genuine worst-case-to-average-case reduction, and no reviewed source states the dimension at which it becomes meaningful. Everything else rests on "no known attack." Most sharply: the planted-clique statistical–computational gap sits between roughly `2·log₂ n` and `Ω(√n)`, and **below about n ≈ 256 that interval is empty** — the gap the family's difficulty lives in does not exist at toy scale. *(Reviewer's own arithmetic from standard bounds, flagged as inference.)*
+
+*Why this is silent rather than loud:* an A4 verdict of "holds from n ≥ 8" looks like a property. It is a **prediction**, and nothing in the register's format distinguishes the two. A family can carry a confident A4 pass, be trained on, and collapse — and the collapse appears as a *turnover* in structural content as compute grows, which reads as noise.
+
+*Consequence:* A4 is not certifiable before training. It must be measured after, and Task Spec §9's instruction to watch for turnover is now known to be the **only** available route rather than a prudent supplement. [docs/08](08-a4-guarantee.md).
+
+## 18. Rejection sampling as a repair
+
+**🟠 Quiet.** A well-known forced-satisfiable instance generator achieves its property by *sampling and filtering*. That is an **A1 violation** — it couples generation cost to difficulty, which is the exact coupling A1 exists to forbid.
+
+*Why it will recur:* our own generators construct forward from θ and do not filter. But rejection sampling is the natural repair when a family fails some *other* check — "just resample until the instance has the property we want" — and applying it would silently break the constraint the entire design rests on, while fixing the visible problem.
+
+*Fix:* A1 checks should ask "does this filter?" explicitly rather than treating it as covered by "no search."
+
+## 19. Sealing what sits inside what you are reading
+
+**🟠 Quiet. Three occurrences, two on the same sub-area.** Graph-colouring phase transitions have now been contaminated twice, most recently by a paper whose title ("quiet planting") announces a technique rather than a substrate.
+
+**Adjacency predicts contamination.** No instruction about fetching can prevent it, because the decision to fetch is made from the title. Sealing a sub-area that sits *inside* a vein being actively read is close to unenforceable.
+
+*Lesson for any future seal:* prefer held-out items that are topically distant from what will be read — accepting that distance makes them weaker tests — over adjacent items that are strong tests but will not survive contact. Recorded in [docs/00 §4](00-heldout-partition.md).
+
 ---
 
 ## Standing hazards — not yet observed, watch for

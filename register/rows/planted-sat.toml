@@ -1,0 +1,108 @@
+id = "planted-sat"
+title = "Planted-satisfiable formula: recover the hidden assignment"
+vein = "2.4"
+their_term = "planted SAT; hidden assignment; forced-satisfiable instance generation"
+substrate = "random k-SAT over anonymized propositional variables"
+status = "translated"
+levels = ["L0", "L1", "L2"]
+complexity_modes = ["description_length", "input_entropy"]
+contents = ["structure_induction", "selection"]
+asymmetries = ["evaluate/search"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "constraint-propagation",
+    "hypothesis-elimination",
+    "belief-state-maintenance",
+    "backtrack-splice",
+    "informative-query-selection",
+]
+predicted_block = "this vein classifies by complexity class and by which algorithm solves an instance. That is a taxonomy of the analyst's tools, not of task content, and it predicts nothing we should import."
+notes = """
+The canonical backward-generation construction: sample the answer first, build
+the instance around it. A1 is not merely satisfied here, it is where the idea
+comes from.
+
+**The row exists mostly to carry a warning, and the warning is the vein's main
+contribution.** Naive planting -- forbid only the clauses the hidden assignment
+violates -- produces instances that are *easy*, because the surviving solutions
+cluster around the plant and local search falls into that attractor. The
+generator looks correct, the instances are genuinely satisfiable, and a solver
+finds the answer without doing any of the work the family was supposed to
+demand.
+
+This is the exact shape of an A4 failure that A4 reasoning does not catch: the
+shortest structure-ignoring solver is not enumerating, it is *detecting how we
+generated the instance*. Our own families should be read with that in mind --
+the question is not only "can it be brute-forced" but "does the generator leave
+a signature".
+
+**The fix is published and specific:** plant the assignment AND its complement,
+so both are satisfying and the two attractors largely cancel. Verified directly:
+Achlioptas, Jia & Moore, 'Hiding Satisfying Assignments: Two are Better than
+One', JAIR 24 (2005). A second published route biases the clause distribution
+instead. Either way the point stands -- **a planted generator needs a specific
+defence against its own signature, and the naive version silently lacks one.**
+
+**A4 is an estimate here as everywhere.** See docs/08: this vein was read hoping
+for A4 as a guarantee and does not supply one at our scale. The phase-transition
+knob is real but its exact location for k=3 is unresolved in the field, and the
+easy-hard-easy shape is qualitative.
+"""
+
+[[sources]]
+citation = "D. Achlioptas, H. Jia & C. Moore, 'Hiding Satisfying Assignments: Two are Better than One', JAIR 24:623 (2005). Curator-checked 2026-08-07: title, authorship, venue and the mechanism all confirmed -- naive planting yields relatively easy instances solved efficiently by practical heuristics; forbidding clauses violated by both the assignment and its complement makes both satisfying and largely cancels the attractors"
+year = 2005
+kind = "paper"
+url = "https://jair.org/index.php/jair/article/view/10429"
+verified = true
+
+[form]
+theta = "The hidden satisfying assignment (or, under the two-hidden fix, the assignment and its complement)."
+p_theta = "Sample the assignment, then sample clauses uniformly from those satisfied by it -- and, under the fix, by its complement too. k sets variable count and clause-to-variable ratio."
+query_space = "candidate partial or complete assignments to evaluate, or individual clauses to inspect"
+oracle = "Evaluate the queried assignment against the formula, or return the clause at an index. One pass, no search."
+encodings = [
+    "clause list over anonymized variable tokens",
+    "variable-major incidence rendering -- for each variable, the clauses it appears in and with what sign",
+]
+k_semantics = "Variable count and clause-to-variable ratio. Difficulty is NON-MONOTONE in the ratio: an easy-hard-easy shape around a threshold. The shape is solidly attested; the exact threshold location for k=3 is genuinely unresolved -- a rigorous bracket and an unproven physics estimate disagree, and the exact asymptotic formula is in the large-k limit, not at k=3. Treat the peak location as a parameter to find empirically, not to look up."
+teacher_query = "informative-query-selection over the surviving assignment set, or a structure walk over clauses touching the least-constrained variable. The teacher owns the assignment, so it can pick a clause that discriminates without searching."
+posterior = "Enumerable only at very small variable counts -- 2^n assignments filtered by consistency. L3 available in that band only, and the band is narrow."
+trace = "Steps: unit propagation from the queried assignment, and which clause falsified it. This is constraint-propagation in its term-of-art form."
+stochastic = false
+episode_length = "Enough clause inspections to constrain the assignment; not bounded in a form we can import."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The assignment is sampled first and the instance built around it. This construction is the origin of the backward-generation idea, not an adaptation of it."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sample the assignment, sample satisfied clauses, evaluate. O(1) per clause, no search and no filtering."
+repair = "Recorded because the trap is nearby: a well-known forced-satisfiable generator in this same literature achieves its property by REJECTION SAMPLING, which couples generation cost to difficulty and fails A1 outright. Do not repair any family by 'resample until it has the property' -- see docs/07 hazard 18."
+
+[checks.A2]
+verdict = "pass"
+reason = "Variable identities are positional and carry no semantics; consistent relabelling maps a formula to an equivalent formula and the assignment along with it."
+
+[checks.A3]
+verdict = "pass"
+reason = "Clause-major and variable-major renderings expose genuinely different information -- the second makes a variable's full role locally visible, the first does not. Not a separator change."
+
+[checks.A4]
+verdict = "repairable"
+reason = "Fails under NAIVE planting, and fails in the informative way: solutions cluster around the plant and local search exploits the clustering, so the structure-ignoring solver wins without enumerating. This is a generator signature, not a brute-force cost problem."
+repair = "Plant the assignment and its complement (verified source above), or bias the clause distribution. Both are published fixes to exactly this leak. Note neither yields a GUARANTEE -- see docs/08; A4 remains an estimate at our scale for this family as for every other."
+
+[checks.A5]
+verdict = "pass"
+reason = "constraint-propagation folds onto unit propagation -- the slug's alias list already carried that term before this vein was read, which is a small piece of evidence the vocabulary was tracking something real. backtrack-splice folds onto backjumping likewise."
+
+[checks.A6]
+verdict = "pass"
+reason = "One evaluation per query; a malformed assignment (wrong length, out-of-range variable) returns a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "One-pass given theta: the teacher knows the assignment and can select a discriminating clause directly rather than searching for one."

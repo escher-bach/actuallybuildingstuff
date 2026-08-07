@@ -175,3 +175,38 @@ traced to a primary source -- and section 11 step 3's gate IS inter-annotator
 agreement. The problem-behaviour-graph notation is LEAD-only after repeated
 fetch failures. Both block the annotation half of this vein.
 """
+
+[[entry]]
+n = 7
+date = "2026-08-07"
+source = "Vein 2.4 -- planted instances, phase transitions, one-way functions and trapdoors (16 sources: 6 read as full text via HTML renders, the rest LEAD; every raw-PDF fetch failed to parse and was reported as such)"
+vein = "2.4"
+rows = ["planted-sat"]
+note = """
+ZERO new primitives -- fourth vein to add nothing, but WEAKER evidence for
+compactness than the earlier zeros. This vein's content is almost entirely
+generator-side: it is about A1 and A4, how instances are made and whether making
+them that way leaks, not about what a solver composes. A vein that never
+discusses solving cannot mint a solver primitive. A saturation curve counting all
+zeros equally would overstate its own case, and this is recorded so it does not.
+
+The vein was read specifically because the source document calls it the one vein
+offering A4 as a GUARANTEE rather than a hope. It does not, at our scale, and
+that negative result is the pass's main output -- see docs/08. Consequence: A4
+stays an estimate for every row in the register, and Task Spec section 9's
+instruction to watch for turnover in structural content is now known to be the
+ONLY available route rather than a prudent supplement.
+
+What it did supply, and it is actionable: a catalogue of five ways planting
+leaks, each a checkable property of a generator rather than a theorem about a
+limit. The general shape is one lesson repeated -- planting leaves a statistical
+signature and the attack is to detect the signature rather than solve the
+problem.
+
+THIRD CONTAMINATION, self-reported: a paper on 'quiet planting' turned out to
+centre on graph colouring, the sealed sub-area this pass's brief had flagged as
+the highest-risk boundary in the whole review. Second hit on the same sub-area.
+See docs/00 section 4 and docs/07 hazard 19 -- adjacency predicts contamination,
+and sealing something inside a vein being actively read is close to
+unenforceable.
+"""
