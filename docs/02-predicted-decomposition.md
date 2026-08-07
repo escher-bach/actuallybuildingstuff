@@ -106,3 +106,31 @@ Two design decisions worth stating because they could be quietly reversed later:
 
 - **Only instrument checks are blocking.** The structure-versus-paradigm prediction and the SHJ prerequisite ordering are predictions *about the world*; they are supposed to be able to fail, and a failure there is a finding rather than a stop. Conflating "our instrument works" with "our guess was right" is how a gate stops being a gate.
 - **A missing family scores `UNTESTABLE`, never `PASS`.** Silently passing on absent data is the other way a gate stops being a gate, and it is the more likely one, since the candidate set is incomplete.
+
+
+---
+
+**2026-08-07 — P4, and a reframing of what the matrix is for.** §1–§2 unchanged. This adds a prediction rather than revising one, and it is the sharpest claim in this document.
+
+**The reframing.** The programme is not claiming that intelligence *is* any of these families. It is claiming intelligence is a **combination** of them. That distinction has a direct methodological consequence I had not drawn: **an all-pairs transfer matrix over families in isolation measures the wrong object.** It yields blocks of isolated capacities. If the claim is about combination, the matrix must contain **composites**, and the interesting cell is not family-to-family but *parts-to-whole*.
+
+**P4 — composites are not supplied by their parts.**
+
+Define, for a composite `C = T1 ∘ T2` and a model trained on both components:
+
+    residual(C) = S(C | m_{T1,T2}) / S(C)
+
+the fraction of the composite's structural content that survives training on its parts.
+
+**Prediction: `residual(C)` is substantially above zero** — training on parity and on hidden permutations separately does not supply parity-of-permuted-bits. Something is required to *combine* them that neither part contains.
+
+**If P4 is false — if `residual(C) ≈ 0` — the consequence is severe and should be stated now rather than argued away later.** It would mean the basis's power lies entirely in its parts, composition adds nothing a model does not already get from the components, and Task Spec §1.1's claim that composition "is what lets a finite basis cover an infinite target space" is false *in our setting*: covering would be a matter of enumerating parts after all. That is a result against the programme's central mechanism, and it is cheap to test — one extra row and column per composite.
+
+**Two secondary predictions that discriminate further:**
+
+- **P4a — depth is a real knob.** `residual` should *increase* with composition depth. If depth-3 composites are no less supplied by their parts than depth-2, then depth is a difficulty knob in name only, and §1.1's "depth is the difficulty knob that does not require inventing a new family per level" fails.
+- **P4b — composites do not join their components' blocks.** If a composite clusters with its own components, combination is not a separate capability. If composites cluster *with each other* across unrelated component pairs, then combining is a transferable skill in its own right — which would be the strongest possible result for the "intelligence is combination" framing, and is the one I would bet against.
+
+**Why this is pre-registered rather than run now:** the matrix does not exist and the harness does not exist. What can be fixed now is the comparison, and it is fixed above with a definition, a direction, and a stated consequence for being wrong. `src/repertoire/expectations.py` carries it as a scored assertion.
+
+**One honest limitation.** Our composition closure is currently **2.4% of ordered pairs** — one legal composite over seven families. P4 tested on a single composite is a case study, not a result. Making it a result requires more endomorphic families, which is now a design requirement on the candidate set rather than an afterthought.

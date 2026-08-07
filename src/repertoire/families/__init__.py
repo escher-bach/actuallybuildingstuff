@@ -1,6 +1,6 @@
 """Implemented task families (D2)."""
 
-from .algebraic import ParityIdentificationFamily
+from .algebraic import ParityIdentificationFamily, PermutedBitsFamily
 from .concepts import (
     BrunerConjunctionFamily,
     ConjunctionFamily,
@@ -12,6 +12,7 @@ from .stochastic import ProbabilityMatchingFamily
 
 __all__ = [
     "ParityIdentificationFamily",
+    "PermutedBitsFamily",
     "BrunerConjunctionFamily",
     "ConjunctionFamily",
     "ConstantTargetFamily",

@@ -43,6 +43,7 @@ src/repertoire/vocab.py           One shared vocabulary, fixed before any family
 src/repertoire/families/          D2. Implemented families
 src/repertoire/a3_test.py         A3 encoding-leak test (run before the matrix)
 src/repertoire/expectations.py    PRE-COMMITTED. The §11 step 6 gate, as assertions not prose
+src/repertoire/compose.py         §1.1 composition: two gates, n-ary depth, closure report
 register/verification-log.md      Curator checks of every source promoted to verified=true
 notes/vein-*-report.md            Raw subagent literature reports, before curation into rows
 ```

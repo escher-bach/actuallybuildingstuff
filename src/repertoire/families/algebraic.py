@@ -79,6 +79,8 @@ class ParityIdentificationFamily:
     """Identify which subset of coordinates is XORed."""
 
     name = "parity_identification"
+    input_type = BitVector
+    output_type = Parity
     supports_L2 = True
     emits_trace = False
     stochastic = False
@@ -101,6 +103,16 @@ class ParityIdentificationFamily:
         size = rng.randint(1, d)
         subset = tuple(sorted(rng.sample(range(d), size)))
         return ParityTheta(d, subset, rng.randrange(2))
+
+    def enumerate_theta(self, k: int):
+        """Full hypothesis space, for exact composite L3 targets."""
+        d = self.dimensions(k)
+        out = []
+        for mask in range(1, 1 << d):
+            subset = tuple(i for i in range(d) if mask & (1 << i))
+            for off in (0, 1):
+                out.append(ParityTheta(d, subset, off))
+        return out
 
     def sample_encoding(self, rng: Random) -> Encoding:
         pool = list(vocab.SYMBOL_IDS)
@@ -233,6 +245,154 @@ class ParityIdentificationFamily:
             expected = [
                 perm.get(t, t) for t in self.render(enc, q) + self.render(enc, a)
             ]
+            if expected != self.render(enc2, q) + self.render(enc2, a):
+                return False
+        return True
+
+
+# --------------------------------------------------------------------------
+# An ENDOMORPHIC family: answers are the same shape as queries.
+# --------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PermTheta:
+    n_dims: int
+    perm: tuple[int, ...]  # perm[i] = where coordinate i is sent
+
+
+class PermutedBitsFamily:
+    """Apply a hidden coordinate permutation to a bit-vector.
+
+    BitVector in, BitVector out -- which makes it the register's first
+    ENDOMORPHIC family, and the reason composition has anywhere to stand.
+
+    Every other implemented family maps a structured query to a single label:
+    bit-vector to category, stimulus to parity bit. A label cannot be fed back
+    in as a query, so the basis as built had near-zero closure under composition
+    even though half the register's A4 verdicts name composition as their
+    repair. That gap only became visible when composition was implemented rather
+    than assumed.
+
+    Composed under parity, this reproduces the shape of the Task Spec's own
+    worked example -- a hidden relabelling wrapped around an operation -- with
+    the composite's hidden parameter being the pair (subset, permutation) and
+    its hypothesis space the product. That product is the A4 headroom
+    composition is supposed to buy, and here it can be checked rather than
+    argued.
+
+    On its own this family is deliberately weak: identifying a permutation from
+    (input, output) pairs is easy, and it fails A4 badly. It is infrastructure
+    for composition, not a capability-bearing member of the basis, and the
+    register row says so.
+    """
+
+    name = "permuted_bits"
+    input_type = BitVector
+    output_type = BitVector
+    supports_L2 = True
+    emits_trace = False
+    stochastic = False
+
+    def dimensions(self, k: int) -> int:
+        return 6 + 2 * k
+
+    def sample_theta(self, k: int, rng: Random) -> PermTheta:
+        self._k = k
+        d = self.dimensions(k)
+        perm = list(range(d))
+        rng.shuffle(perm)
+        return PermTheta(d, tuple(perm))
+
+    def sample_encoding(self, rng: Random) -> Encoding:
+        pool = list(vocab.SYMBOL_IDS)
+        rng.shuffle(pool)
+        name, sep, grouped = rng.choice(
+            [
+                ("perm-bits", vocab.STOI["COMMA"], False),
+                ("perm-grouped", vocab.STOI["COMMA"], True),
+            ]
+        )
+        return Encoding(
+            name=name,
+            bit_symbols=(pool[0], pool[1]),
+            result_symbols=(pool[2], pool[3]),
+            separator=sep,
+            grouped=grouped,
+        )
+
+    def enumerate_theta(self, k: int):
+        """All d! permutations. Only affordable for small d -- the composite
+        posterior will refuse rather than approximate once this is too large,
+        which is the correct behaviour and is why the limit is visible here."""
+        import itertools as _it
+
+        d = self.dimensions(k)
+        return [PermTheta(d, p) for p in _it.permutations(range(d))]
+
+    def sample_query(self, theta: PermTheta, history: list, rng: Random) -> BitVector:
+        return BitVector(tuple(rng.randrange(2) for _ in range(theta.n_dims)))
+
+    def teacher_query(self, theta: PermTheta, history: list) -> BitVector:
+        """basis-probe: e_i reveals exactly where coordinate i is sent."""
+        i = len(history) % theta.n_dims
+        return BitVector(tuple(1 if j == i else 0 for j in range(theta.n_dims)))
+
+    def evaluate(self, theta: PermTheta, query: BitVector) -> BitVector:
+        out = [0] * theta.n_dims
+        for i, b in enumerate(query.bits):
+            out[theta.perm[i]] = b
+        return BitVector(tuple(out))
+
+    def trace(self, theta: PermTheta, query: BitVector) -> list | None:
+        return None
+
+    def render(self, encoding: Encoding, obj: object) -> list[int]:
+        if isinstance(obj, BitVector):
+            out: list[int] = []
+            for i, b in enumerate(obj.bits):
+                if i:
+                    out.append(encoding.separator)
+                if encoding.grouped and i and i % 4 == 0:
+                    out.append(vocab.STOI["LPAREN"])
+                out.append(encoding.bit_symbols[b])
+            out.append(vocab.STOI["ARROW"])
+            return out
+        raise TypeError(f"cannot render {type(obj).__name__}")
+
+    def preamble(self, theta: PermTheta, encoding: Encoding) -> list[int]:
+        out = [vocab.PREAMBLE]
+        for target in theta.perm:
+            out += vocab.number(target)
+            out.append(encoding.separator)
+        return out
+
+    def posterior(self, history: list, k: int) -> Distribution:
+        raise NotImplementedError(
+            "permuted_bits has no scalar answer to place a distribution over -- "
+            "its codomain is BitVector. An L3 target here would be a "
+            "distribution over vectors, which the harness's per-token "
+            "cross-entropy does not consume. Raising rather than returning "
+            "something shaped wrongly."
+        )
+
+    def permuted_alphabet_check(self, rng: Random) -> bool:
+        k = 1
+        self._k = k
+        theta = self.sample_theta(k, rng)
+        enc = self.sample_encoding(rng)
+        shuffled = list(vocab.SYMBOL_IDS)
+        rng.shuffle(shuffled)
+        perm = dict(zip(vocab.SYMBOL_IDS, shuffled))
+        enc2 = replace(
+            enc,
+            bit_symbols=(perm[enc.bit_symbols[0]], perm[enc.bit_symbols[1]]),
+            result_symbols=(perm[enc.result_symbols[0]], perm[enc.result_symbols[1]]),
+        )
+        for _ in range(48):
+            q = self.sample_query(theta, [], rng)
+            a = self.evaluate(theta, q)
+            expected = [perm.get(t, t) for t in self.render(enc, q) + self.render(enc, a)]
             if expected != self.render(enc2, q) + self.render(enc2, a):
                 return False
         return True

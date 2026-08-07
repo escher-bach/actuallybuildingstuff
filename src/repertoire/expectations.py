@@ -198,6 +198,65 @@ class ClustersWithRatherThan(Expectation):
         )
 
 
+@dataclass
+class CompositeNotSuppliedByParts(Expectation):
+    """P4. The programme's central mechanism, as a scored assertion.
+
+    `families = (composite, part_a, part_b)`.
+
+    The claim is not that intelligence IS any of these families but that it is a
+    COMBINATION of them. That has an empirical consequence: training on the
+    parts should not already supply the whole. If it does, composition adds
+    nothing beyond its components and Task Spec section 1.1's claim that
+    composition lets a finite basis cover an infinite space is false in our
+    setting -- covering would be enumeration of parts after all.
+
+    Uses the BEST of the two parts as the baseline rather than a model trained
+    on both, because the matrix is all-pairs and a jointly-trained model is not
+    a cell in it. That makes the test CONSERVATIVE: a real joint model would
+    supply at least as much, so a residual that survives this test might not
+    survive the stronger one. Stated so the result is not overread.
+    """
+
+    min_residual: float = 0.25
+
+    def check(self, m):
+        composite, a, b = self.families
+        if not m.has(composite, a, b):
+            return Outcome.UNTESTABLE, "composite or a component absent"
+        best_part = max(m.transfer(a, composite), m.transfer(b, composite))
+        residual = 1.0 - best_part
+        ok = residual >= self.min_residual
+        return (
+            (Outcome.PASS if ok else Outcome.FAIL),
+            f"best part supplies {best_part:.3f} of the composite; "
+            f"residual {residual:.3f}, need >= {self.min_residual} "
+            "(conservative: single-part baseline, not jointly trained)",
+        )
+
+
+@dataclass
+class DepthIncreasesResidual(Expectation):
+    """P4a. `families = (deep_composite, shallow_composite, part)`.
+
+    If depth is a real difficulty knob rather than one in name only, a deeper
+    composite should be LESS supplied by its parts than a shallower one.
+    """
+
+    def check(self, m):
+        deep, shallow, part = self.families
+        if not m.has(deep, shallow, part):
+            return Outcome.UNTESTABLE, "a composite or the shared part is absent"
+        r_deep = 1.0 - m.transfer(part, deep)
+        r_shallow = 1.0 - m.transfer(part, shallow)
+        ok = r_deep > r_shallow
+        return (
+            (Outcome.PASS if ok else Outcome.FAIL),
+            f"residual deep {r_deep:.3f} vs shallow {r_shallow:.3f}; "
+            "depth is a knob in name only if this does not hold",
+        )
+
+
 # --------------------------------------------------------------------------
 # The registry. Committed before any measurement.
 # --------------------------------------------------------------------------
@@ -282,6 +341,39 @@ EXPECTATIONS: list[Expectation] = [
             "none. Cheap, and nobody ran it."
         ),
         blocking=True,
+    ),
+    CompositeNotSuppliedByParts(
+        id="P4-composite-not-supplied-by-parts",
+        kind="prediction",
+        statement=(
+            "Training on parity and on hidden permutations separately does not "
+            "supply parity-of-permuted-bits."
+        ),
+        families=("parity_of_permuted_bits", "parity_identification", "permuted_bits"),
+        rationale=(
+            "The programme claims intelligence is a COMBINATION of these "
+            "capacities, not any of them in isolation. If the parts supply the "
+            "whole, composition adds nothing and Task Spec section 1.1's claim "
+            "that composition lets a finite basis cover an infinite space is "
+            "false in our setting. Failure here is a result against the "
+            "programme's central mechanism, which is why it is committed now "
+            "with a threshold rather than argued afterwards."
+        ),
+        blocking=False,
+    ),
+    DepthIncreasesResidual(
+        id="P4a-depth-is-a-real-knob",
+        kind="prediction",
+        statement=(
+            "A depth-3 composite is less supplied by its parts than a depth-2 one."
+        ),
+        families=("depth3_parity_perm_perm", "parity_of_permuted_bits", "parity_identification"),
+        rationale=(
+            "Section 1.1 says depth is the difficulty knob that does not require "
+            "inventing a new family per level. If residual does not rise with "
+            "depth, depth is a knob in name only."
+        ),
+        blocking=False,
     ),
     ClustersWithRatherThan(
         id="P-structure-beats-paradigm",

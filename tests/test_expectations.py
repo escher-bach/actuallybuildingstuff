@@ -22,6 +22,9 @@ FAMILIES = [
     "shj_type_vi",
     "shj_type_i",
     "probability_matching",
+    "permuted_bits",
+    "parity_of_permuted_bits",
+    "depth3_parity_perm_perm",
 ]
 
 
@@ -51,6 +54,11 @@ def ideal() -> Matrix:
         t[(b, a)] = 0.9
     t[("shj_type_i", "shj_type_vi")] = 0.5
     t[("shj_type_vi", "shj_type_i")] = 0.2
+    # P4 holds in the ideal world: the parts supply only a little of the whole,
+    # and depth makes that worse rather than better.
+    t[("parity_identification", "parity_of_permuted_bits")] = 0.3
+    t[("permuted_bits", "parity_of_permuted_bits")] = 0.2
+    t[("parity_identification", "depth3_parity_perm_perm")] = 0.15
     return build(diag, t)
 
 
@@ -122,6 +130,41 @@ class TestEveryExpectationCanFail(unittest.TestCase):
             },
         )
         self.assertIs(e.check(rival)[0], Outcome.FAIL)
+
+
+class TestCompositePredictions(unittest.TestCase):
+    """P4: the programme claims intelligence is a COMBINATION of these
+    capacities. If the parts supply the whole, composition adds nothing."""
+
+    def test_p4_passes_when_parts_do_not_supply_the_whole(self):
+        e = next(x for x in EXPECTATIONS if x.id == "P4-composite-not-supplied-by-parts")
+        self.assertIs(e.check(ideal())[0], Outcome.PASS)
+
+    def test_p4_fails_when_a_part_already_supplies_the_composite(self):
+        # The result that would go against the programme central mechanism.
+        m = ideal()
+        m.s["parity_identification"]["parity_of_permuted_bits"] = 0.05
+        e = next(x for x in EXPECTATIONS if x.id == "P4-composite-not-supplied-by-parts")
+        outcome, detail = e.check(m)
+        self.assertIs(outcome, Outcome.FAIL, detail)
+
+    def test_p4_does_not_block_the_gate_either_way(self):
+        # It is a prediction about the world, not an instrument check. A failure
+        # is a finding, not a stop -- and an important one.
+        m = ideal()
+        m.s["parity_identification"]["parity_of_permuted_bits"] = 0.05
+        gate, _ = score(m)
+        self.assertTrue(gate)
+
+    def test_p4a_detects_depth_that_is_a_knob_in_name_only(self):
+        e = next(x for x in EXPECTATIONS if x.id == "P4a-depth-is-a-real-knob")
+        self.assertIs(e.check(ideal())[0], Outcome.PASS)
+        m = ideal()
+        # depth-3 no less supplied by its parts than depth-2
+        m.s["parity_identification"]["depth3_parity_perm_perm"] = m.diag[
+            "depth3_parity_perm_perm"
+        ] * (1 - 0.9)
+        self.assertIs(e.check(m)[0], Outcome.FAIL)
 
 
 class TestGateSemantics(unittest.TestCase):

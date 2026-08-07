@@ -1,0 +1,102 @@
+id = "permuted-bits"
+title = "Hidden coordinate permutation on bit-vectors (endomorphic; composition substrate)"
+vein = "0"
+their_term = "(constructed; the relabelling half of the Task Spec section 6 worked family, in bit form)"
+substrate = "bit-vectors under a hidden coordinate permutation"
+status = "implemented"
+levels = ["L0", "L1", "L2"]
+complexity_modes = ["description_length"]
+contents = ["manipulation"]
+asymmetries = ["evaluate/search"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "bijection-invert",
+    "belief-state-maintenance",
+    "basis-probe",
+]
+predicted_block = "should sit with the calibration row and anything else whose content is applying a hidden relabelling -- block B1, binding and substitution, in the docs/02 prediction."
+notes = """
+**Infrastructure, and the row says so rather than pretending otherwise.** On its
+own this family is weak: identifying a permutation from (input, output) pairs is
+easy, and it fails A4 badly. It exists because the register needed at least one
+ENDOMORPHIC family -- one whose answers are the same shape as its queries -- and
+had none.
+
+**Why that mattered.** Task Spec section 1.1 makes composition the cheapest
+route to A4 and the reason a finite basis can cover an infinite space, and a
+large fraction of the register A4 verdicts name composition as their repair.
+But T1 o T2 requires codomain(f2) to lie in X1, and every other implemented
+family maps a structured query to a single label. A label cannot be fed back in
+as a query. So the basis had essentially no composition closure, and those
+repairs were citing an operation with no legal instance. See docs/07 hazard 21 --
+it was silent because nothing checks that a named repair is performable, and it
+only surfaced when composition was implemented rather than assumed.
+
+**Composed under parity it reproduces the worked example of the Task Spec.**
+`parity_of_permuted_bits` has theta = (subset, permutation) and a hypothesis
+space that is the product -- a hidden relabelling wrapped around an operation,
+which is the shape of the section 6 family in bit form. That composite is where
+the A4 headroom argument can be checked rather than argued, and a test asserts
+the product structure directly.
+
+**One endomorphic family is barely closure.** The basis needs one per type it
+intends to compose over. Recorded as a design requirement on future families
+rather than something to rediscover.
+"""
+
+[[sources]]
+citation = "Task Specification section 1.1 (composition) and section 6 (the worked family whose shape this reproduces). Constructed, not excavated"
+year = 2026
+kind = "internal"
+url = ""
+verified = true
+
+[form]
+theta = "A permutation of the d coordinates."
+p_theta = "k sets d; the permutation is drawn uniformly."
+query_space = "bit-vectors of length d"
+oracle = "Permute the coordinates of the query. O(d), no search."
+encodings = [
+    "bit list with a separator",
+    "grouped rendering with a marker every four positions -- genuinely different length, not a separator swap",
+]
+k_semantics = "d. Difficulty is low at every d on its own; the knob matters only in composition, where it multiplies the composite hypothesis space."
+teacher_query = "basis-probe: e_i reveals exactly where coordinate i is sent. O(1) per call, d calls total, no belief state."
+posterior = "NOT implemented, and the method raises rather than returning something shaped wrongly: the codomain is a bit-vector, so an L3 target would be a distribution over vectors, which a per-token cross-entropy does not consume. This is a real limit of the interface for endomorphic families and is recorded rather than papered over."
+trace = "Steps: the destination of each coordinate. Trivial."
+stochastic = false
+episode_length = "d queries under the basis schedule."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The permutation is the hidden parameter."
+
+[checks.A1]
+verdict = "pass"
+reason = "Sample a permutation, sample a vector, permute. O(d)."
+
+[checks.A2]
+verdict = "pass"
+reason = "Bit symbols are drawn from the alphabet per episode and the family is defined over positions, so relabelling is an exact symmetry. Verified by the permuted-alphabet check, which uses a total permutation."
+
+[checks.A3]
+verdict = "pass"
+reason = "Two renderings, and the grouped one differs in LENGTH rather than in punctuation -- the lesson from the A3 leak test, where the first generation of encodings turned out byte-identical."
+
+[checks.A4]
+verdict = "fail"
+reason = "Fails badly and by design. A permutation is recovered from d basis probes and the truth table is not the obstacle -- there is no gap between the structural solver and the brute one worth speaking of."
+repair = "None as a standalone family, and none wanted. Its role is to be the inner term of a composite, where the composite A4 argument rests on the product hypothesis space rather than on this family own difficulty."
+
+[checks.A5]
+verdict = "pass"
+reason = "bijection-invert is exactly the content of this family, and it shares basis-probe with parity and the conjunction row."
+
+[checks.A6]
+verdict = "pass"
+reason = "One permutation application per query; a wrong-length vector returns a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "Fixed basis schedule, one pass, no history needed."

@@ -189,6 +189,34 @@ Whereas an empirical claim — a replicated difficulty ordering, a measured bias
 
 *Interim practice, already applied:* rows promoted on 2026-08-07 state in prose exactly what their citation does and does not cover. That is the right content in the wrong place — prose is not queryable — but it is better than the flag alone.
 
+## 21. A repair cited across the register that had no legal instance
+
+**Silent. Found by implementing the operation.** A large fraction of the register A4 verdicts name composition as their repair -- *"fails at small n; compose with a second family, or raise n."* Task Spec section 1.1 endorses this: composition is "the cheapest route to A4" and "what lets a finite basis cover an infinite target space. Without closure you are enumerating, and enumeration cannot cover."
+
+**The implemented basis had essentially no composition closure.** `T1 o T2` requires codomain(f2) inside X1, and our families almost uniformly map a structured query to a **single label**: bit-vector to category, stimulus to parity bit, assignment to true/false. A label cannot be fed back in as a query. So every row citing "compose with another family" was citing an operation with **no legal instance in the basis**.
+
+*Measured:* `closure_report` puts it at **2.4% of ordered pairs** -- one legal composite over seven families.
+
+*Why it was silent:* nothing checks that a named repair is performable. Each A4 verdict was individually reasonable, the spec endorses the repair in general, and the gap exists only at the level of the basis as a whole, which no single row can see.
+
+*This compounds hazard 17.* A4 cannot be certified at our scale, so it must be measured -- and when measurement shows a family collapsing, composition is the constructive repair. With no closure, the only remaining repair is "raise n", which is the route that runs out.
+
+*Fixed:* `compose.py` implements section 1.1 n-arily with depth as the knob, and `PermutedBitsFamily` is the first endomorphic family, so composition has somewhere to stand. A test asserts the label-returning families are still label-returning, so adding an endomorphic family moves the closure figure and says so.
+
+*Residual, stated:* one endomorphic family is barely closure. The basis needs one per type it intends to compose over, and that is now a design requirement on new families rather than something to rediscover.
+
+## 22. A type check is not the coherence check the spec asks for
+
+**Silent, and it was in my own first implementation.** Section 1.1 says plainly: *"A5 (semantic coherence) is precisely the condition under which a composite is meaningful rather than a **type-checking accident**."* The first version of `compose.py` implemented the type check and nothing else -- that is, it implemented the accident detector and called it the gate.
+
+*What that misses, concretely:* `junk_trivial o permuted_bits` **type-checks perfectly**. Both stages speak `BitVector`. The composite is constant, because the outer stage ignores its input entirely. It would have entered the candidate set as a legal composite and contributed a row to the matrix that measures nothing.
+
+Found in the wild by `closure_report`, not contrived for the example.
+
+*Fixed:* `compose()` now runs two gates, and the second one is the one that matters. Coherence is operationalized as three sampled falsifiers -- the answer must vary with the query, and with **each** stage's theta. A stage whose theta never changes the answer is doing no work, and the composite is exactly the accident the spec names.
+
+*Honest limit, stated in the code:* sampling cannot prove coherence, only fail to catch incoherence. A composite that passes has merely not been caught being vacuous.
+
 ---
 
 ## Standing hazards — not yet observed, watch for
