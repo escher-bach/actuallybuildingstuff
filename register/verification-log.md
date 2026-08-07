@@ -107,6 +107,21 @@ The guidance-fading chapter was read in full body text by the reviewer with page
 
 ---
 
+## Pass 7 -- 2026-08-07, vein 2.7 (agentic harness engineering)
+
+| Source | Claim checked | Outcome |
+|---|---|---|
+| "Governance Decay: How Context Compaction Silently Erases Safety Constraints in Long-Horizon LLM Agents", arXiv:2606.22528 | Constraint-violation rates after compaction | **Exact, and richer than reported.** 7 models, 1,323 episodes; compaction raises violation 0% to 30%, up to 59%. Decomposed: constraint survives the summary = 0% violation, dropped = 38%. Decay 8.3x larger for soft organizational policies than hard safety norms. A pinning defence of ~47 tokens restores 0% |
+| "Harnesses for Inference-Time Alignment over Execution Trajectories", arXiv:2605.21516 | The framing dichotomy used to organize the whole review | **Title exact, dichotomy NOT verified.** The review presented "the harness decides what to work on next while the agent decides how to take each step" as the field's clean formal statement. That formulation is **not in the abstract.** The abstract contains the same split less crisply -- "task decomposition, which structures a task into sub-goals, and guided execution, which reshapes local action distributions during execution". Recorded in docs/12 as a paraphrase rather than a quotation |
+
+**Same pattern as hazard 1, fifth occurrence:** real paper, real adjacent content, the specific formulation drifting into something crisper than the source says. Worth noting the drift here was *upward in quality* -- the paraphrase is a better sentence than the original -- which is precisely why it is easy to miss.
+
+**A genuinely useful line found while checking**, which the review did not surface: the same abstract reports that *specifying only the initial steps and leaving the remaining execution to the agent can achieve higher pass rate than fully structured workflows.* Partial guidance beats full guidance -- the same curve as the trace-thinning literature in docs/05, arriving independently from contemporary agent engineering.
+
+**Self-discipline worth crediting:** this review fetched a vendor blog specifically to audit a clean-sounding "89% noise" figure, found the methodology unaudited, and downgraded it to LEAD rather than using it. That is the accuracy directive working as intended.
+
+---
+
 ## Consequences applied
 
 - `mutant-localization.toml` — the 26.5% claim removed and replaced with the paper's actual figures. **This materially weakens the row's A1 argument** and the correction is recorded in the row itself, not silently swapped: unit-level FEP being ~0% means the "corruption might be invisible" hazard is much smaller in the regime we would actually train in.

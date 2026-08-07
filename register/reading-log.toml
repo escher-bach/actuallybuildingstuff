@@ -210,3 +210,33 @@ See docs/00 section 4 and docs/07 hazard 19 -- adjacency predicts contamination,
 and sealing something inside a vein being actively read is close to
 unenforceable.
 """
+
+[[entry]]
+n = 8
+date = "2026-08-07"
+source = "Vein 2.7 -- agentic harness engineering and reasoning-model scaffolds (17 sources fetched and read; several vendor performance claims explicitly downgraded to LEAD)"
+vein = "2.7"
+rows = ["compaction-survival"]
+note = """
+ZERO new primitives -- FIFTH vein to add nothing, and the one that most easily
+could have. This is contemporary practice in one of our target domains, built by
+people who never read any of the other veins, and everything with a genuine
+model-side counterpart folded into the existing vocabulary. The review argued the
+zero explicitly rather than reporting an absence.
+
+Two findings larger than the row. Our L2 supervises the query channel against a
+teacher policy; NOTHING in practice does -- clarification timing, tool recovery
+and next-action choice are all graded by downstream outcome only. That is exactly
+the design Task Spec section 2.1 rejects as "reinforcement learning with extra
+steps", so our L2 is genuinely different rather than a reinvention. And the field
+puts "decide what to work on next" in the HARNESS, which is L2's job done by the
+scaffold -- making the harness layer an inventory of capability the model lacks.
+
+Third finding, corroborating from an unexpected direction: partial guidance beat
+fully structured workflows on pass rate. Same curve as the trace-thinning
+literature in docs/05, from contemporary agent engineering rather than 1980s
+instructional design.
+
+See docs/12. One sealed encounter declined (a runtime-governance architecture
+paper judged too close to the SRE boundary); no ARC-AGI-3 material encountered.
+"""

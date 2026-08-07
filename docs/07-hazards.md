@@ -229,6 +229,18 @@ Found in the wild by `closure_report`, not contrived for the example.
 
 *Not acted on yet, deliberately:* a transcript encoding interacts with harness decisions not yet made (loss masking over tool-result segments, tokenization of a tool call), so building it now means building it twice.
 
+## 24. A paraphrase better than its source
+
+**Quiet, and the drift went UPWARD in quality.** The vein 2.7 review organized its whole report around what it called the field's clean formal statement: *"the harness decides what to work on next, while the agent decides how to take each step."* Crisp, quotable, and load-bearing for the framing.
+
+**It is not in the abstract of the paper it was attributed to.** That abstract says something adjacent and less crisp -- "task decomposition, which structures a task into sub-goals, and guided execution, which reshapes local action distributions during execution."
+
+*Why this is the hardest instance of hazard 1 so far:* the previous drifts made a source say something *more specific* than it did. This one made a source say something **better** than it did -- a sharper sentence than the original, which is exactly why nothing flags it. A worse paraphrase invites checking; a better one invites quoting.
+
+*Fixed:* recorded in `docs/12` as a paraphrase rather than a quotation. The substantive point it supports still stands from the abstract's own weaker wording.
+
+*A useful line found while checking, which the review missed:* the same abstract reports that *specifying only the initial steps and leaving the remaining execution to the agent can achieve higher pass rate than fully structured workflows.* Partial guidance beats full guidance -- the same curve as the trace-thinning literature in `docs/05`, arriving from contemporary agent engineering rather than 1980s instructional design. **Checking the drift produced better evidence than the drift claimed.**
+
 ---
 
 ## Standing hazards — not yet observed, watch for
