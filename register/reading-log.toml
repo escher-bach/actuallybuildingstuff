@@ -240,3 +240,31 @@ instructional design.
 See docs/12. One sealed encounter declined (a runtime-governance architecture
 paper judged too close to the SRE boundary); no ARC-AGI-3 material encountered.
 """
+
+[[entry]]
+n = 9
+date = "2026-08-07"
+source = "Vein 2.8 -- agency, metacognition and self-regulation: metamemory and feeling-of-knowing, information foraging and stopping, convention formation, error monitoring without feedback, goal management (13 verified, 12 lead)"
+vein = "2.8"
+rows = []
+note = """
++1 entry: termination-gate. It is DECLARED but no row uses it, so the saturation
+curve still reads 14 over 11 sources rather than 15 -- the curve counts slugs in
+rows, not slugs declared, which is correct but means the two numbers can diverge.
+
+No row yet -- the families this vein proposes need
+triage against A1, and the binding constraint is severe: many agency paradigms
+measure a subject internal state rather than evaluating a query against a known
+rule, and an oracle that must read the solver mind is inadmissible.
+
+This vein was the test of a sealed self-observation pass (docs/13). Three of four
+predictions confirmed; the fourth was MIS-SCORED by the review and remains open.
+Scored in docs/14.
+
+The most useful single item is a control the review did not surface and the
+curator found while checking: in the metamemory paradigm, judging BEFORE the
+test display isolates metamemory, while judging after can be solved by reading
+difficulty off the stimulus. That is a design constraint on any L3 family we
+build -- the declaration must precede the query, or we measure
+difficulty-estimation and call it calibration.
+"""

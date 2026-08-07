@@ -18,8 +18,14 @@
 # hypothesis, and hiding the difference is how a vocabulary quietly becomes a
 # theory nobody agreed to.
 #
-# STATE, after 8 sources: 14 entries -- but see `kind` below: 13 operations and
-# 1 trace-act, and the two are not the same kind of thing.
+# STATE, after 11 sources: 15 entries -- 14 operations and 1 trace-act, and the
+# two are not the same kind of thing.
+#
+# NOTE the saturation curve counts slugs USED IN ROWS, not slugs declared here.
+# `termination-gate` is declared but no row uses it yet, so the curve still reads
+# 14. That is the right behaviour -- a primitive nothing needs is not evidence of
+# basis growth -- but it means declared and counted can differ, and the gap
+# should be checked rather than assumed to be zero.
 #
 # `kind` defaults to "operation": something a hand-written solver COMPUTES.
 # Vein 2.6 introduced the first entry that is not a computation at all but a
@@ -296,4 +302,40 @@ kinds of thing; report it per kind or the totals mislead. Second, if the matrix
 shows families differing only in whether they demand this tag do not separate,
 then the tag is a formatting convention rather than a capability, and it should
 be demoted out of this file to an annotation convention on the harness side.
+"""
+
+[termination-gate]
+gloss = "Decide whether to halt or continue -- to act on what is known, or seek more -- driven by a CHEAP PROXY SIGNAL rather than by reading out the full belief state."
+kind = "operation"
+first_seen = "agency vein 2.8 (no row yet)"
+aliases = [
+    "feeling-of-knowing judgement",
+    "search termination",
+    "the stop rule in information foraging",
+    "decline-the-test response (metamemory paradigms)",
+]
+falsifier = """
+This is the answer to the fold question flagged as sharpest before the vein was
+read: with a computable posterior, is "do I know enough" merely a threshold on
+entropy -- posterior-enumeration plus a comparison, and therefore not an
+operation at all?
+
+The literature says no, and specifically. Feeling-of-knowing judgements are made
+from cue familiarity and retrieval fluency rather than from inspecting the
+retrieved target. The decisive evidence is a control in the primate metamemory
+work: animals allowed to decline a memory test AFTER seeing the test display can
+appear to know what they remember by reading difficulty off the stimulus, while
+the version requiring the judgement BEFORE the display appears isolates
+metamemory proper -- and pigeons pass the first and fail the second.
+
+A system that read its own posterior would show no difference between judging
+before and after. So the gate runs on a signal that is cheaper than, and
+dissociable from, the posterior. That is a distinct operation.
+
+FOLD IT BACK if families demanding a halt decision never separate from families
+that merely maintain a posterior. Note this joins a pattern worth watching:
+informative-query-selection costs O(belief state); structure-walk-query and
+basis-probe escape that by exploiting structure; this escapes it by using a
+proxy. Three different escapes from one cost, and if the matrix does not
+distinguish them, several folds in this file are wrong together.
 """
