@@ -143,3 +143,13 @@ A new vein was proposed: contemporary agentic harness engineering, reasoning-mod
 | Agentic evaluation suites, documented failure modes | Euclidean construction geometry, epsilon–delta analysis |
 
 **A distinct risk this vein carries, recorded before reading rather than after.** Every other vein was historical and academic. This one is contemporary engineering, and "the field has converged on X" may mean **the systems copied each other**, not that X is a real joint. Convergence among artifacts built by people reading each other is weak evidence of anything about capability. Treat it as a coverage check on our basis — do the operations these systems scaffold *for* appear in our vocabulary — and not as independent confirmation.
+
+---
+
+**2026-08-07 — new held-out sub-area for vein §2.8 (agency and metacognition), recorded before any agency source was read.**
+
+**Sealed: sense-of-agency neuroscience and the comparator model** — intentional binding, efference copy, the neural basis of felt agency. Behavioural error-monitoring is in scope; the neuroscience of felt agency is not. Chosen because it is plausibly rich, sits inside the vein rather than beside it, and is the sub-area most likely to supply a *different* account of self-monitoring than the behavioural literature does.
+
+**Also sealed for this vein: metacognition studied as a clinical deficit** (anosognosia, insight in psychiatric populations) — an extension of the existing clinical-reasoning seal into this vein's territory.
+
+**An asymmetry worth recording rather than hiding.** §2.7 (agentic harness engineering) was added *after* sources in that area had begun to be searched, so it has **no held-out sub-area**. §2.8 does, because it was added before anything in it was read. That makes the §7 saturation test — does reading held-out material produce new primitives after the curve flattens — **weaker for §2.7 than for every other vein**. It is not a defect that can be repaired after the fact; it is a limit on what §2.7's zero-new result can support, and it should be stated whenever that result is cited.
