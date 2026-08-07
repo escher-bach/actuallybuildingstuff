@@ -230,6 +230,17 @@ def build_reveal(family: Any, theta: Theta, enc: Any, fraction: float, rng: Rand
     needs `partial_preamble`, and a family without it gets an exception naming
     itself rather than a silent rounding to the nearest endpoint -- rounding
     would make the sweep quietly run four points and report a curve.
+
+    **A family that has `partial_preamble` uses it at the endpoints too**, and
+    the consequence is worth stating: its L1 episodes carry a full-length
+    preamble in which every slot says "unknown", rather than no preamble at all.
+    That is deliberate.  Section 2 calls the levels "four settings of one dial",
+    and the endpoints of a dial have to be built the same way as its interior or
+    the sweep's two ends are not on the same curve as its middle.  It costs
+    unsupervised context tokens at L1 and changes no supervised token, so the
+    per-token measurement is unaffected; what it buys is that a difference
+    between reveal=0.0 and reveal=0.1 is a difference in *what was revealed* and
+    not in how the preamble was constructed.
     """
     if fraction >= 1.0 and not isinstance(family, SupportsPartialReveal):
         tokens = family.preamble(theta, enc) or []
@@ -249,10 +260,16 @@ def build_reveal(family: Any, theta: Theta, enc: Any, fraction: float, rng: Rand
 # Building
 # --------------------------------------------------------------------------
 
-# A model-backed query channel (L2). Given the tokens emitted so far and the
-# history, return the query the model asked and the tokens it emitted saying so.
-# The harness supplies the parse; the callback supplies the sampling.
-QueryFn = Callable[[list[int], list], "tuple[Query | None, list[int]]"]
+# A model-backed query channel (L2). Given the tokens emitted so far, the
+# history and the episode's encoding, return the query the model asked and the
+# tokens it emitted saying so. A None query is the A6 case: the model emitted
+# something that does not name a legal query, and the oracle must refuse it
+# well-formedly rather than the harness crashing or guessing.
+#
+# The encoding is passed because it is sampled inside `build_episode` and the
+# callback needs it to parse -- the model emits tokens, and only the encoding
+# says what they denote.
+QueryFn = Callable[[list[int], list, Any], "tuple[Query | None, list[int]]"]
 
 
 def build_episode(
@@ -328,14 +345,12 @@ def _emit_trial(ep, family, theta, enc, k, spec, history, rng, t, query_fn) -> N
     positions in an autoregressive stream, and section 2.1's "oracle's emitted
     tokens masked" cannot mean those or L2 would have no answer channel at all.
     """
-    malformed = False
     if spec.query_source is QuerySource.MODEL:
-        query, emitted = query_fn(list(ep.tokens), list(history))
+        query, emitted = query_fn(list(ep.tokens), list(history), enc)
         _emit(ep, [vocab.ASK], Channel.ORACLE_ECHO, t)
         teacher = family.teacher_query(theta, history)
         teacher_tokens = family.render(enc, teacher)
         if query is None:
-            malformed = True
             ep.malformed_queries += 1
             # A6: a well-formed refusal, which section 3 calls a recovery lesson.
             # The query channel is still supervised against q* -- that IS the
@@ -344,7 +359,12 @@ def _emit_trial(ep, family, theta, enc, k, spec, history, rng, t, query_fn) -> N
             _emit(ep, emitted, Channel.QUERY, t, supervised=True,
                   targets=_pad_to(teacher_tokens, len(emitted)))
             _emit(ep, [vocab.ERR], Channel.ORACLE_ECHO, t)
-            history.append((None, None))
+            # No history entry. The trial produced no observation, so nothing was
+            # learned about theta and q* is unchanged -- a family cycling its
+            # probes on len(history) correctly re-asks the same one. Appending a
+            # (None, None) placeholder instead would advance every such counter
+            # past a question that was never answered, and would break the
+            # history contract for the eight families that do not expect it.
             return
         _emit(ep, emitted, Channel.QUERY, t, supervised=True, targets=teacher_tokens)
     else:

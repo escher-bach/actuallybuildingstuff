@@ -89,7 +89,8 @@ class StructuralContent:
     tail_slope: float  # nats/token per step over the tail; ~0 means settled
     n_steps: int
     total_supervised_tokens: int
-    bayes_floor: float | None = None
+    bayes_floor: float | None = None  # the LOWER bound: H(y | context, encoding)
+    bayes_floor_upper: float | None = None  # + the notation term
     excess_over_bayes: float | None = None
     note: str = ""
 
@@ -100,10 +101,20 @@ class StructuralContent:
             f"  ({'settled' if self.converged else 'STILL FALLING -- S is a lower bound'})",
         ]
         if self.bayes_floor is not None:
+            band = (
+                f"[{self.bayes_floor:.4f}, {self.bayes_floor_upper:.4f}]"
+                if self.bayes_floor_upper is not None
+                else f"{self.bayes_floor:.4f}"
+            )
             lines.append(
-                f"    Bayes floor {self.bayes_floor:.4f}; final excess over it "
+                f"    Bayes floor {band}; final excess over its lower end "
                 f"{self.excess_over_bayes:+.4f}"
             )
+            if self.bayes_floor_upper is not None and self.l_final <= self.bayes_floor_upper:
+                lines.append(
+                    "    final loss is inside the floor band -- the model is at "
+                    "optimal to within what the encoding costs"
+                )
         if self.note:
             lines.append(f"    {self.note}")
         return "\n".join(lines)
@@ -114,6 +125,7 @@ def structural_content(
     supervised_tokens: list[int] | None = None,
     tail_frac: float = 0.1,
     bayes_floor: float | None = None,
+    bayes_floor_upper: float | None = None,
     settled_tol: float | None = None,
 ) -> StructuralContent:
     """Section 4, steps 3 and 4: sum_i (L_i - L_final).
@@ -144,10 +156,15 @@ def structural_content(
     excess = None if bayes_floor is None else l_final - bayes_floor
     note = ""
     if bayes_floor is not None and excess is not None and excess < -1e-3:
+        # Checked against the LOWER end of the floor band on purpose. The lower
+        # end conditions on the encoding, which the model does not observe, so
+        # nothing can legitimately beat it -- a run that does is reading something
+        # the posterior calculation does not know about.
         note = (
-            f"final loss is {-excess:.4f} nats/token BELOW the stated Bayes floor -- "
-            "the floor is wrong, or the model is reading something the posterior "
-            "calculation does not know about (a leak). Do not read S until resolved."
+            f"final loss is {-excess:.4f} nats/token BELOW the lower end of the "
+            "Bayes floor. Nothing can beat a floor computed with knowledge the "
+            "model does not have, so this is a leak or a wrong floor. Do not read "
+            "S until it is resolved."
         )
 
     return StructuralContent(
@@ -159,6 +176,7 @@ def structural_content(
         n_steps=len(losses),
         total_supervised_tokens=sum(supervised_tokens or []),
         bayes_floor=bayes_floor,
+        bayes_floor_upper=bayes_floor_upper,
         excess_over_bayes=excess,
         note=note,
     )
