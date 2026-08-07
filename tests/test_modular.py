@@ -388,11 +388,26 @@ class TestTrace(unittest.TestCase):
         # And the same at every k, which is the point: the Task Spec's default
         # would thin this automatically as k rose, making the schedule a constant
         # of the family rather than something a sweep can vary.
+        wide = ModularHiddenPermutationFamily(pool_size=12, trace_detail="full")
         for k in (0, 2, 5):
-            theta_k = full.sample_theta(k, rng)
+            theta_k = wide.sample_theta(k, rng)
             q_k = Pair(theta_k.pi[0], theta_k.pi[1])
-            self.assertEqual(len(full.trace(theta_k, q_k)), 4)
+            self.assertEqual(len(wide.trace(theta_k, q_k)), 4)
             self.assertEqual(len(reduced.trace(theta_k, q_k)), 1)
+
+    def test_a_modulus_the_pool_cannot_hold_is_refused_by_name(self):
+        """Found by the test above rather than by inspection.
+
+        Without the guard, k beyond the pool's reach fails as a ValueError out of
+        `random.sample` reading "Sample larger than population" -- which names
+        neither k, nor the pool, nor this family, and would be debugged from the
+        wrong end.
+        """
+        fam = ModularHiddenPermutationFamily(pool_size=7)
+        self.assertEqual(fam.max_k(), 1)
+        with self.assertRaises(ValueError) as cm:
+            fam.moduli(5)
+        self.assertIn("symbol pool", str(cm.exception))
 
     def test_trace_tokens_are_supervised_when_emitted(self):
         """Section 1.2: "the trace is the teacher's working, loss covering the

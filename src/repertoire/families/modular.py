@@ -145,7 +145,19 @@ class ModularHiddenPermutationFamily:
         than running for an hour, and why the sweep runs at small pools.
         """
         base = 5 + k
-        return (base, base + 1)
+        band = (base, base + 1)
+        if max(band) > self.pool_size:
+            raise ValueError(
+                f"k={k} needs modulus up to {max(band)} but the symbol pool holds "
+                f"{self.pool_size}. Raise pool_size, or lower k. Refused here rather "
+                "than deeper down: without this the failure is a ValueError out of "
+                "random.sample with nothing in it naming k, the pool, or this family."
+            )
+        return band
+
+    def max_k(self) -> int:
+        """The largest k this pool can express. `moduli` refuses above it."""
+        return self.pool_size - 6
 
     def max_modulus(self, k: int) -> int:
         return max(self.moduli(k))
