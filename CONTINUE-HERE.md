@@ -22,7 +22,7 @@ Two specifications are the authority. [task-specification.md](task-specification
 | Saturation curve | **14 vocabulary entries over 10 sources** — 7, 0, 3, 0, 1, 1, 0, 2, 0, 0. **Five veins added zero** |
 | Plant roles | **6 of 6 populated** |
 | Composition closure | **2.4%** of ordered pairs — one legal composite |
-| Hazards documented | **24** |
+| Hazards documented | **25** |
 | Commits | ~28 |
 
 **§11 progress:** steps 1 (seal), 2 (all veins, incl. an added §2.7) and 4 (paradigm coverage) done. Step 3 read but **gate not cleared** — no inter-annotator reliability figure traceable to a primary source. Step 5 (~30 families) in progress. Steps 6–7 blocked on the harness.
@@ -58,7 +58,7 @@ Read the doc if you touch the area. Each is a conclusion, not a note.
 | [docs/05](docs/05-trace-thinning.md) | **The trace-thinning default may be backwards.** §1.2 says "thin as `k` rises" and claims a literature; that literature fades against *learner competence*, never task difficulty, and says fading only bites when load is **high** |
 | [docs/06](docs/06-paradigm-coverage.md) | **Two axes missing**: θ is assumed sampled-once-and-held; L2 assumes querying is free. 7 of 10 paradigms fall out cleanly, the 3 failures cluster into exactly these two. **Deferred until after the dial sweep** — adding axes first would be designing the answer |
 | [docs/08](docs/08-a4-guarantee.md) | **A4 cannot be certified at our scale, only measured.** Asymptotic separations are frequently *empty* at n≈10. Every A4 verdict in the register is a **prediction, not a property** |
-| [docs/11](docs/11-deployment-format.md) | **The harness is the deployment distribution.** Our clean `q → a` episodes are structurally unlike what a deployed model reads, and the mismatch is **confounded with the thesis** — transfer failing for a format reason is indistinguishable from the capability claim being false |
+| [docs/11](docs/11-deployment-format.md) | **A correction, and the more instructive half.** I argued the repertoire should match the deployment format; that was an overfit. **A3 exists so format does not matter** — the remedy for a format gap is a more varied encoding set, not imitation. Records what was dropped and why |
 | [docs/12](docs/12-l2-has-no-counterpart.md) | **Nobody supervises the query channel.** All outcome-graded — the design §2.1 rejects. And the field puts "decide what to work on next" in the *harness*, which is L2's job done by the scaffold |
 | [docs/02](docs/02-predicted-decomposition.md) §5 | **P4**: composites should not be supplied by their parts. If `residual(C) ≈ 0`, composition adds nothing and §1.1's covering claim is false in our setting |
 
@@ -70,11 +70,11 @@ Read the doc if you touch the area. Each is a conclusion, not a note.
 
 **2. Implement more translated rows toward step 5's ~30.** 27 rows exist, 9 are implemented. Good candidates with complete form blocks: `decision-tree-identification`, `monotone-dnf-identification`, `mutant-localization`, `composition-chain`. **Read the row before implementing** — each carries its A-check verdicts and named repairs.
 
-**3. `compaction-survival`** ([row](register/rows/compaction-survival.toml)) — the only family motivated by a *measured deficit* (0%→30% violation under compaction; survives-summary 0% vs dropped 38%). Needs a base family plus a summarizer whose omissions are targeted. Note its A4 repair is a hard constraint: post-summary trials must be too few to re-identify θ from scratch, or it measures the base family with extra steps.
+**3. `evidence-withdrawal`** ([row](register/rows/evidence-withdrawal.toml)) — a reveal policy over any base family: identify θ, then remove the evidence while θ is unchanged, and continue. The only family motivated by a *measured deficit* (0%→30% violation; survives 0% vs dropped 38%), though that study is **motivating evidence, not the definition** — see hazard 25. Its A4 repair is a hard constraint: post-withdrawal trials must be too few to re-identify θ from scratch, or it measures the base family with extra steps.
 
 **4. Per-source `provenance | warrant` field** (hazard 20). `verified` conflates "this family came from that literature" with "this claim is true because the source says so." For self-evident mathematics no citation warrants anything; for empirical claims the citation *is* the claim. A reader currently can't tell whether a row would survive its citations being wrong.
 
-**Blocked, do not start:** the transcript encoding (needs harness decisions on tool-call tokenization and loss masking — asked for in docs/09 §2.5); the matrix (needs the harness); the two missing axes (deliberately deferred until after the sweep).
+**Blocked or withdrawn, do not start:** the matrix (needs the harness); the two missing axes (deliberately deferred until after the sweep). The transcript encoding is **withdrawn**, not blocked — see hazard 25.
 
 ---
 

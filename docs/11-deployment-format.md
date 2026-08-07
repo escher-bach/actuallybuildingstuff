@@ -1,60 +1,49 @@
-# The harness is the deployment distribution
+# Deployment format — a correction
 
-*A design-level finding, recorded 2026-08-07. It does not invalidate anything built so far, and it adds a requirement the whole design has been silent about.*
+*Written 2026-08-07, **substantially rewritten the same day**. The first version argued that the repertoire should match the deployment format. That was an over-correction and this document now records both the corrected position and the error, because the error is the more instructive half.*
 
-## The claim
+---
 
-The model this curriculum trains **will be deployed inside an agentic harness**. Coding, reasoning, tool use — that is where it runs. So the harness is not merely a source of primitives to excavate; it is the **input distribution at deployment**.
+## What the first version said, and why it was wrong
 
-Everything in the register so far manufactures episodes of one shape: an optional preamble, then alternating query/answer pairs, one family per episode, nothing else in context. Clean, homogeneous, self-contained.
+The argument was: the model will be deployed inside an agentic harness, so the harness is the deployment input distribution; our clean `q → a` episodes are structurally unlike what a deployed model reads; therefore the repertoire should add a **transcript encoding** rendering episodes as tool-call trajectories, and should build a **compaction-survival** family.
 
-A deployed model sees none of that. It sees a system prompt, tool schemas, prior turns, tool results, file contents, error strings, truncated output, permission denials, subagent reports, and periodically a lossy summary standing in for everything that no longer fits.
+**That is fitting the repertoire to a transient engineering convention**, and it contradicts two constraints the design already has.
 
-## Why this is not a presentation detail
+**A3 exists precisely so that format does not matter.** Its purpose is that a family be invariant under a nontrivially varied encoding set, so the model learns the structure and not the surface. The correct response to "deployment has a different format" is **not** to match that format — it is to make `𝓔` varied enough that no format is privileged. If A3 is done properly, a novel deployment format is one more encoding the model has never had reason to depend on. **Chasing the deployment format is the opposite of what A3 asks for**, and doing it would weaken the very invariance that makes format-independence possible.
 
-Task Spec §9's claim under test is that **capability and knowledge are separable, capability is the manufacturable half, and a model with the capability half installed acquires the other faster.**
+**A2's argument applies at the structural level, not only at the symbol level.** A2 forbids semantics leaking through content symbols. Tool-call syntax, schema conventions, and message-role markers are conventions — they are *knowledge*, not capability. A family trained on them is training on precisely the thing the repertoire exists to exclude. That the leak is structural rather than lexical does not make it less of a leak.
 
-If capability is installed in a format structurally unlike the deployment format, transfer can fail **for a format reason** — and the failure is indistinguishable, from the outside, from the capability claim being false. The programme would record a negative result on its central thesis when what actually happened is that a capability was installed in a shape the deployment environment never presents.
+**And the specific artifacts will not survive.** "Compaction" is an artifact of current context-window economics. Tool-call JSON is a serialization choice. Harness shapes are not standard and are changing quickly. A basis built against them would be dated on arrival, and §10 condition 3 judges coverage of *established practice*, not of this year's implementations.
 
-That is the risk. It is not that our episodes are unrealistic; it is that **unrealism here is confounded with the thing being measured.**
+## The corrected position
 
-## What this changes
+**Format is not a target. Invariance is.** The repertoire's job is to install structure that survives an arbitrary surface, and the test of that is A3, not resemblance to any deployment.
 
-### 1. A3 acquires a second job
+What survives from the original argument, in abstract form:
 
-A3 has been read as an *invariance* requirement: sample the encoding per episode, and the family must be invariant under it. That is still true.
+**Episodes may be long, heterogeneous, and contain material that is irrelevant.** That is not a claim about harnesses — it is a property of any realistic deployment, and it is expressible without naming a single convention. A family whose episodes are always short, homogeneous and entirely relevant has not been tested against it. The knowledge-free version is **distractor tolerance**: interleave well-formed, plausible, clearly-delimited content drawn from a *different* θ. No tool schemas, no message roles, no JSON.
 
-But if the harness is the deployment format, then **at least one encoding in `𝓔` should be the deployment format** — an episode rendered as a tool-call transcript, with schemas, results, and errors, rather than as `q → a` pairs. A3 stops being only an invariance test and becomes partly a **format-coverage** requirement.
+**Evidence can be withdrawn.** The abstract phenomenon is: a rule is identified from evidence, then *the evidence is removed while the rule is unchanged*, and the episode continues. That is a **reveal policy** — reveal, then un-reveal — and it sits alongside L0–L3 as a variation on what the context determines, not as a family about a particular memory-management technique. Named `evidence-withdrawal`, it is knowledge-free and would remain meaningful if every current harness disappeared.
 
-This is cheap in principle: `𝓔` is already per-episode and already sampled. It is not cheap in practice, because our current encodings vary punctuation and slot-tagging, and a transcript rendering is a different order of change. It is also exactly what the A3 leak test (`docs/04`) exists to check — a transcript encoding will differ enormously in length and structure from an infix one, and that difference must be shown not to move difficulty, or it is a radical wearing an incidental's clothes.
+The measured compaction result is **motivation for that abstraction, not its definition.** It is evidence that the phenomenon has teeth — belief does not survive the loss of its evidence, cleanly and by a large margin — and that is worth citing. It is not a specification.
 
-### 2. The two deferred axes are not hypothetical — they are the deployment condition
+## What actually changed
 
-`docs/06` found the parametrization missing two axes and deferred both until after the dial sweep. Under this reframing both are *the normal case in a harness*, not edge cases:
+| | |
+|---|---|
+| Transcript encoding | **Dropped.** It was format-matching, which A3 makes unnecessary and A2's spirit forbids. The request has been withdrawn from the harness handoff |
+| `compaction-survival` row | **Abstracted** to `evidence-withdrawal`, framed as a reveal policy over any base family. The compaction study is retained as motivating evidence with its status as evidence-not-definition stated |
+| Distractor tolerance | **Kept**, in the knowledge-free form above |
+| Malformed-response recovery | **Kept.** A6 already requires well-formed errors and Task Spec §2.1 already calls the error-recovery lesson free; making the error a *sampled event with a rate* is an abstract reveal-policy knob, not a harness detail |
+| The confound argument | **Withdrawn.** "Transfer might fail for a format reason" is a real risk, but the remedy is stronger A3, not format-matching. Stated as an argument for taking A3 seriously rather than as a reason to imitate a deployment |
 
-- **Query cost / entanglement.** In our L2, issuing a query is free — a bad one costs the turn and nothing else. In a harness, **issuing a tool call is the action**: it costs latency and tokens, it may have side effects, and it is sometimes irreversible. A model trained where probing is free has been trained in the one regime deployment never offers.
-- **Validity duration.** Our θ is sampled once and holds. In a harness the world changes under the agent — files are edited, state moves, earlier observations go stale.
+## What remains true from vein §2.7
 
-They stay deferred, because §8 step 5 expects the named levels to be cut in the wrong places and adding axes before the sweep would be designing the answer. But the justification for eventually adding them is now much stronger than "three paradigms did not fit."
+The vein was worth reading and its abstract findings stand — they are in [docs/12](12-l2-has-no-counterpart.md) and none of them depend on any harness convention:
 
-### 3. Three family templates this motivates that nothing in the register covers
+- **Nobody supervises the query channel.** All outcome-graded. That is a claim about *supervision*, not about format.
+- **The scaffold decides what to work on next**, which is L2's job done outside the model. That is a claim about *where capability sits*, and it is the reason L2 is worth having regardless of what next year's scaffolds look like.
+- **Partial guidance beat fully structured workflows**, corroborating the trace-thinning curve from an unrelated field.
 
-Recorded as design proposals, not built. Each is backward-generable, which is what makes them admissible at all.
-
-**Compaction survival.** Run an L1 episode until θ is identified. Then **replace the trial history with a lossy summary** and continue querying. θ is unchanged; what changed is that the evidence for it is now second-hand. The model must either have carried the identification or reconstruct it from the summary. Generation is O(1) — we own θ and we write the summary. This is the closest thing to a direct manufacture of "survive your own context being compacted", and no existing family touches it.
-
-**Distractor tolerance.** Interleave the episode with segments that are well-formed, plausible, and irrelevant — trials from a *different* family at a different θ, clearly delimited. The task is unchanged; the context is no longer homogeneous. Backward-generable trivially. Tests whether identification survives content that must be ignored rather than used.
-
-**Malformed-response recovery.** The oracle returns errors, truncations and permission-denials at a controlled rate, as *first-class responses* rather than as failures. A6 already requires that malformed queries get a well-formed error, and Task Spec §2.1 already calls the error-recovery lesson "free" — this makes the error a sampled event rather than an accident. The rate is a knob.
-
-## What I am not doing
-
-**Not rebuilding the existing families.** They are correct for what they measure, and the format question is orthogonal to whether parity-is-parity or whether the plants recover.
-
-**Not adding a transcript encoding yet.** It interacts with the harness session's format decisions — loss masking over tool-result segments, whether oracle-echo tokens are masked, how a tool call is tokenized — and doing it before those are settled would mean doing it twice. Flagged in the handoff instead.
-
-**Not treating any of this as established.** The vein §2.7 review is running and is now asked specifically for what a harnessed model's context actually contains and what fraction of a trajectory is unhelpful content it must ignore. The templates above are motivated by the reframing, not yet by measured evidence about the deployment distribution.
-
-## The honest summary
-
-The register has been optimizing a family's *content* — does it hide a rule, is it backward-generable, does it resist brute force — and has said almost nothing about the *shape of the sequence a deployed model reads*. Both matter, and only one has been under review. This does not undo the work; it names a second axis the work has not been scored on, before the scoring happens rather than after.
+Those are abstract. The parts I built out of them were not, and the difference is the lesson.

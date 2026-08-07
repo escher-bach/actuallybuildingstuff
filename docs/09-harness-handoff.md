@@ -56,17 +56,13 @@ Corollary: `teacher_query` also takes no rng, so `q*` must be a deterministic fu
 
 §7 makes `T` a harness parameter. Do not let families set it. The register carries teaching-dimension bounds where the literature supplies them — e.g. the generic version-space family notes `max{t₀, log₂|Θ|} ≤ #MQ ≤ t₀·log₂|Θ|`, which is a principled way to set `T` rather than guessing.
 
-### 2.5 A format decision that is yours, and that I am blocked on
+### 2.5 WITHDRAWN — ignore any earlier request about a transcript encoding
 
-The model this curriculum trains will be **deployed inside an agentic harness**. That makes the harness the deployment input distribution, and it makes our clean `query → answer` episodes structurally unlike what a deployed model reads. `docs/11` sets out why the mismatch is confounded with the thesis rather than merely unrealistic: if a capability is installed in a format deployment never presents, transfer can fail *for a format reason* and be recorded as the capability claim failing.
+An earlier version of this brief asked you to decide how a tool call should be tokenized, whether a tool result counts as an oracle echo for masking, and whether error responses are supervised — so that the repertoire could add a "deployment format" encoding matching an agentic harness.
 
-The repertoire response is to add a **transcript encoding** — one member of `𝓔` that renders an episode as a tool-call trajectory (schemas, results, errors) rather than as `q → a` pairs. I have not built it, because it depends on decisions that are yours:
+**That request is withdrawn.** It was an overfit to a transient convention, and it contradicted A3, whose whole purpose is that a family be *invariant* under its encoding set rather than matched to any particular surface. Building toward a deployment format would have weakened the invariance that makes format-independence possible in the first place. Recorded as hazard 25.
 
-- **How is a tool call tokenized**, and does it use the shared vocabulary or a structured segment?
-- **What does the loss mask do over tool-result segments?** §7 says oracle-echo tokens are never supervised. In a transcript rendering, is a tool *result* an oracle echo?
-- **Does an error response get supervised** as an answer, or masked as an echo? A6 makes well-formed errors a recovery lesson, which argues for supervising the model's *response* to them but not the error itself.
-
-Tell me in `docs/10-harness-findings.md` and I will build the encoding to match. Doing it before you decide means doing it twice.
+**Nothing is asked of you here.** Keep the loss mask as §7 specifies it: family-rendered answers supervised, queries supervised only at L2 against `q*`, preamble and oracle-echo tokens never supervised. No special cases.
 
 ### 2.6 Two axes the parametrization is missing — do not build them yet
 

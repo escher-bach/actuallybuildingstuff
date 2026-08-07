@@ -1,0 +1,113 @@
+id = "evidence-withdrawal"
+title = "Evidence withdrawal -- carry an identified rule after its evidence is removed"
+vein = "2.7"
+their_term = "context compaction; governance decay (the engineering instance that motivated it, not its definition)"
+substrate = "any backward-generable base family; a reveal-policy wrapper rather than a family in its own right"
+status = "translated"
+levels = ["L1", "L3"]
+complexity_modes = ["input_entropy", "state_width"]
+contents = ["state", "structure_induction"]
+asymmetries = ["evaluate/search"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "belief-state-maintenance",
+    "hypothesis-elimination",
+    "posterior-enumeration",
+    "epistemic-status-tagging",
+]
+predicted_block = "should sit with the calibration families -- the correct behaviour after withdrawal is a widened posterior. If it instead clusters with the state-carrying families, that would say retention rather than calibration is what it exercises, which would be the more interesting outcome."
+notes = """
+**A REVEAL POLICY, not a family about memory management.** Renamed from
+`compaction-survival` on 2026-08-07 after that framing was judged an overfit to a
+transient engineering artifact. docs/11 records the correction and the reasoning;
+the short version is that A3 exists so format does not matter, so building
+toward a particular deployment convention is the opposite of what the constraint
+asks for.
+
+**The abstract phenomenon.** A rule is identified from evidence; then the
+evidence is removed while the rule is unchanged; the episode continues. That sits
+alongside L0-L3 as a variation on what the context determines -- reveal, then
+un-reveal -- and it is knowledge-free. Nothing about it names a format, a tool,
+or a memory-management technique, and it would remain meaningful if every current
+deployment convention disappeared.
+
+**Motivating evidence, with its status stated: evidence, not definition.** A
+study of context compaction across 7 models and 1,323 episodes found constraint
+violation rising from 0% to 30%, up to 59%, decomposing cleanly: **when the fact
+survives, violation is 0%; when it is dropped, 38%.** Decay was 8.3x larger for
+constraints that only sometimes apply than for facts in immediate use.
+
+That is not gradual degradation; it is a dissociation. While the information is
+present the model is perfect, and once it is gone the model neither retains nor
+reconstructs it, roughly one time in three. It says the phenomenon has teeth and
+is worth a reveal policy. It does NOT say the family should be about compaction,
+and the first version of this row made exactly that mistake.
+
+**Why A1 survives.** We own theta, so the withdrawal is TARGETED -- remove
+precisely the observation that identified the rule, rather than removing at
+random. Searching for a removal that loses the right thing would need a solver;
+knowing theta makes it O(1).
+
+**Two variants, which the motivating study separates by a large factor.**
+Withdraw a fact DIRECTLY needed for the next answer, versus one that applies only
+SOMETIMES. The second is the harder target and the more interesting one.
+"""
+
+[[sources]]
+citation = "MOTIVATING EVIDENCE, not the definition of this family. 'Governance Decay: How Context Compaction Silently Erases Safety Constraints in Long-Horizon LLM Agents', arXiv:2606.22528. Curator-checked 2026-08-07: 7 models, 1,323 episodes; violation 0% to 30% (up to 59%) under compaction; survives 0% vs dropped 38%; 8.3x larger decay for sometimes-applicable constraints; a ~47-token pinning defence restores 0%"
+year = 2026
+kind = "paper"
+url = "https://arxiv.org/abs/2606.22528"
+verified = true
+
+[form]
+theta = "The base family hidden rule, unchanged. The wrapper adds a withdrawal event at a chosen trial index and a specification of what is withdrawn."
+p_theta = "Sample the base family theta and run trials until identification. k controls the withdrawal rate -- how often the identifying observation is removed -- and which variant is in play."
+query_space = "the base family queries, continuing after the withdrawal event"
+oracle = "The base family oracle, unchanged. Theta does not move; only the visible evidence does."
+encodings = [
+    "withdrawn trials elided entirely, leaving a gap marker",
+    "withdrawn trials replaced by a shorter abstract restatement over the same symbols",
+    "withdrawn trials retained but marked void, so the model must ignore rather than reconstruct",
+]
+k_semantics = "Withdrawal rate, and the distance between the withdrawal and the query that needs what was removed. Difficulty is expected non-monotone in that distance: adjacent is trivially recoverable, very distant may be unrecoverable and therefore uninformative. Sweep it."
+teacher_query = "Inherited from the base family. Note the teacher is unaffected by withdrawal -- it owns theta throughout -- which is the usual teacher advantage and is unusually stark here: the model's entire difficulty is an information loss the teacher never suffers."
+posterior = "Exact where the base family is exact, and it is the interesting quantity: after the identifying evidence is withdrawn, the correct posterior WIDENS BACK OUT. A model that stays confident is miscalibrated in exactly the measured way. That makes this an L3 target as much as an L1 one, and the cleanest calibration setting in the register."
+trace = "Steps: what was known before the withdrawal, what survived it, what must be re-derived. The withdrawal is the natural thinning boundary."
+stochastic = false
+episode_length = "Long enough to identify theta, plus a withdrawal event, plus enough trials after it for the loss to show."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "Theta is the base family and is untouched by the wrapper. The withdrawal is a property of the reveal policy, not of the rule."
+
+[checks.A1]
+verdict = "pass"
+reason = "O(1) given the base family: run trials, withdraw a chosen observation, continue. The generator owns theta so the withdrawal is targeted rather than searched for -- which is what makes it backward-generable, since finding a removal that loses the right thing would otherwise require a solver."
+
+[checks.A2]
+verdict = "repairable"
+reason = "Inherits the base family A2, but the RESTATEMENT encoding is new surface and can leak. A restatement phrased in natural language about symbol values would carry semantics the symbols do not."
+repair = "Generate the restatement from a fixed template over the same anonymized symbols, and include it in the permuted-alphabet check rather than testing only the trial rendering. The check must cover the restatement, or A2 passes on a family whose only novel surface went unexamined."
+
+[checks.A3]
+verdict = "pass"
+reason = "Three renderings that differ structurally rather than by punctuation -- eliding, restating, and marking-void are genuinely different tasks, not different notations for one task. Note this is A3 doing its actual job: the family must be invariant across them, which is the property that makes any future deployment format a non-issue."
+
+[checks.A4]
+verdict = "repairable"
+reason = "Inherits the base family A4 and adds nothing by itself; a model that simply re-identifies theta from post-withdrawal trials has bypassed the intended difficulty entirely."
+repair = "Post-withdrawal trials must be too few to re-identify theta from scratch. A hard constraint on episode construction, not a tuning preference -- get it wrong and the family measures the base family with extra steps."
+
+[checks.A5]
+verdict = "pass"
+reason = "Contributes nothing new, which is the expected shape for a reveal-policy wrapper. It does exercise epistemic-status-tagging in its natural setting -- a model that should say it no longer knows, once the evidence is gone."
+
+[checks.A6]
+verdict = "pass"
+reason = "One evaluation per query, unchanged from the base family."
+
+[checks.A7]
+verdict = "pass"
+reason = "Inherited. The teacher never loses information, so its policy is unaffected."

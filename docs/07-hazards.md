@@ -241,6 +241,24 @@ Found in the wild by `closure_report`, not contrived for the example.
 
 *A useful line found while checking, which the review missed:* the same abstract reports that *specifying only the initial steps and leaving the remaining execution to the agent can achieve higher pass rate than fully structured workflows.* Partial guidance beats full guidance -- the same curve as the trace-thinning literature in `docs/05`, arriving from contemporary agent engineering rather than 1980s instructional design. **Checking the drift produced better evidence than the drift claimed.**
 
+## 25. Fitting the repertoire to a transient deployment artifact
+
+**Quiet, self-inflicted, caught by the user.** After vein 2.7 established that the trained model will be deployed inside an agentic harness, I concluded the repertoire should **match the deployment format** -- add a transcript encoding rendering episodes as tool-call trajectories, and build a family named after context compaction.
+
+**That contradicts two constraints the design already has.**
+
+**A3 exists precisely so that format does not matter.** Its purpose is invariance under a nontrivially varied encoding set, so the model learns structure rather than surface. The right response to "deployment has a different format" is to make the encoding set varied enough that no format is privileged -- not to imitate one. Chasing the deployment format weakens the very invariance that makes format-independence possible.
+
+**A2 applies structurally, not only lexically.** Tool-call syntax, schema conventions and message-role markers are conventions -- they are *knowledge*, not capability. A family trained on them trains the thing the repertoire exists to exclude. That the leak is structural rather than lexical does not make it less of a leak.
+
+**And the artifacts do not survive.** Compaction is an artifact of current context-window economics. Tool-call serialization is a choice. A basis built against them would be dated on arrival, while §10 condition 3 judges coverage of *established practice*.
+
+*How it happened, since the mechanism is the reusable part:* a real and well-measured empirical result (the compaction dissociation) arrived attached to a specific engineering artifact, and I imported the artifact along with the finding. That is **exactly the "leave the ontology, take the apparatus" failure** every vein brief warns subagents about — committed by the curator, on the one vein where the source was contemporary engineering rather than academic work and therefore felt less like an ontology.
+
+*Fixed:* transcript encoding dropped and withdrawn from the harness handoff; `compaction-survival` abstracted to `evidence-withdrawal`, a knowledge-free reveal policy over any base family, with the compaction study retained as motivating evidence and its status as evidence-not-definition stated in the row. See [docs/11](11-deployment-format.md).
+
+*The general rule this yields:* **when a finding arrives attached to an artifact, extract the phenomenon and discard the artifact.** The test is whether the family would still mean something if the artifact vanished. "Survive compaction" fails that test; "survive the withdrawal of your evidence" passes it.
+
 ---
 
 ## Standing hazards — not yet observed, watch for
