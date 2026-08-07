@@ -50,3 +50,22 @@ Two consequences for us, and they point in the same direction:
 
 1. **Designing for A2 does not achieve A2.** A deliberately content-free figural test still leaked at scale. Our families are better placed — our symbols really are arbitrary tokens and relabelling really is an exact symmetry of the generator — but "we built it to be invariant" is the same argument Cattell made, and it was not sufficient.
 2. **Our A2 check is one method.** `permuted_alphabet_check` verifies equivariance under relabelling. It does not detect a difficulty asymmetry between *particular* alphabet choices, nor leakage through structure rather than symbols — and we already found one case where it passed on a family rendering its content as `PAD` and `BOS` tokens, because equivariance under the wrong alphabet is still equivariance. The psychometric experience is that bias detection is method-dependent and that a single method understates. **A second, independent A2 method is worth having**, and the radical/incidental test above is a natural candidate for it: an alphabet choice that moves difficulty is a radical wearing an incidental's clothes.
+
+
+---
+
+## First run, 2026-08-07 — two findings, neither of them a leak
+
+Implemented as `src/repertoire/a3_test.py` and run over all seven implemented families. The real difficulty proxy is the prequential structural content of Task Spec §4, which needs the harness; this uses **episode token length** as a placeholder, on the reasoning that it is difficulty-adjacent and is exactly the kind of quantity an encoding can move without anyone noticing.
+
+**Finding 1 — A3 was vacuous, and nothing else would have said so.** On the first run every family showed *zero variance across encodings*: identical episode lengths, every encoding, every family. Our encodings differed only in which token served as the separator and in the per-episode symbol assignment. Rows described them as "three renderings, structurally different"; they were three renderings differing by punctuation.
+
+A3 asks for a nontrivial `𝓔`. A family whose encodings are byte-identical in length and structure satisfies the letter of "sampled per episode" while testing nothing — and the transfer matrix would have reported encoding-invariance that was never at risk. **The test earned its place by finding that there was nothing to find.**
+
+**Finding 2 — after strengthening, the effect is large.** Adding a `slotted` rendering (each value tagged with its position) to the concept families produced an immediate, large effect: **209 tokens vs 113 at k=1, and 307 vs 163 at k=3 — the slotted encoding is roughly 85% longer.**
+
+That is a real exchangeability problem, not a cosmetic one. If episodes drawn from one family differ by 85% in length depending on a per-episode coin flip, then any per-episode loss average mixes an encoding effect into the family effect, and the §4 structural-content numbers that feed the matrix inherit it. **The harness must normalize** — per-token loss, or equal token budgets per episode — and this is a requirement it does not currently know it has.
+
+**A limitation to state plainly.** With token length as the proxy, the quantity is *deterministic given the encoding*, so within-encoding variance is zero and the F-ratio degenerates to infinity. This is therefore not a statistical test as implemented; it is an exact structural check that answers "do the encodings differ in the proxy at all". The likelihood-ratio form of the source procedure only becomes meaningful with a stochastic difficulty proxy, i.e. once loss replaces length. That swap is the remaining work; the scaffolding and the two findings above did not need it.
+
+**A third thing, found in passing.** Adding a field to `Encoding` silently broke the A2 permuted-alphabet check, because the check rebuilt the encoding field by field and the new field defaulted. It then failed an A2-compliant family, which looks exactly like a finding. Now fixed to copy-and-replace. Worth recording as a general hazard: **a check that breaks when the thing it checks gains a field is worse than no check**, because its failure is indistinguishable from a real result.

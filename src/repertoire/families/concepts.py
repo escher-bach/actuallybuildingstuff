@@ -36,7 +36,7 @@ dimensions were never interchangeable as published.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from random import Random
 
 from .. import vocab
@@ -53,6 +53,7 @@ class Encoding:
     value_symbols: tuple[int, ...]  # value index -> token
     category_symbols: tuple[int, int]  # category 0/1 -> token
     dimension_order: tuple[int, ...]  # permutation applied when rendering
+    positional: bool = False  # prefix each value with its slot marker
 
 
 @dataclass(frozen=True)
@@ -65,7 +66,9 @@ class Category:
     label: int  # 0 or 1
 
 
-def _sample_encoding(rng: Random, d: int, v: int, name: str, separator: int) -> Encoding:
+def _sample_encoding(
+    rng: Random, d: int, v: int, name: str, separator: int, positional: bool = False
+) -> Encoding:
     # Draw actual symbol TOKEN IDS, not indices 0..N_SYMBOLS. The raw range
     # collides with the control and structural tokens, so an encoding built from
     # it would render content as PAD/BOS/EQ and still pass an in-vocabulary
@@ -80,6 +83,7 @@ def _sample_encoding(rng: Random, d: int, v: int, name: str, separator: int) -> 
         value_symbols=tuple(pool[:v]),
         category_symbols=(pool[v], pool[v + 1]),
         dimension_order=tuple(order),
+        positional=positional,
     )
 
 
@@ -106,11 +110,23 @@ class _BooleanConceptFamily:
     # ---- encodings -------------------------------------------------------
 
     def sample_encoding(self, rng: Random) -> Encoding:
+        """Three renderings, and one of them is STRUCTURALLY different.
+
+        The first version of this sampled only a separator token, so every
+        encoding produced a byte-identical episode length and A3 was satisfied in
+        letter and not in substance -- the A3 leak test found zero variance to
+        measure. A `positional` rendering, which tags each value with its slot,
+        makes the surface genuinely differ rather than differ in punctuation.
+        """
         d, v = self.dimensions(getattr(self, "_k", 1)), self.n_values
-        name, sep = rng.choice(
-            [("tuple", vocab.STOI["COMMA"]), ("prose", vocab.STOI["COLON"])]
+        name, sep, positional = rng.choice(
+            [
+                ("tuple", vocab.STOI["COMMA"], False),
+                ("prose", vocab.STOI["COLON"], False),
+                ("slotted", vocab.STOI["COMMA"], True),
+            ]
         )
-        return _sample_encoding(rng, d, v, name, sep)
+        return _sample_encoding(rng, d, v, name, sep, positional)
 
     def render(self, encoding: Encoding, obj: object) -> list[int]:
         if isinstance(obj, Stimulus):
@@ -118,6 +134,12 @@ class _BooleanConceptFamily:
             for pos, dim in enumerate(encoding.dimension_order):
                 if pos:
                     out.append(encoding.separator)
+                if encoding.positional:
+                    # Slot marker: which position this value occupies. Digits,
+                    # not symbols -- positions are magnitudes, and the symbol
+                    # alphabet must stay semantically empty for A2.
+                    out += vocab.number(pos)
+                    out.append(vocab.STOI["COLON"])
                 out.append(encoding.value_symbols[obj.values[dim]])
             out.append(vocab.STOI["ARROW"])
             return out
@@ -172,15 +194,19 @@ class _BooleanConceptFamily:
         rng.shuffle(shuffled)
         perm = dict(zip(vocab.SYMBOL_IDS, shuffled))
 
-        enc2 = Encoding(
-            name=enc.name,
-            separator=enc.separator,
+        # Copy-and-replace rather than reconstructing field by field. An earlier
+        # version rebuilt Encoding by hand, so adding a `positional` field made
+        # the check silently compare a slotted rendering against a non-slotted
+        # one and fail an A2-compliant family. A check that breaks when the
+        # thing it checks gains a field is worse than no check, because the
+        # failure looks like a finding.
+        enc2 = replace(
+            enc,
             value_symbols=tuple(perm[s] for s in enc.value_symbols),
             category_symbols=(
                 perm[enc.category_symbols[0]],
                 perm[enc.category_symbols[1]],
             ),
-            dimension_order=enc.dimension_order,
         )
 
         for _ in range(64):
@@ -369,10 +395,14 @@ class BrunerConjunctionFamily(ConjunctionFamily):
 
     def sample_encoding(self, rng: Random) -> Encoding:
         d, v = self.dimensions(getattr(self, "_k", 1)), self.n_values
-        name, sep = rng.choice(
-            [("card", vocab.STOI["PIPE"]), ("listing", vocab.STOI["SEP"])]
+        name, sep, positional = rng.choice(
+            [
+                ("card", vocab.STOI["PIPE"], False),
+                ("listing", vocab.STOI["SEP"], False),
+                ("card-slotted", vocab.STOI["PIPE"], True),
+            ]
         )
-        return _sample_encoding(rng, d, v, name, sep)
+        return _sample_encoding(rng, d, v, name, sep, positional)
 
 
 # --------------------------------------------------------------------------
