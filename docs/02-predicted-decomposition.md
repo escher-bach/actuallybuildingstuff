@@ -94,3 +94,15 @@ A **Q-matrix** maps items to the latent skills they require. Diagnostic-classifi
 **What this changes here.** Nothing in §1–§2 — the predictions stand. But it raises the bar for §11 step 6 in a specific way: recovering the plants is necessary and **not sufficient**. A method can recover planted structure and still produce nonsense on the unplanted rows, which is precisely what the fraction-subtraction case shows. So the gate should include at least one sanity check of the kind that would have caught it — e.g. that a family measuring near-zero structural content does not come out attributed with capabilities. Cheap, and it is the check nobody ran.
 
 *(All figures curator-verified where reachable; see register/verification-log.md.)*
+
+
+**2026-08-07 — the predictions are now executable.** §1–§2 unchanged; this records a change in *form*, not in content.
+
+Everything above is prose, and prose about an unmeasured matrix has a known failure mode: not forgetting the prediction, but **reading the matrix and finding the prediction that fits**. §2.1 supplied the cautionary case — a fitted, converged capability model assigning 74–98% skill mastery to students who scored zero, produced by nobody being careless.
+
+`src/repertoire/expectations.py` states each expectation as an assertion a script runs against a matrix, with thresholds fixed now. Seven entries: four instrument checks that decide the §11 step 6 gate, one sanity check, and the structure-versus-paradigm prediction. Tests establish that **every one of them can fail** on constructed input — hazard 6 in `docs/07` is a check that cannot fail, and it has already been met twice in the A2 machinery, so it seemed worth not meeting a third time on the gate that decides whether the programme proceeds.
+
+Two design decisions worth stating because they could be quietly reversed later:
+
+- **Only instrument checks are blocking.** The structure-versus-paradigm prediction and the SHJ prerequisite ordering are predictions *about the world*; they are supposed to be able to fail, and a failure there is a finding rather than a stop. Conflating "our instrument works" with "our guess was right" is how a gate stops being a gate.
+- **A missing family scores `UNTESTABLE`, never `PASS`.** Silently passing on absent data is the other way a gate stops being a gate, and it is the more likely one, since the candidate set is incomplete.
