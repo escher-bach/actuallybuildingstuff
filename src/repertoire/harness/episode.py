@@ -78,6 +78,7 @@ class Channel(IntEnum):
     ANSWER = 3  # supervised
     TRACE = 4  # supervised where the family emits one (section 1.2)
     ORACLE_ECHO = 5  # never supervised; see note in `_emit_trial`
+    OBSERVATION = 6  # an answer given as free evidence, deliberately not scored
 
 
 class QuerySource(str, Enum):
@@ -98,8 +99,9 @@ class EpisodeSpec:
     for it. Do not let families set it."
     """
 
-    T: int = 8
+    T: int = 8  # SCORED trials; n_free comes before these
     reveal: float = 0.0
+    n_free: int = 0
     query_source: QuerySource = QuerySource.SAMPLED
     target_mode: TargetMode = TargetMode.REALIZED
     emit_trace: bool = False
@@ -109,12 +111,18 @@ class EpisodeSpec:
             raise ValueError("reveal is a fraction of theta stated, in [0, 1]")
         if self.T < 1:
             raise ValueError("T must be at least 1")
+        if self.n_free < 0:
+            raise ValueError("n_free is a count of unscored leading observations")
+
+    @property
+    def total_trials(self) -> int:
+        return self.n_free + self.T
 
     @property
     def key(self) -> str:
         """Stable identity, used in seeding so two specs never collide."""
         return (
-            f"T{self.T}/r{self.reveal:.6f}/{self.query_source.value}"
+            f"T{self.T}/f{self.n_free}/r{self.reveal:.6f}/{self.query_source.value}"
             f"/{self.target_mode.value}/{'tr' if self.emit_trace else 'no'}"
         )
 
@@ -186,10 +194,12 @@ class Episode:
                 raise AssertionError(f"target {self.targets[i]} at {i} is outside the vocabulary")
         for i, sup in enumerate(self.supervised):
             ch = self.channel[i]
-            if sup and ch in (Channel.STRUCTURAL, Channel.PREAMBLE, Channel.ORACLE_ECHO):
+            if sup and ch in (Channel.STRUCTURAL, Channel.PREAMBLE, Channel.ORACLE_ECHO,
+                              Channel.OBSERVATION):
                 raise AssertionError(
                     f"position {i} is supervised on channel {ch.name}; section 7 says "
-                    "preamble and oracle-echo tokens are never supervised"
+                    "preamble and oracle-echo tokens are never supervised, and a free "
+                    "observation is evidence rather than a target"
                 )
             if not sup and ch is Channel.ANSWER:
                 raise AssertionError(f"answer token at {i} is not supervised")
@@ -295,7 +305,7 @@ def build_episode(
     ep = Episode(
         tokens=[], targets=[], supervised=[], channel=[], trial_index=[],
         family=family.name, k=k, seed=seed, spec_key=spec.key,
-        encoding=getattr(enc, "name", "default"), n_trials=spec.T,
+        encoding=getattr(enc, "name", "default"), n_trials=spec.total_trials,
     )
 
     _emit(ep, [vocab.BOS], Channel.STRUCTURAL, -1)
@@ -306,9 +316,10 @@ def build_episode(
         _emit(ep, [vocab.SEP], Channel.STRUCTURAL, -1)
 
     history: list = []
-    for t in range(spec.T):
-        _emit_trial(ep, family, theta, enc, k, spec, history, rng, t, query_fn)
-        if t + 1 < spec.T:
+    for t in range(spec.total_trials):
+        _emit_trial(ep, family, theta, enc, k, spec, history, rng, t, query_fn,
+                    scored=t >= spec.n_free)
+        if t + 1 < spec.total_trials:
             _emit(ep, [vocab.SEP], Channel.STRUCTURAL, -1)
 
     _emit(ep, [vocab.EOS], Channel.STRUCTURAL, -1)
@@ -332,7 +343,8 @@ def _emit(ep: Episode, tokens: Sequence[int], channel: Channel, trial: int,
     ep.trial_index.extend([trial] * len(tokens))
 
 
-def _emit_trial(ep, family, theta, enc, k, spec, history, rng, t, query_fn) -> None:
+def _emit_trial(ep, family, theta, enc, k, spec, history, rng, t, query_fn,
+                scored: bool = True) -> None:
     """One trial: the query, then the oracle's answer, then optionally the trace.
 
     On ORACLE_ECHO, since section 7 names it and nothing defines it: the only
@@ -345,7 +357,12 @@ def _emit_trial(ep, family, theta, enc, k, spec, history, rng, t, query_fn) -> N
     positions in an autoregressive stream, and section 2.1's "oracle's emitted
     tokens masked" cannot mean those or L2 would have no answer channel at all.
     """
-    if spec.query_source is QuerySource.MODEL:
+    # Free observations are always sampled, never model-chosen, whatever the
+    # spec says: they are evidence handed to the model, and asking it to choose
+    # queries it will not be scored on would make the dial move two things at
+    # once -- how much evidence precedes the scored trial, and how good the
+    # model happens to be at choosing evidence at that moment.
+    if scored and spec.query_source is QuerySource.MODEL:
         query, emitted = query_fn(list(ep.tokens), list(history), enc)
         _emit(ep, [vocab.ASK], Channel.ORACLE_ECHO, t)
         teacher = family.teacher_query(theta, history)
@@ -374,7 +391,15 @@ def _emit_trial(ep, family, theta, enc, k, spec, history, rng, t, query_fn) -> N
     answer = draw_answer(family, theta, query, rng)
     answer_tokens = family.render(enc, answer)
 
-    if spec.target_mode is TargetMode.POSTERIOR:
+    if not scored:
+        # A free observation: rendered into the context as evidence, and not
+        # scored. This is the second dial section 8 step 5 names -- "varying how
+        # many observations precede the query" -- and it is the *generic* one,
+        # since it asks nothing of a family that section 7 does not already
+        # provide. It also holds the supervised-token count constant across the
+        # whole sweep, which the preamble dial cannot promise for every family.
+        _emit(ep, answer_tokens, Channel.OBSERVATION, t)
+    elif spec.target_mode is TargetMode.POSTERIOR:
         dist = _token_posterior(family, enc, history, query, k, answer_tokens)
         start = len(ep.tokens)
         _emit(ep, answer_tokens, Channel.ANSWER, t, supervised=True)
@@ -382,7 +407,7 @@ def _emit_trial(ep, family, theta, enc, k, spec, history, rng, t, query_fn) -> N
     else:
         _emit(ep, answer_tokens, Channel.ANSWER, t, supervised=True)
 
-    if spec.emit_trace and getattr(family, "emits_trace", False):
+    if scored and spec.emit_trace and getattr(family, "emits_trace", False):
         steps = family.trace(theta, query)
         for step in steps or []:
             _emit(ep, [vocab.STEP], Channel.STRUCTURAL, t)

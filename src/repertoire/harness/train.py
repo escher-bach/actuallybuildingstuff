@@ -385,7 +385,7 @@ def train_run(
         # place in the harness where the order is load-bearing.
         rec.losses.append(float(parts.total.detach()))
         rec.supervised_tokens.append(int(parts.mask.sum()))
-        rec.per_trial_history.append(per_trial_means(parts, spec.T))
+        rec.per_trial_history.append(per_trial_means(parts, spec.total_trials))
         rec.malformed_rate.append(
             sum(e.malformed_queries for e in episodes) / (len(episodes) * spec.T)
         )

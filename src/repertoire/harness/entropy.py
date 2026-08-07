@@ -41,7 +41,7 @@ from __future__ import annotations
 
 import math
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from random import Random
 from typing import Any
 
@@ -193,6 +193,20 @@ class EntropyReport:
     a genuine **upper bound**, so a final loss below `rule` is still a leak and
     still says so.  The band between them is honest ignorance, and it narrows
     within an episode as the encoding gets pinned down by use.
+
+    **`theta_entropy` is a third quantity and it is not redundant.**  Task Spec
+    section 2 defines the dial as the residual entropy of the *answer*, and for
+    most families that tracks how determined theta is.  For a **balanced** family
+    it does not, and the gap is enormous: measured on parity, H(y|context) sits
+    at log 2 across the first five free observations while the surviving
+    hypothesis set falls from 297 to 19.  The answer to a random query is a coin
+    flip however well theta is known, right up until theta is known exactly.
+
+    That is the same property docs/03 finding 1 is about, arriving in the x-axis
+    instead of in the target.  A sweep plotted against `rule` alone would report
+    that nothing changed over the half of the dial where almost everything
+    changed, so both are logged and a divergence between them is a fact about the
+    family rather than noise.
     """
 
     rule: float  # nats/answer -- exact, and the sweep's x-axis
@@ -202,6 +216,10 @@ class EntropyReport:
     max_entropy: float
     n_episodes: int
     mean_alive_theta: float
+    theta_entropy: float = 0.0  # H(theta | context), nats -- see the note below
+    theta_per_trial: list[float] = field(default_factory=list)
+    n_free: int = 0  # the dial settings this was measured at, carried with it
+    reveal: float = 0.0
 
     @property
     def floor_lower(self) -> float:
@@ -248,8 +266,12 @@ def measure_residual_entropy(
     from .episode import build_reveal, episode_seed  # episode imports nothing here
     from .protocol import draw_answer
 
+    # Measured at the SCORED trials only. The free observations of the second
+    # dial are context, not targets, so their entropy is not what the loss sees
+    # -- averaging them in would report an x-axis for an episode nobody trains on.
     rule_sums = [0.0] * spec.T
     notation_sums = [0.0] * spec.T
+    theta_sums = [0.0] * spec.T
     alive_total = 0.0
     max_h = 0.0
 
@@ -263,15 +285,18 @@ def measure_residual_entropy(
         seen_tokens: set[int] = set(reveal.tokens)
         history: list = []
 
-        for t in range(spec.T):
+        for t in range(spec.total_trials):
             query = family.sample_query(theta, history, rng)
             seen_tokens.update(family.render(enc, query))
 
-            dist = bs.answer_distribution(family, query)
-            rule_sums[t] += -sum(p * math.log(p) for p in dist.values() if p > 0)
-            notation_sums[t] += _notation_bound(family, enc, dist, seen_tokens)
-            alive_total += bs.n_alive
-            max_h = max(max_h, math.log(max(2, len(dist))))
+            if t >= spec.n_free:
+                s = t - spec.n_free
+                dist = bs.answer_distribution(family, query)
+                rule_sums[s] += -sum(p * math.log(p) for p in dist.values() if p > 0)
+                notation_sums[s] += _notation_bound(family, enc, dist, seen_tokens)
+                theta_sums[s] += bs.entropy_of_theta()
+                alive_total += bs.n_alive
+                max_h = max(max_h, math.log(max(2, len(dist))))
 
             answer = draw_answer(family, theta, query, rng)
             seen_tokens.update(family.render(enc, answer))
@@ -280,6 +305,7 @@ def measure_residual_entropy(
 
     rule_per_trial = [s / n_episodes for s in rule_sums]
     notation_per_trial = [s / n_episodes for s in notation_sums]
+    theta_per_trial = [s / n_episodes for s in theta_sums]
     return EntropyReport(
         rule=sum(rule_per_trial) / len(rule_per_trial),
         rule_per_trial=rule_per_trial,
@@ -288,6 +314,10 @@ def measure_residual_entropy(
         max_entropy=max_h,
         n_episodes=n_episodes,
         mean_alive_theta=alive_total / (n_episodes * spec.T),
+        theta_entropy=sum(theta_per_trial) / len(theta_per_trial),
+        theta_per_trial=theta_per_trial,
+        n_free=spec.n_free,
+        reveal=spec.reveal,
     )
 
 
