@@ -147,3 +147,31 @@ sufficient.
 
 Most accurate review of the six. Every figure checked came back exact.
 """
+
+[[entry]]
+n = 6
+date = "2026-08-07"
+source = "Vein 2.6 -- practice traces: protocol analysis, problem behaviour graphs, episode coding, cognitive task analysis, worked examples / fading / expertise reversal, Polya and Lakatos"
+vein = "2.6"
+rows = ["backtrack-recovery"]
+note = """
++2 entries, and one of them is a different KIND of thing. backtrack-splice is an
+operation the register lacked -- it had forward-search primitives and nothing for
+undoing a step. epistemic-status-tagging is the first entry that is not a
+computation at all but a trace-level act, so primitives.toml now records a `kind`
+and the saturation curve must be read per kind or its totals mislead.
+
+The vein's biggest result is a correction to the Task Spec rather than a family.
+Section 1.2's default -- emit traces at low k, thin as k rises -- cites a
+literature that fades guidance against demonstrated LEARNER COMPETENCE over
+training, never against a static task-difficulty knob, and that same literature
+says fading only has teeth when intrinsic load is HIGH. So the direction is
+questionable on the cited literature's own terms. Written up in
+docs/05-trace-thinning.md with a two-axis repair.
+
+Two gates NOT cleared, recorded rather than papered over. Schoenfeld's episode
+categories are corroborated but no inter-annotator reliability figure could be
+traced to a primary source -- and section 11 step 3's gate IS inter-annotator
+agreement. The problem-behaviour-graph notation is LEAD-only after repeated
+fetch failures. Both block the annotation half of this vein.
+"""

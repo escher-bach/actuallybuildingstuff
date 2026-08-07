@@ -1,0 +1,122 @@
+id = "backtrack-recovery"
+title = "Backtrack recovery -- detect and recover from a spliced wrong branch"
+vein = "2.6"
+their_term = "problem behaviour graph revisit move; backtracking; error recovery"
+substrate = "derivation traces over any backward-generable base family; structural confusion set"
+status = "translated"
+levels = ["L0", "L1", "L2"]
+complexity_modes = ["serial_depth", "description_length"]
+contents = ["state", "selection", "composition"]
+asymmetries = ["corrupt/localize"]
+plant_role = "none"
+plant_pair = ""
+primitives = [
+    "backtrack-splice",
+    "epistemic-status-tagging",
+    "constraint-propagation",
+    "structure-walk-query",
+    "hypothesis-elimination",
+]
+predicted_block = "the problem-solving literature groups by episode type (read/analyze/explore/plan/implement/verify) -- a taxonomy of what a solver is DOING at a moment, on human traces. It would predict backtracking clusters with exploration. We have no reason to expect that survives."
+notes = """
+The row this whole vein existed to produce, and the one that lands on the
+programme's stated priority: Task Spec section 5 names recovery from error as
+what a text corpus teaches worst, because finished artifacts delete the branches
+that were abandoned.
+
+**The A1 question was real and the answer is a genuine split.** Backtracking is
+what a *searcher* does, and we generate backward from a known answer -- so it
+was not obvious this could be manufactured at all without a solver on the
+generation path. The literature gives a clean two-sided answer:
+
+- Generating backtracks by running an actual search and recording its failures
+  is NOT A1-compliant. It puts a solver on the generation path by construction,
+  and generation cost then tracks difficulty, which is the exact coupling A1
+  exists to forbid.
+- Taking a known-correct derivation, splicing in a wrong continuation drawn from
+  a small structural confusion set, marking the divergence, and resuming the true
+  path IS A1-compliant. O(1) given theta and its already-generable correct trace,
+  plus a fixed corruption model.
+
+**The cost of that admissibility, stated rather than buried:** we get
+*manufactured* backtracks, not naturalistic ones. A real searcher backtracks
+because of its own uncertainty; ours backtracks because we inserted a wrong
+branch. Whether that gap matters is an empirical question for downstream
+evaluation and cannot be settled at generation time. It is the same trade the
+corrupt/localize rows make -- we do not corrupt the way nature corrupts either --
+and it is worth naming because 'we generated error recovery' is a claim that
+invites more credit than the construction earns.
+
+**This is corrupt/localize wearing a different coat**, and that is a point in its
+favour rather than a redundancy: the mutation, circuit, proof and plan rows
+corrupt an artifact and ask where the fault is; this corrupts a *derivation
+process* and asks where it went wrong. If the matrix puts them all in one block,
+that is a clean result about corrupt/localize being one capability across
+substrates including process. If it separates process from artifact, that is more
+interesting still.
+"""
+
+[[sources]]
+citation = "Sweller, Ayres & Kalyuga, 'The Guidance Fading Effect', ch. 13 of Cognitive Load Theory (Springer 2011) -- backward vs forward fading procedures, the intrinsic-load precondition, the staged adaptive schedule. Read in full body text pp. 171-182 by the reviewer"
+year = 2011
+kind = "book"
+url = ""
+verified = false
+
+[[sources]]
+citation = "Kalyuga, Ayres, Chandler & Sweller, 'The Expertise Reversal Effect', Educational Psychologist 38(1):23-31, 2003. Curator-checked 2026-08-07: citation exact including volume, pages and DOI 10.1207/S15326985EP3801_4, and the effect is as described -- a procedure effective for novices becomes ineffective for more knowledgeable learners"
+year = 2003
+kind = "paper"
+url = "https://doi.org/10.1207/S15326985EP3801_4"
+verified = true
+
+[form]
+theta = "The base family's hidden rule, PLUS the splice: which step the false branch diverges at, which wrong operator was applied, and how many steps the false branch runs before the backtrack marker."
+p_theta = "Sample the base family's theta and its correct derivation. Pick a splice point. Draw a wrong operator from a small confusion set attached structurally to the true operator at that step -- swap operands, off-by-one index, apply the operator matching the surface form but not the constraint. Run it for a bounded number of steps, emit a backtrack marker, resume the true path."
+query_space = "the base family's queries, plus -- for the L2 variant -- 'name the step at which the derivation went wrong'"
+oracle = "The base family's oracle for the answer channel; for the divergence channel, compare the model's named step against the logged splice point. Both are lookups against something the generator already holds."
+encodings = [
+    "structured backtrack token marking the divergence",
+    "natural-language span in place of the marker",
+    "silent rewind -- no marker at all, the false branch simply stops and the true path resumes",
+]
+k_semantics = "Base family's k, plus confusion-set subtlety and false-branch length. The third encoding above is the interesting knob: with no marker, detecting the backtrack is itself part of the task."
+teacher_query = "One-pass given theta and the splice log: ask about the step immediately after the divergence, where the false and true paths first disagree."
+posterior = "Over splice points, enumerable -- it is linear in derivation length times confusion-set size. L3 is plausible and not claimed, because the base family's own posterior would have to compose with it and that was not worked out."
+trace = "This family IS a trace family: the derivation with its abandoned branch is the object. Thinning it is exactly the question docs/05-trace-thinning.md addresses, and the abandoned branch is the last thing that should be thinned since it is the content."
+stochastic = false
+episode_length = "One derivation, plus enough queries to locate the divergence under the L2 variant."
+
+[checks.theta_separable]
+verdict = "pass"
+reason = "The splice is applied by us and logged, so it is a hidden parameter by construction rather than by recovery."
+
+[checks.A1]
+verdict = "pass"
+reason = "O(1) given the base family's correct derivation plus a fixed corruption model. Passes only under the spliced construction; the search-simulated alternative fails outright, and the distinction is the vein's main methodological result."
+repair = "Not needed, but recorded: if naturalistic backtracks are ever wanted, they cost a solver on the generation path and therefore A1. That is a trade to make deliberately, not to discover."
+
+[checks.A2]
+verdict = "pass"
+reason = "Holds if the confusion set is defined structurally -- index, argument-order, operator-substitution perturbations -- rather than by symbol content, and if the base family passes A2. The structural definition is not optional; a confusion set keyed to content would smuggle semantics in through the error model, which is the one place nobody would look for it."
+
+[checks.A3]
+verdict = "pass"
+reason = "Three renderings, and the third is structurally different rather than punctuational -- removing the marker entirely changes what the task is. Note the lesson from the A3 leak test: encodings that differ only in which token marks the divergence would be near-vacuous."
+
+[checks.A4]
+verdict = "repairable"
+reason = "Adds nothing by itself. If the query only asks for the final answer, the false branch is a distractor the solver can ignore, and the family is the base family with noise."
+repair = "The query must require identifying WHERE or WHY the divergence occurred, and confusion-set subtlety must scale with k so distinguishing the true step from a near-miss requires modelling the rule rather than pattern-matching. Without both, this is not a family, it is a decoration on one."
+
+[checks.A5]
+verdict = "pass"
+reason = "Contributes backtrack-splice, which fills a real gap -- the register had forward-search primitives and no operation for undoing a step. Also contributes epistemic-status-tagging, which is the first entry in the vocabulary that is not a computation; see its falsifier."
+
+[checks.A6]
+verdict = "pass"
+reason = "One comparison per query; a named step outside the derivation returns a fixed error token."
+
+[checks.A7]
+verdict = "pass"
+reason = "One-pass given theta and the splice log. The teacher knows where the divergence is and does not have to find it -- the same teacher advantage every other row in the register runs on."

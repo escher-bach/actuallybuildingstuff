@@ -18,7 +18,16 @@
 # hypothesis, and hiding the difference is how a vocabulary quietly becomes a
 # theory nobody agreed to.
 #
-# STATE, after 6 sources: 12 primitives. Vein 2.2 proposed 6 and yielded 3 new.
+# STATE, after 8 sources: 14 entries -- but see `kind` below: 13 operations and
+# 1 trace-act, and the two are not the same kind of thing.
+#
+# `kind` defaults to "operation": something a hand-written solver COMPUTES.
+# Vein 2.6 introduced the first entry that is not a computation at all but a
+# trace-level speech-act -- labelling a step's epistemic status. Mixing the two
+# kinds in one saturation count would make the curve's numbers non-comparable
+# across veins, so the kind is recorded and the curve should be read per kind.
+#
+# Earlier state: after 6 sources, 12 primitives. Vein 2.2 proposed 6 and yielded 3 new.
 # Vein 2.5 (four substrates: programs, circuits, proofs, plans) yielded ZERO new
 # -- every solver-side operation in mutation testing, model-based diagnosis,
 # formal proof checking and plan validation was expressible in the existing set.
@@ -226,4 +235,65 @@ property that matters for A7, so the temptation to merge them is real.
 Merge them if no family ever turns out to admit one and not the other. As of
 vein 2.5 the split is still doing work: parity and plan-scanning admit fixed
 schedules, decision trees and circuits admit walks and no fixed schedule.
+"""
+
+[backtrack-splice]
+gloss = "Abandon an in-progress derivation branch after having committed to it for one or more steps, and resume from the last verified-good state. Operates over ACTION SEQUENCES within one derivation, not over hypotheses about theta."
+kind = "operation"
+first_seen = "backtrack-recovery"
+aliases = [
+    "backjump",
+    "revisit move (problem behaviour graph)",
+    "abandon approach",
+]
+falsifier = """
+Accepted as distinct from belief-state-reset, which is the nearest neighbour and
+the fold to worry about. The difference is what each operates over:
+belief-state-reset replaces a converged hypothesis ABOUT THETA when evidence
+contradicts it; backtrack-splice discards a partial derivation and rewinds to a
+saved state, while the hypothesis about theta may be untouched. A solver can
+backtrack out of a bad computation path without revising anything it believes
+about the rule, and can revise its belief about the rule without any derivation
+in progress to rewind.
+
+Note the register's forward-search primitives (structure-walk-query,
+constraint-propagation) had no companion for undoing a step. That gap is exactly
+what this vein was chartered to find: an operation a finished solution never
+shows because finished solutions do not contain the branches that were abandoned.
+
+Fold it into belief-state-reset if families requiring one always require the
+other. The backtrack-recovery family is built so they can be separated.
+"""
+
+[epistemic-status-tagging]
+gloss = "Annotate a step inline with its epistemic status -- derived, guessed, uncertain-among-S, assumption-unverified, evidence-rejected-as-malformed -- separately from the computation that produced it."
+kind = "trace-act"
+first_seen = "backtrack-recovery"
+aliases = [
+    "declare uncertainty",
+    "notice ambiguity",
+    "hedge",
+    "monster-barring (Lakatos) -- as the evidence-rejected label",
+]
+falsifier = """
+THE FIRST ENTRY IN THIS FILE THAT IS NOT A COMPUTATION, and that is why it
+carries kind = "trace-act". Everything else here is something a solver computes.
+This is a label placed on a step whose computation is already covered elsewhere:
+a guess still selects by majority-predict or a prior sample, an ambiguity notice
+still precedes posterior-enumeration. The only new content is the declaration.
+
+Accepted anyway, for a reason specific to this programme rather than to
+tidiness. Task Spec section 5 names calibration and declared uncertainty as
+things a text corpus teaches worst and this repertoire exists to supply; a
+vocabulary that can express the computation of a posterior but not the ACT of
+declaring it cannot describe the target behaviour. The vein chartered to find
+"what the human did that the program did not need" found exactly that, and
+refusing it because it is not a computation would be discarding the vein's
+central yield on a technicality of our own bookkeeping.
+
+Two consequences to keep visible. First, the saturation curve now counts two
+kinds of thing; report it per kind or the totals mislead. Second, if the matrix
+shows families differing only in whether they demand this tag do not separate,
+then the tag is a formatting convention rather than a capability, and it should
+be demoted out of this file to an annotation convention on the harness side.
 """

@@ -64,6 +64,21 @@ The §2.3 review was notably more careful than §2.5: it marked most of its own 
 
 ---
 
+## Pass 4 — 2026-08-07, vein §2.6
+
+| Source | Claim checked | Outcome |
+|---|---|---|
+| Kalyuga, Ayres, Chandler & Sweller, "The Expertise Reversal Effect" | Citation and the effect itself | ✅ **Exact** — *Educational Psychologist* 38(1):23–31, 2003, DOI 10.1207/S15326985EP3801_4, and the effect is as described: a procedure effective for novices becomes ineffective for more knowledgeable learners |
+
+The guidance-fading chapter was read in full body text by the reviewer with page-level quotes but is a book chapter behind no reachable open copy; left `verified = false` on the row rather than promoted on the strength of quotation.
+
+**Two claimed gates this vein could NOT clear, and both are recorded as failures rather than smoothed:**
+
+- **Schoenfeld's episode-coding inter-annotator agreement.** The six/seven categories are corroborated across two independently-read secondary sources, but **no reliability figure could be traced to a primary source.** Repertoire Spec §11 step 3's gate is literally "inter-annotator agreement holds" — so the gate cannot currently be evaluated, let alone passed. This is exactly the kind of widely-repeated-but-untraceable claim the brief warned about, and the reviewer flagged it rather than supplying a plausible number.
+- **The problem behaviour graph notation.** Several primary and archival sources returned 403s or connection failures, so the notation — which is the closest existing data structure to what we want to generate — is LEAD-only and low-confidence. Do not build on it without the primary text.
+
+---
+
 ## Consequences applied
 
 - `mutant-localization.toml` — the 26.5% claim removed and replaced with the paper's actual figures. **This materially weakens the row's A1 argument** and the correction is recorded in the row itself, not silently swapped: unit-level FEP being ~0% means the "corruption might be invisible" hazard is much smaller in the regime we would actually train in.
