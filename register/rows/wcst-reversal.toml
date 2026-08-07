@@ -19,6 +19,14 @@ primitives = [
 ]
 predicted_block = "the clinical literature groups these by executive-function constructs (perseveration, set-shifting) measured on populations. That is an ontology about people, not about tasks, and it makes no prediction we should import."
 notes = """
+**BLOCKED from implementation** by the paradigm coverage check (docs/06). The
+formalism assumes theta is sampled once and holds; this family violates that,
+and the row's current fix -- folding the switch schedule into theta -- restores
+A1 but is a workaround: it makes theta an object with internal temporal
+structure that the level wrappers have no way to read. Implementing it now would
+bake the workaround in. Blocked on a validity-duration declaration, which is
+itself deliberately deferred until after the Task Spec section 8 step 5 sweep.
+
 **The row that broke the primitive vocabulary, which is why it is worth having.**
 
 Every primitive in the register assumed MONOTONE belief refinement:
