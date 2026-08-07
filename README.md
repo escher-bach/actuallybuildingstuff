@@ -31,6 +31,7 @@ docs/03-interface-findings.md     What implementing against the §7 protocol tau
 docs/04-radical-incidental.md     The empirical test for k vs e, and what its first run found
 docs/05-trace-thinning.md         Why the Task Spec's trace-thinning default may be backwards
 docs/06-paradigm-coverage.md      §11 step 4: which established paradigms fall out, and the two axes missing
+docs/07-hazards.md                HAZARD REGISTER. Everything that went, or nearly went, silently wrong
 register/README.md                Row lifecycle and the three rules that are expensive to skip
 register/rows/*.toml              D1. One prior family per file
 register/primitives.toml          Controlled vocabulary. Declare before use
@@ -57,5 +58,7 @@ PYTHONPATH=src python -m repertoire.register validate
 **The seal is real.** [docs/00-heldout-partition.md](docs/00-heldout-partition.md) lists domains and sub-literatures that must not be read until the basis is frozen. Reading one does not invalidate the project, but *failing to log it* makes a coverage claim false without anyone knowing. Log the contamination.
 
 **The prediction is pre-registered.** [docs/02-predicted-decomposition.md](docs/02-predicted-decomposition.md) above its §5 is append-only. The most valuable result available here is a mismatch between the field's inherited taxonomy and the measured blocks, and it evaporates if the prediction is written after the matrix.
+
+**Read the hazard register before adding a family.** [docs/07-hazards.md](docs/07-hazards.md) lists fourteen things that have gone wrong, most of them silently — a plant that stopped being a plant, a calibration exemplar that degraded into L1, an A2 check that passed on content rendered as `PAD` tokens. The severity column ranks by *how likely a failure is to pass unnoticed*, not by how bad it is. Loud failures are cheap.
 
 **Rejections are output.** A row that says "fails A4 at published 4×4, admissible at 12×12 or composed with a modulus family" is worth more than a row that says pass. The reasons cluster, and the clusters are informative about the interface itself.
