@@ -56,11 +56,23 @@ Corollary: `teacher_query` also takes no rng, so `q*` must be a deterministic fu
 
 §7 makes `T` a harness parameter. Do not let families set it. The register carries teaching-dimension bounds where the literature supplies them — e.g. the generic version-space family notes `max{t₀, log₂|Θ|} ≤ #MQ ≤ t₀·log₂|Θ|`, which is a principled way to set `T` rather than guessing.
 
-### 2.5 Two axes the parametrization is missing — do not build them yet
+### 2.5 A format decision that is yours, and that I am blocked on
+
+The model this curriculum trains will be **deployed inside an agentic harness**. That makes the harness the deployment input distribution, and it makes our clean `query → answer` episodes structurally unlike what a deployed model reads. `docs/11` sets out why the mismatch is confounded with the thesis rather than merely unrealistic: if a capability is installed in a format deployment never presents, transfer can fail *for a format reason* and be recorded as the capability claim failing.
+
+The repertoire response is to add a **transcript encoding** — one member of `𝓔` that renders an episode as a tool-call trajectory (schemas, results, errors) rather than as `q → a` pairs. I have not built it, because it depends on decisions that are yours:
+
+- **How is a tool call tokenized**, and does it use the shared vocabulary or a structured segment?
+- **What does the loss mask do over tool-result segments?** §7 says oracle-echo tokens are never supervised. In a transcript rendering, is a tool *result* an oracle echo?
+- **Does an error response get supervised** as an answer, or masked as an echo? A6 makes well-formed errors a recovery lesson, which argues for supervising the model's *response* to them but not the error itself.
+
+Tell me in `docs/10-harness-findings.md` and I will build the encoding to match. Doing it before you decide means doing it twice.
+
+### 2.6 Two axes the parametrization is missing — do not build them yet
 
 `docs/06` found three of ten established paradigms do not fall out of the formalism, failing in exactly two ways: **θ is assumed sampled once and to hold** (violated by piecewise-stationary and drifting rules), and **L2 assumes querying is free** (violated wherever the query is the scored action).
 
-Both repairs are small — a validity-duration declaration on `P_Θ`, and a per-family flag on whether the query channel is scored, which is a loss-mask change. **Deliberately deferred until after your sweep**, because §8 step 5 expects the four named levels to be cut in the wrong places, and adding axes before it runs would be designing the answer. They are pre-registered in `docs/02` §5 so they can be *scored against* the sweep. If the sweep relocates the cuts, come back to them.
+Both repairs are small — a validity-duration declaration on `P_Θ`, and a per-family flag on whether the query channel is scored, which is a loss-mask change. Note that under §2.5 above **both are the normal case in a harness**, not edge cases: issuing a tool call *is* the action and has cost, and the world changes under a long-running agent. That strengthens the eventual case for them considerably. **Still deliberately deferred until after your sweep**, because §8 step 5 expects the four named levels to be cut in the wrong places, and adding axes before it runs would be designing the answer. They are pre-registered in `docs/02` §5 so they can be *scored against* the sweep. If the sweep relocates the cuts, come back to them.
 
 ---
 

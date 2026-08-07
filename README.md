@@ -34,6 +34,7 @@ docs/06-paradigm-coverage.md      §11 step 4: which established paradigms fall 
 docs/07-hazards.md                HAZARD REGISTER. Everything that went, or nearly went, silently wrong
 docs/08-a4-guarantee.md           Why A4 cannot be certified at our scale, only measured
 docs/09-harness-handoff.md        BRIEF for the separate harness session (Task Spec §8 steps 1, 2, 5)
+docs/11-deployment-format.md      Why the harness is the deployment distribution, and what that requires
 register/README.md                Row lifecycle and the three rules that are expensive to skip
 register/rows/*.toml              D1. One prior family per file
 register/primitives.toml          Controlled vocabulary. Declare before use

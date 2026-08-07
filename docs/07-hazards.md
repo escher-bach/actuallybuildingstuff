@@ -217,6 +217,18 @@ Found in the wild by `closure_report`, not contrived for the example.
 
 *Honest limit, stated in the code:* sampling cannot prove coherence, only fail to catch incoherence. A composite that passes has merely not been caught being vacuous.
 
+## 23. Train/deploy format mismatch, confounded with the thesis
+
+**Silent, and it would be misattributed.** Every episode the register manufactures has one shape: optional preamble, then alternating query/answer pairs, one family, nothing else in context. The model this curriculum trains will be deployed **inside an agentic harness**, where the context is a system prompt, tool schemas, prior turns, tool results, file contents, error strings, truncated output, permission denials, and periodically a lossy summary standing in for what no longer fits.
+
+*Why silent:* Task Spec section 9's claim is that capability is manufacturable and transfers. If capability is installed in a format structurally unlike the deployment format, **transfer can fail for a format reason** -- and from the outside that is indistinguishable from the capability claim being false. The programme would record a negative on its central thesis when what happened is that the capability was installed in a shape deployment never presents.
+
+*The confound is the hazard, not the unrealism.* Unrealistic episodes would be fine if realism were orthogonal to what is being measured. Here it is not.
+
+*Status:* recorded in [docs/11](11-deployment-format.md) with three motivated family templates (compaction survival, distractor tolerance, malformed-response recovery) and a consequence for A3 -- if the harness is the deployment format, at least one encoding should BE that format, which turns A3 from purely an invariance test into partly a format-coverage requirement.
+
+*Not acted on yet, deliberately:* a transcript encoding interacts with harness decisions not yet made (loss masking over tool-result segments, tokenization of a tool call), so building it now means building it twice.
+
 ---
 
 ## Standing hazards — not yet observed, watch for
