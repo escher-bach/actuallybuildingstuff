@@ -121,3 +121,25 @@ During the §2.4 pass the reviewing agent fetched a paper on "quiet planting" wh
 *Damage:* the graph-colouring half of this sealed sub-area is now substantially compromised as held-out evidence. The quasigroup/Latin-square half remains clean and is the part that still carries the test.
 
 *Assessment, recorded rather than deferred:* two of three contaminations have hit this one sub-area, which was also the most adjacent to the material being reviewed. That is not bad luck — **adjacency predicts contamination**, and sealing a sub-area that sits inside a vein being actively read is close to unenforceable. The lesson for any future seal is to prefer held-out items that are *topically distant* from what will be read, accepting that this makes them weaker tests, over items that are adjacent and therefore strong tests that will not survive contact.
+
+---
+
+**2026-08-07 — BOUNDARY CALL, not an unsealing. Agentic harness research (new vein §2.7).**
+
+A new vein was proposed: contemporary agentic harness engineering, reasoning-model scaffolds, and the surrounding evaluation literature. Checked against the seal before any source was opened.
+
+**Judged IN SCOPE.** Two seals sit adjacent and neither covers it:
+
+- §1.3 holds out **production incident response on distributed systems and SRE practice** — as an *application domain*. The inspected side of that same split is explicitly "symbolic planning domains, **tool-calling and API-composition traces**, text-adventure-shaped environments, local debugging of single-process programs." Harness engineering is the orchestration layer over tool-calling, which is the inspected side.
+- **ARC-AGI-3 design material** is sealed and stays sealed.
+
+**Boundaries drawn in advance, because adjacency predicts contamination (hazard 19) and this vein is adjacent to two seals at once:**
+
+| IN | OUT — do not fetch |
+|---|---|
+| Harness architecture: tool-dispatch loop, context management, lifecycle, permissions | Anything centred on **incident response / SRE / on-call** as the application domain |
+| Subagent delegation, verification loops, skill/extension mediation | **ARC-AGI-3** design material or task inventory |
+| Coding-agent harnesses, reasoning-model scaffolds | **SQL/relational** query practice, **Erlang/OTP** — held-out language ecosystems |
+| Agentic evaluation suites, documented failure modes | Euclidean construction geometry, epsilon–delta analysis |
+
+**A distinct risk this vein carries, recorded before reading rather than after.** Every other vein was historical and academic. This one is contemporary engineering, and "the field has converged on X" may mean **the systems copied each other**, not that X is a real joint. Convergence among artifacts built by people reading each other is weak evidence of anything about capability. Treat it as a coverage check on our basis — do the operations these systems scaffold *for* appear in our vocabulary — and not as independent confirmation.

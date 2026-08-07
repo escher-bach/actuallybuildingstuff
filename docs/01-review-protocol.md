@@ -16,6 +16,14 @@ The one non-obvious placement is §2.2 at the front. §9 lists **L2 attrition** 
 
 The §2.5 pass is split in two briefs rather than one: corrupt/localize first, then library learning / grammatical inference / planning. Partly because the vein is large, partly because the two long agent briefs that failed so far both failed by exhausting themselves before writing anything.
 
+**Addition, 2026-08-07 — a seventh vein, §2.7: agentic harness engineering.** The source document names six veins. This adds one, and the justification is a gap the six do not cover rather than a preference.
+
+Task Spec §5 names **agent use** as a target domain. Every vein read so far is historical or academic — the most recent was synthetic-pretraining precedents, and even that is about training data rather than about how agents are scaffolded. Contemporary harness engineering is *established practice in our actual target domain*, and §10 condition 3 judges the basis on coverage of established practice. Not sampling it would leave the target domain represented only by symbolic planning and text adventures.
+
+Two things make it worth the deviation specifically. **L2 is what a harness does** — choosing the next action, recovering from a bad one, deciding what to look at next — so this is the vein most likely to say whether our L2 corresponds to anything practitioners recognise. And if the operations these systems scaffold *for* are already in our vocabulary, that is §10 condition 3 evidence from the most practically-validated source available; if they are not, we are missing what currently works.
+
+The risk is recorded in `docs/00` §4 and is specific: convergence among engineering artifacts may mean the systems copied each other. This vein is a **coverage check on the basis**, not independent confirmation of it.
+
 §2.6 is last in reading order but is **not** allowed to become the thing that gets cut. §11 step 3 gives it its own budget line and §2.6's own hazard note says it is "the most expensive vein per unit yield, and the one most likely to be skipped for that reason." It is scheduled, not deferred.
 
 ## Delegation
