@@ -17,6 +17,28 @@ primitives = [
 ]
 predicted_block = "vein 2.2 groups parity apart from the lattice-structured classes (no monotone structure to walk) and with them by oracle-access pattern (MQ-only suffices). The two groupings disagree, which is itself a small argument that oracle-access pattern is not a natural joint."
 notes = """
+**IMPLEMENTED** at src/repertoire/families/algebraic.py, though the row stays at
+`lead` -- the blocker is evidential (no primary source reached), not technical.
+
+**An UNPLANTED near-duplicate, and it is better evidence than the planted one.**
+This family and `shj-type-vi` compute the same function where they overlap: parity
+over a subset S of d dimensions IS the SHJ three-way biconditional when |S| = d,
+and is strictly more general when |S| < d because it has irrelevant coordinates
+to ignore. A test asserts the identity directly rather than leaving it in prose.
+
+Nobody planted this. Parity was excavated from computational learning theory,
+Type VI from 1961 categorization psychology, and the identity fell out when both
+were written into the same form. Repertoire Spec section 5 says the ideal
+near-duplicate plant is "two independent reinventions found in different veins" --
+this is that, and the constructed conjunction/Bruner pair is the weaker version
+of the same test.
+
+SCHEMA LIMITATION, recorded rather than worked around: a row carries one
+`plant_role`, and `shj-type-vi` already holds `dependent` in the prerequisite
+pair. So this second relation lives in prose in both rows and is invisible to
+`register.py coverage`. The tool will under-report near-duplicate coverage until
+a row can hold more than one relation.
+
 Held at `lead`: the results here are folklore in the source literature and no
 primary source was verified during the vein 2.2 pass. The mathematics is not in
 doubt; the citation is, and the register distinguishes those.

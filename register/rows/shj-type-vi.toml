@@ -28,7 +28,14 @@ replication, even though the 1961 original remains unreachable.
 The **B** of the planted prerequisite pair, and separately the most interesting
 fold this vein produced.
 
-**Type VI is parity.** The three-way biconditional over binary dimensions is
+**Type VI is parity -- now verified in code, not just argued.** The
+`parity-identification` family is implemented and a test asserts the two compute
+the same function where they overlap (parity with the full subset). See that
+row for the schema limitation this exposes: a row holds one plant_role, this one
+already holds `dependent`, so the second relation is invisible to the coverage
+tool.
+
+**The original argument.** The three-way biconditional over binary dimensions is
 literally mod-2 addition over a subset of dimensions, which means it shares
 `modular-add` with the calibration row and shares its whole solver shape with
 `parity-identification` from vein 2.2. Two fields -- 1961 categorization

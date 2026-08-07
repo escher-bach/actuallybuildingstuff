@@ -128,6 +128,14 @@ Related: a composition-depth knob **degenerates** if the primitive library commu
 
 *Not repaired yet, deliberately.* §8 step 5's sweep expects the four named levels to be cut in the wrong places; adding axes before it runs would be designing the answer. Both were pre-registered in docs/02 so they can be scored against the sweep. [docs/06](06-paradigm-coverage.md).
 
+## 15. A schema that cannot express a relation it discovers
+
+**🟡 Loud, but under-reports silently.** A register row carries exactly one `plant_role`. Parity and SHJ Type VI turn out to be the same object — an **unplanted** near-duplicate, excavated independently from computational learning theory and 1961 categorization psychology — but `shj-type-vi` already holds `dependent` in the prerequisite pair, so the second relation cannot be recorded in the schema.
+
+It now lives in prose in both rows and is **invisible to `register.py coverage`**, which will under-report near-duplicate coverage. The finding is more valuable than the constructed near-duplicate plant — §5 says the ideal near-duplicate is "two independent reinventions found in different veins", which is exactly this — and the tool cannot see it.
+
+*Not fixed yet:* the fix is a list of relations per row rather than a single role, which is a schema migration touching every row. Recorded so the coverage output is read with this caveat rather than trusted.
+
 ---
 
 ## Standing hazards — not yet observed, watch for
