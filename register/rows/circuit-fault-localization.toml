@@ -52,7 +52,7 @@ knobs rather than reasoning about them.
 """
 
 [[sources]]
-citation = "R. Reiter, 'A Theory of Diagnosis from First Principles', Artificial Intelligence 32(1) 1987 -- conflict sets, minimal hitting sets, exponential worst case"
+citation = "R. Reiter, 'A Theory of Diagnosis from First Principles', Artificial Intelligence 32(1):57-95, 1987. CURATOR-CHECKED 2026-08-07 from the primary PDF: title, author (University of Toronto), venue and pagination exact; abstract confirms an algorithm for computing all diagnoses and principles of measurement for discriminating among competing diagnoses; section 2-3 confirm the undecidability-in-general / decidable-for-switching-circuits position. The minimal-hitting-set characterization is standard but was NOT located in the pages read"
 year = 1987
 kind = "paper"
 url = ""

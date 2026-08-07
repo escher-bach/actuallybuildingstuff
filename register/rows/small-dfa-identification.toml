@@ -3,7 +3,7 @@ title = "Small-DFA identification from membership queries (restricted template f
 vein = "2.2"
 their_term = "learning regular sets from queries; L*; grammatical inference"
 substrate = "deterministic finite automata over a small anonymized alphabet"
-status = "lead"
+status = "translated"
 levels = ["L0", "L1", "L2"]
 complexity_modes = ["serial_depth", "state_width"]
 contents = ["state", "structure_induction"]
@@ -17,9 +17,28 @@ primitives = [
 ]
 predicted_block = "vein 2.2 separates DFA from the rest by oracle-access pattern: membership queries alone are provably insufficient, equivalence queries are required. If our measured blocks respect that separation it would be evidence the access-pattern taxonomy tracks something real; the prediction in docs/02 is that they will not."
 notes = """
-Held at `lead`: Angluin 1987 (L*) and the Balcazar-Diaz-Gavalda-Watanabe query
-complexity results were reached only through secondary sources during the vein
-2.2 pass.
+**SOURCE NOW VERIFIED, WITH SCOPE STATED. 2026-08-07.** Angluin 1988's citation
+is confirmed from an authoritative record: Machine Learning 2:319-342, and the
+abstract confirms it studies membership, equivalence, subset, superset,
+disjointness and exhaustiveness queries, giving efficient learning methods for
+regular languages, restricted context-free languages, pattern languages, and
+**restricted types of propositional formulas**.
+
+What that does and does not cover, stated precisely because the distinction
+matters: it establishes **provenance** -- this family comes from that literature
+-- and it does NOT verify the specific algorithm this row attributes to it
+(anchor on a positive instance, flip one literal at a time). That algorithm is
+folklore-level and mathematically self-evident; the register's citation for it is
+provenance, not warrant.
+
+This exposes something the register schema has been conflating -- see the
+`provenance vs warrant` note in docs/07 hazard 20.
+
+Angluin 1987 (L*) itself remains unchecked -- what was confirmed is the 1988
+companion, which lists regular languages among the classes it treats. The row's
+substantive claims about L*'s ORACLE MODEL (that it needs equivalence queries,
+which we do not have) are the ones that matter here, and they are the reason the
+row rejects importing L*'s bounds rather than the reason it accepts anything.
 
 **This is the row where importing the source's machinery would have been a
 mistake, and the rejection is more useful than the row.** L* requires an
@@ -43,11 +62,18 @@ pre-empt it.**
 """
 
 [[sources]]
-citation = "D. Angluin, 'Learning Regular Sets from Queries and Counterexamples', Information and Computation 75(2) (1987)"
+citation = "D. Angluin, 'Learning Regular Sets from Queries and Counterexamples', Information and Computation 75(2) (1987) -- L*. Still NOT curator-checked; the 1988 companion paper confirms regular languages are among the classes treated"
 year = 1987
 kind = "paper"
 url = ""
 verified = false
+
+[[sources]]
+citation = "D. Angluin, 'Queries and Concept Learning', Machine Learning 2:319-342 (1988). Curator-checked 2026-08-07 at abstract level; its abstract explicitly lists REGULAR LANGUAGES among the classes given efficient query-learning methods, which establishes provenance for this family. It does NOT verify L*'s specific construction or its bounds -- and this row's substantive claim is that those bounds do not transfer to us anyway"
+year = 1988
+kind = "paper"
+url = "https://doi.org/10.1023/A:1022821128753"
+verified = true
 
 [[sources]]
 citation = "J. L. Balcazar, J. Diaz, R. Gavalda, O. Watanabe, 'The Query Complexity of Learning DFA', New Generation Computing 12 (1994)"

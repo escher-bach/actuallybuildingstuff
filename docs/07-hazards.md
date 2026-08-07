@@ -172,6 +172,23 @@ Only one construction offers a genuine worst-case-to-average-case reduction, and
 
 *Lesson for any future seal:* prefer held-out items that are topically distant from what will be read — accepting that distance makes them weaker tests — over adjacent items that are strong tests but will not survive contact. Recorded in [docs/00 §4](00-heldout-partition.md).
 
+## 20. `verified` conflates provenance with warrant
+
+**🟠 Quiet, and it affects how every row's evidence should be read.** A source can do two different jobs, and the register's single `verified` boolean does not distinguish them:
+
+- **Provenance** — *this family came from that literature.* Confirming Angluin 1988 treats "restricted types of propositional formulas" establishes where the conjunction family comes from. It does not establish that the anchor-and-flip algorithm works.
+- **Warrant** — *this specific claim is true because the source says so.* "The radical explained 95.41% of difficulty variance" is true only on the source's authority. There is no other route to it.
+
+The difference matters because **for a large part of this register the mathematics is self-evident and no citation warrants it.** That parity is identifiable by standard-basis probes is a fact about GF(2), not about anything Angluin wrote. A row citing a paper for it is recording lineage, not evidence — and if the citation evaporated the claim would stand.
+
+Whereas an empirical claim — a replicated difficulty ordering, a measured bias rate, a coupling-effect percentage — has no independent route. There the citation *is* the claim, and a verification failure destroys it.
+
+*Consequence as things stand:* `verified = true` means different things in different rows, and **the strength of a row's evidence is not readable from the flag.** A reader cannot tell whether a row would survive its citations being wrong.
+
+*Fix, not yet applied:* a per-source `role` field — `provenance` or `warrant` — so a row can say which of its sources it would survive losing. It is a small schema change but touches every row's source blocks, and doing it mid-review would mean re-triaging sources under a distinction that did not exist when they were recorded. Recorded now so the ambiguity is known rather than discovered later.
+
+*Interim practice, already applied:* rows promoted on 2026-08-07 state in prose exactly what their citation does and does not cover. That is the right content in the wrong place — prose is not queryable — but it is better than the flag alone.
+
 ---
 
 ## Standing hazards — not yet observed, watch for

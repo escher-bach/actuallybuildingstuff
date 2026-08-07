@@ -91,6 +91,22 @@ The guidance-fading chapter was read in full body text by the reviewer with page
 
 ---
 
+## Pass 6 — 2026-08-07, clearing the long-standing blockers
+
+| Source | Claim checked | Outcome |
+|---|---|---|
+| Reiter, "A Theory of Diagnosis from First Principles", *Artificial Intelligence* 32(1):57–95, 1987 | Citation; the diagnosis algorithm; measurement principles | ✅ **Confirmed from the primary PDF** (read directly after the fetch tool returned unparseable binary). Title, author, affiliation, venue and pagination exact. Abstract confirms "an algorithm for computing all diagnoses" and "various results concerning principles of measurement for discriminating among competing diagnoses" — the probe-selection content in Reiter's own words. ⚠️ The minimal-hitting-set characterization is standard but was **not located in the pages read** |
+| Angluin, "Queries and Concept Learning", *Machine Learning* 2:319–342, 1988 | Citation and scope | ✅ **Confirmed at abstract level** from an authoritative record: six query types (membership, equivalence, subset, superset, disjointness, exhaustiveness); efficient methods for regular languages, restricted context-free languages, pattern languages, and restricted propositional formulas. ⚠️ Does **not** verify the specific conjunction algorithm the rows attribute to it |
+| de Kleer & Williams, "Diagnosing Multiple Faults", 1987 | GDE's entropy-based probe selection | ⚠️ **Still unchecked.** No longer load-bearing: the circuit row's A7 passes via a teacher-side structure walk, not by importing GDE |
+
+**A nuance from the primary text that improved a row rather than just confirming it.** Reiter is explicit that the general diagnostic problem is *undecidable*, and that decidability must be established per application — naming switching circuits as a case where it reduces to deciding consistency of Boolean equations, which is decidable. So `circuit-fault-localization` is A1-admissible for a **narrower reason than the row previously gave**: not "diagnosis is computable" (it is not), but "we restricted to the Boolean case, which the source itself names as decidable." A richer component language could lose A1 with no other check noticing.
+
+**Three rows promoted** from `lead` to `translated` — conjunction, small-DFA, and (via Reiter) the circuit row unblocked. All six plant roles are now populated in the coverage grid for the first time.
+
+**What this pass exposed:** see hazard 20. Confirming these citations established *provenance* without *warranting* the specific algorithms, and the register's single `verified` flag cannot express that difference.
+
+---
+
 ## Consequences applied
 
 - `mutant-localization.toml` — the 26.5% claim removed and replaced with the paper's actual figures. **This materially weakens the row's A1 argument** and the correction is recorded in the row itself, not silently swapped: unit-level FEP being ~0% means the "corruption might be invisible" hazard is much smaller in the regime we would actually train in.
