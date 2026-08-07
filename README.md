@@ -1,5 +1,7 @@
 # Repertoire
 
+> **Starting fresh on this? Read [CONTINUE-HERE.md](CONTINUE-HERE.md) first.** It carries the state, the working disciplines, the findings that changed the design, and what to do next. This file is the layout reference.
+
 Excavating a basis of procedurally-generated task families from prior literature, translating them into one interface, and measuring which of them survive.
 
 The two specifications are the authority; everything else here serves them.
@@ -17,7 +19,7 @@ The two specifications are the authority; everything else here serves them.
 | 2 — Register veins §2.1–§2.5, translate, triage | **done, six veins + §2.7 added** ([why](docs/01-review-protocol.md)). 27 rows. Saturation: **14 entries over 10 sources**, five veins adding zero |
 | 3 — §2.6 practice traces under an existing coding scheme | **read; gate NOT cleared** — no inter-annotator reliability figure traceable to a primary source, and §11 step 3's gate is exactly that. See [verification-log](register/verification-log.md) |
 | 4 — Paradigm coverage check | **done** — 7 of 10 paradigms fall out cleanly; 3 do not, clustering into exactly 2 missing axes. [docs/06](docs/06-paradigm-coverage.md) |
-| 5 — Candidate set, ~30 families incl. plants | 7 implemented; 5 of 6 plant roles live. 46 tests passing |
+| 5 — Candidate set, ~30 families incl. plants | 27 rows, **9 implemented**, 6 of 6 plant roles live, 101 tests passing. Composition closure 2.4% — more endomorphic families is the priority |
 | 6 — Matrix, planted-basis validation first | blocked on the harness — see [docs/09](docs/09-harness-handoff.md). Planted basis and pre-committed gate are ready |
 | 7 — Read decomposition, prune, repair → **D3** | not started |
 
