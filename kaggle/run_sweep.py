@@ -1,7 +1,7 @@
 """Kaggle entry point for the dial sweep (Task Spec section 8 step 5).
 
 Paste into a Kaggle notebook cell, or attach the repo as a dataset and run it.
-GPU on: Settings -> Accelerator -> GPU T4 x2 (only one is used) or P100.
+GPU on: Settings -> Accelerator -> GPU T4 x2 (both are used) or P100.
 
     !git clone -q https://github.com/<you>/actuallybuildingstuff /kaggle/working/repo
     %run /kaggle/working/repo/kaggle/run_sweep.py
@@ -20,6 +20,19 @@ step 1 and 2 gates. A sweep on a family whose gates fail measures nothing.
 **Run `smoke` first.** Two minutes, and it exercises every path the real sweep
 uses. Its *numbers* are noise -- the harness will refuse to read them, which is
 the point.
+
+**Then run `calibrate`, and this is the default.** It trains the L0 arm alone at
+a few budgets. L0 states theta outright, so its Bayes floor is exactly 0 and the
+final loss IS the distance from optimal -- and if L0 does not come down, nothing
+above it is measurable. The first real T4 sweep cost ~50 GPU-minutes to discover
+that the model had learned the answer marginal rather than the task, at every
+dial setting. Calibration is one arm instead of 27 and answers that first.
+
+**Both GPUs are used automatically.** Every dial point trains a fresh model from
+scratch on its own stream, so the points are independent: no gradient exchange,
+no synchronisation, an exact 2x on "T4 x2". Not DDP -- that splits one model's
+gradient, which is the wrong tool when the runs are separate and each fits on
+one card.
 
 **Run both families.** The worked family fails A4 at these moduli, so a collapse
 on it alone is ambiguous between "supervision above L0 does not work" and "this
@@ -42,7 +55,7 @@ from pathlib import Path
 # Configuration -- the only part meant to be edited
 # --------------------------------------------------------------------------
 
-MODE = os.environ.get("SWEEP_MODE", "full")  # check | smoke | full
+MODE = os.environ.get("SWEEP_MODE", "calibrate")  # check | calibrate | smoke | full
 OUT = Path(os.environ.get("SWEEP_OUT", "/kaggle/working/sweeps"))
 REPO = Path(__file__).resolve().parent.parent
 
@@ -81,6 +94,44 @@ def run(*args: str) -> int:
     return subprocess.call(cmd, env=env, cwd=str(REPO))
 
 
+def n_gpus() -> int:
+    try:
+        import torch
+
+        return torch.cuda.device_count()
+    except ImportError:
+        return 0
+
+
+def run_sharded(*args: str) -> int:
+    """Split a sweep across every visible GPU, one process each.
+
+    **The parallelism here is free and exact.** Every dial point trains a fresh
+    model from scratch on its own episode stream, so there is no gradient to
+    exchange and nothing to synchronise -- Kaggle's "T4 x2" gives a 2x wall-clock
+    speedup with no communication at all. Each shard writes its own per-point
+    records, and the last one to finish merges them.
+
+    Not torchrun, not DDP: those exist to split *one* model's gradient across
+    devices, which is the wrong tool when the runs are independent and each model
+    fits comfortably on one card.
+    """
+    n = max(1, n_gpus())
+    if n == 1:
+        return run(*args)
+
+    print(f"\nsplitting across {n} GPUs -- the dial points are independent, so this "
+          f"is an exact {n}x with no communication\n", flush=True)
+    env_base = dict(os.environ, PYTHONPATH=str(REPO / "src"))
+    procs = []
+    for i in range(n):
+        cmd = [sys.executable, "-m", "repertoire.harness", *args, "--shard", f"{i}/{n}"]
+        env = dict(env_base, CUDA_VISIBLE_DEVICES=str(i))
+        print(f"$ CUDA_VISIBLE_DEVICES={i} {' '.join(cmd)}", flush=True)
+        procs.append(subprocess.Popen(cmd, env=env, cwd=str(REPO)))
+    return max(p.wait() for p in procs)
+
+
 def main() -> int:
     _setup()
     OUT.mkdir(parents=True, exist_ok=True)
@@ -110,16 +161,24 @@ def main() -> int:
 
     preset = _preset()
 
+    # Calibration before the sweep, always. The first T4 sweep spent ~50 GPU
+    # minutes to find out the model had learned the answer marginal and not the
+    # task. L0 is the diagnostic: its Bayes floor is exactly 0, so L_final IS the
+    # distance from optimal, and if L0 does not come down nothing above it is
+    # measurable. One arm instead of 27.
+    if MODE == "calibrate":
+        return run("calibrate", "--preset", preset, "--family", "modular", "--k", "0")
+
     # The worked family, both dials. Section 8 step 5 says "take the worked
     # family", and both dials because one dial tests only that dial.
-    rc = run("sweep", "--preset", preset, "--family", "modular", "--k", "0",
-             "--dial", "both", "--out", str(OUT))
+    rc = run_sharded("sweep", "--preset", preset, "--family", "modular", "--k", "0",
+                     "--dial", "both", "--out", str(OUT))
 
     # Parity on the generic dial: the A4 control. Parity has no partial_preamble,
     # which is exactly why the observation dial exists.
     if parity_ok:
-        rc |= run("sweep", "--preset", preset, "--family", "parity", "--k", "1",
-                  "--dial", "observations", "--out", str(OUT))
+        rc |= run_sharded("sweep", "--preset", preset, "--family", "parity",
+                          "--k", "1", "--dial", "observations", "--out", str(OUT))
     else:
         print("\n" + "=" * 70)
         print("A4 CONTROL NOT RUN. Any collapse on the worked family alone is")

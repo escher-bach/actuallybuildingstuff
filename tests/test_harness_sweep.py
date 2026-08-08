@@ -115,7 +115,24 @@ class TestFitToRead(unittest.TestCase):
         fit, why = self._result(l_final=4.2, excess_over_floor=3.7,
                                 structural_content=10.0).fit_to_read()
         self.assertFalse(fit)
-        self.assertIn("near chance", why)
+        self.assertIn("ACHIEVABLE floor", why)
+
+    def test_learning_is_scored_against_the_achievable_floor_not_the_lower_one(self):
+        """The first real T4 sweep found this.
+
+        The lower end of the floor band conditions on the encoding, which the
+        model never observes. Scoring "did it learn" against it asks the model to
+        close a distance no predictor can close, and would refuse a converged run
+        for missing a target that is physically out of reach.
+
+        Here: a model sitting exactly ON the achievable floor (rule 0.5 +
+        notation 1.2) must read as fully learned, even though it is 1.2 nats
+        above the lower end.
+        """
+        at_optimal = self._result(rule_entropy=0.5, notation_upper=1.2, l_final=1.7,
+                                  excess_over_floor=1.2, structural_content=100.0)
+        fit, why = at_optimal.fit_to_read()
+        self.assertTrue(fit, why)
 
     def test_mostly_unconverged_runs_are_refused(self):
         fit, why = self._result(converged=False).fit_to_read()

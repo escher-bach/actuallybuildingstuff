@@ -231,6 +231,19 @@ class SweepResult:
           * most runs must have settled. An unconverged run's S is a lower
             bound, and lower bounds of differing tightness across the dial are
             not a curve.
+
+        **Measured against the UPPER end of the floor band**, which is the
+        achievable one.  The lower end conditions on the encoding, and the model
+        never observes the encoding -- so scoring "did it learn" against the
+        lower end asks the model to close a distance no predictor can close, and
+        would refuse a converged run for being 1.2 nats from a target that is
+        physically out of reach.  The lower end keeps its own job: it is the leak
+        check, where nothing may legitimately go below.
+
+        (The first real T4 sweep was refused under the old version, and refused
+        *correctly* -- the model was 0.46-1.78 nats above even the achievable
+        floor. But it was refused for a reason the message stated wrongly, which
+        is its own kind of failure.)
         """
         if not self.points:
             return False, "no points"
@@ -239,8 +252,9 @@ class SweepResult:
         for setting, group in self.by_setting().items():
             for p in group:
                 start = p.structural_content / max(1, self.budget.steps) + p.l_final
-                room = max(1e-9, start - p.rule_entropy)
-                learned.append(1.0 - p.excess_over_floor / room)
+                achievable = p.rule_entropy + p.notation_upper
+                room = max(1e-9, start - achievable)
+                learned.append(1.0 - (p.l_final - achievable) / room)
         worst = min(learned)
         n_unconv = sum(1 for p in self.points if not p.converged)
         frac_unconv = n_unconv / len(self.points)
@@ -248,9 +262,11 @@ class SweepResult:
         problems = []
         if worst < min_learned:
             problems.append(
-                f"the weakest run closed only {worst:.0%} of the distance to its "
-                f"Bayes floor (need {min_learned:.0%}); at this budget the model is "
-                "near chance and the transfer curve is sampling noise"
+                f"the weakest run closed only {worst:.0%} of the distance to the "
+                f"ACHIEVABLE floor -- rule + notation, the one a model that cannot "
+                f"see the encoding could actually reach -- and needs {min_learned:.0%}. "
+                "At this budget it has learned the answer marginal and not the task, "
+                "so the transfer curve measures transfer of the marginal"
             )
         if frac_unconv > max_unconverged:
             problems.append(
@@ -270,7 +286,7 @@ class SweepResult:
         payload = asdict(self)
         payload["budget"] = asdict(self.budget)
         payload["budget_fingerprint"] = self.budget.fingerprint
-        path.write_text(json.dumps(payload, indent=1))
+        _atomic_write(path, json.dumps(payload, indent=1))
 
     def report(self) -> str:
         lines = [
@@ -279,7 +295,7 @@ class SweepResult:
             f"  device: {self.device.get('name', '?')}",
             "",
             f"  {'H(y|ctx,e)':>11} {'H(th|ctx)':>10} {'setting':>8} {'S':>10} "
-            f"{'L_final':>8} {'excess':>8} {'slope':>8} {'transfer':>9}",
+            f"{'L_final':>8} {'floor+':>8} {'over':>7} {'slope':>8} {'transfer':>9}",
         ]
         for setting, group in self.by_setting().items():
             n = len(group)
@@ -290,7 +306,8 @@ class SweepResult:
                 f"{avg(lambda p: p.theta_entropy):>10.4f} {setting:>8.3f} "
                 f"{avg(lambda p: p.structural_content):>10.3f} "
                 f"{avg(lambda p: p.l_final):>8.4f} "
-                f"{avg(lambda p: p.excess_over_floor):>8.4f} "
+                f"{avg(lambda p: p.rule_entropy + p.notation_upper):>8.4f} "
+                f"{avg(lambda p: p.l_final - p.rule_entropy - p.notation_upper):>7.3f} "
                 f"{avg(lambda p: p.acq_slope):>8.4f} "
                 + (f"{sum(tf) / len(tf):>9.3f}" if tf else f"{'-':>9}")
             )
@@ -426,6 +443,7 @@ def run_sweep(
     out_dir: Path | None = None,
     device: str = "auto",
     verbose: bool = True,
+    shard: tuple[int, int] = (0, 1),
 ) -> SweepResult:
     """Run the sweep. Resumable, because a Kaggle session does not always finish.
 
@@ -433,6 +451,19 @@ def run_sweep(
     every dial setting, which is what makes transfer immune to the floor moving.
     Defaults to the zero-reveal, zero-free-observation episode: "does training at
     this dial setting install the ability to infer theta at all?"
+
+    `shard=(i, n)` runs only every n-th point, so n processes can split the sweep
+    across n GPUs.  **The points are embarrassingly parallel and the parallelism
+    is real**: every point trains a fresh model from scratch on its own episode
+    stream, so there is no gradient to exchange, no parameter server, and no
+    synchronisation of any kind -- the only shared state is a directory of
+    finished results.  Two T4s halve the wall clock exactly.
+
+    Each point's record is keyed by (dial, setting, seed), so shards never write
+    the same file, and `collect` rebuilds the whole sweep from the directory
+    afterwards.  Writes are atomic (temp + rename), because the one genuinely
+    shared file is the transfer baseline and a half-written JSON read by the
+    other shard would be a confusing failure a long way from its cause.
     """
     T = dial.T
     if transfer_target is None:
@@ -463,10 +494,21 @@ def run_sweep(
     if verbose:
         print(f"transfer baseline (from scratch): S = {baseline_S:.4f}", flush=True)
 
-    for setting in dial.settings:
+    shard_i, shard_n = shard
+    plan = [(s_, sd) for s_ in dial.settings for sd in seeds]
+    mine = [pt for j, pt in enumerate(plan) if j % shard_n == shard_i]
+    if verbose and shard_n > 1:
+        print(f"shard {shard_i + 1}/{shard_n}: {len(mine)} of {len(plan)} points",
+              flush=True)
+
+    entropy_cache: dict[float, Any] = {}
+    for setting, seed in mine:
         spec = dial.spec(setting)
-        ent = measure_residual_entropy(family, k, spec, n_episodes=entropy_episodes)
-        for seed in seeds:
+        if setting not in entropy_cache:
+            entropy_cache[setting] = measure_residual_entropy(
+                family, k, spec, n_episodes=entropy_episodes)
+        ent = entropy_cache[setting]
+        if True:
             tag = f"{dial.name}_{setting:.4f}_seed{seed}"
             t0 = time.time()
 
@@ -517,8 +559,49 @@ def run_sweep(
                     flush=True,
                 )
             if out_dir:
-                result.save(out_dir / "sweep.json")
+                name = "sweep.json" if shard_n == 1 else f"sweep.shard{shard_i}.json"
+                result.save(out_dir / name)
 
+    return result
+
+
+def _atomic_write(path: Path, text: str) -> None:
+    """Write via temp + rename, so a reader never sees a half-written file.
+
+    Matters once shards run concurrently: the transfer baseline is the one file
+    two processes may touch, and a partial JSON read by the other shard would
+    surface as a decode error a long way from its cause.
+    """
+    import os
+
+    tmp = path.with_suffix(path.suffix + f".tmp{os.getpid()}")
+    tmp.write_text(text)
+    os.replace(tmp, path)
+
+
+def collect(out_dir: Path, dial_name: str, budget: Budget, family: str, k: int
+            ) -> SweepResult:
+    """Rebuild a whole sweep from the per-point records a set of shards wrote.
+
+    The per-point files are the source of truth -- keyed by (dial, setting, seed),
+    so shards never collide -- and this is what turns n independently-running
+    processes back into one curve.
+    """
+    result = SweepResult(family=family, k=k, dial=dial_name, budget=budget)
+    for shard_file in sorted(out_dir.glob("sweep.shard*.json")):
+        data = json.loads(shard_file.read_text())
+        if data.get("budget_fingerprint") != budget.fingerprint:
+            continue
+        for pt in data["points"]:
+            result.points.append(SweepPoint(**pt))
+    seen: set[tuple[float, int]] = set()
+    unique = []
+    for p in sorted(result.points, key=lambda p: (p.setting, p.seed)):
+        if (p.setting, p.seed) in seen:
+            continue
+        seen.add((p.setting, p.seed))
+        unique.append(p)
+    result.points = unique
     return result
 
 

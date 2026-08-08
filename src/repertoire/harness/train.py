@@ -317,8 +317,13 @@ class RunRecord:
         return d
 
     def save(self, path: Path) -> None:
+        """Atomic, because concurrent sweep shards share an output directory."""
+        import os
+
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(self.to_json(), indent=1))
+        tmp = path.with_suffix(path.suffix + f".tmp{os.getpid()}")
+        tmp.write_text(json.dumps(self.to_json(), indent=1))
+        os.replace(tmp, path)
 
 
 def train_run(

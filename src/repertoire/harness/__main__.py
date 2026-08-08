@@ -135,6 +135,7 @@ def cmd_sweep(args) -> int:
     print(f"  device: {device_report()}")
     print(f"  out: {out}\n")
 
+    shard_i, shard_n = (int(x) for x in args.shard.split("/"))
     dials = {
         # Same T on both, so `compare_dials` compares two curves and not two
         # different measurements that happen to be plotted the same way.
@@ -149,9 +150,18 @@ def cmd_sweep(args) -> int:
         print(f"=== dial: {dial.name}")
         try:
             res = run_sweep(
-                fam, k, dial, budget, p["model"], seeds=tuple(p["seeds"]), entropy_episodes=p["entropy_episodes"],
+                fam, k, dial, budget, p["model"], seeds=tuple(p["seeds"]),
+                entropy_episodes=p["entropy_episodes"],
                 out_dir=out / name, device=args.device,
+                shard=(shard_i, shard_n),
             )
+            if shard_n > 1:
+                # This process ran only its slice. Merge in whatever the other
+                # shards have finished; if they have not, the reading is refused
+                # for having too few points rather than read off a partial curve.
+                from .sweep import collect
+
+                res = collect(out / name, dial.name, budget, fam.name, k)
         except Exception as exc:
             print(f"  unavailable: {type(exc).__name__}: {exc}\n")
             continue
@@ -179,6 +189,54 @@ def cmd_sweep(args) -> int:
     elif len(results) == 2:
         print("=== the two parametrizations cannot be compared: "
               "at least one is not fit to read")
+    return 0
+
+
+def cmd_calibrate(args) -> int:
+    """Find the budget at which the family is learnable at all, before sweeping.
+
+    **The cheapest diagnostic available, and the first T4 sweep is why it exists.**
+    That sweep spent ~50 GPU-minutes to discover that the model had learned the
+    answer marginal and not the task -- at every dial setting, so every transfer
+    number was transfer of the marginal.
+
+    L0 is the diagnostic because it is the easiest possible version: theta is
+    fully stated in the preamble, the answer is a deterministic function of what
+    is written there, and the Bayes floor is exactly 0. **If L0 does not come
+    down, nothing above it is measurable**, and no amount of sweeping will make
+    it so. One arm at a few budgets locates the knee for the whole sweep.
+    """
+    from .episode import spec_for_level
+    from .train import train_run
+
+    p = PRESETS[args.preset]
+    fam, k = _family(args.family, args.k)
+    spec = spec_for_level(Level.L0, T=p["T"])
+
+    print(f"calibration: {fam.name} k={k} at L0 (Bayes floor is exactly 0)")
+    print(f"  model: {p['model'].as_dict()}")
+    print(f"  device: {device_report()['name']}\n")
+    print(f"  {'steps':>8} {'L_final':>9} {'settled':>8} {'slope/step':>11}  reading")
+
+    for steps in [int(x) for x in args.steps.split(",")]:
+        budget = Budget(steps=steps, batch_size=p["batch_size"], max_len=p["max_len"],
+                        lr=p["lr"], warmup=min(p["warmup"], steps // 10),
+                        model=p["model"].as_dict())
+        rec, _ = train_run(fam, k, spec, budget, model_cfg=p["model"], seed=0,
+                           device=args.device, bayes_floor=0.0, bayes_floor_upper=0.0,
+                           label=f"calib-{steps}")
+        c = rec.content()
+        verdict = (
+            "learned -- use this budget or above" if c.l_final < 0.15
+            else "close; try the next budget up" if c.l_final < 0.5
+            else "has NOT learned L0; a sweep at this budget measures the marginal"
+        )
+        print(f"  {steps:>8} {c.l_final:>9.4f} {str(c.converged):>8} "
+              f"{c.tail_slope:>11.2e}  {verdict}")
+
+    print("\nL0's floor is 0, so L_final IS the distance from optimal.")
+    print("Sweep at the smallest budget that reaches it -- residual entropy only")
+    print("makes the task harder, never easier.")
     return 0
 
 
@@ -232,7 +290,23 @@ def main(argv=None) -> int:
                    choices=("both", "observations", "preamble"))
     s.add_argument("--out", default="runs")
     s.add_argument("--device", default="auto")
+    s.add_argument("--shard", default="0/1",
+                   help="i/n -- run every n-th point, for n GPUs. The points are "
+                        "independent (a fresh model per point, no gradient shared), "
+                        "so n processes give an exact n-times speedup.")
     s.set_defaults(fn=cmd_sweep)
+
+    cal = sub.add_parser(
+        "calibrate",
+        help="find the budget at which the family is learnable at all. Run this "
+             "BEFORE a sweep -- it is one arm instead of 27 and it is what tells "
+             "you whether a sweep would measure the task or the answer marginal.")
+    cal.add_argument("--preset", default="t4", choices=sorted(PRESETS))
+    cal.add_argument("--family", default="modular")
+    cal.add_argument("--k", type=int, default=0)
+    cal.add_argument("--steps", default="2500,10000,25000,60000")
+    cal.add_argument("--device", default="auto")
+    cal.set_defaults(fn=cmd_calibrate)
 
     r = sub.add_parser("read", help="apply the pre-committed reading to a saved sweep")
     r.add_argument("path")
