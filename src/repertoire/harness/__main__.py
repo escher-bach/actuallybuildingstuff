@@ -240,6 +240,25 @@ def cmd_calibrate(args) -> int:
     return 0
 
 
+def cmd_diagnose(args) -> int:
+    from .diagnose import run_all
+
+    dev = "cpu" if args.device == "auto" else args.device
+    print(f"inducer capability probes  (device={dev})\n")
+    results = run_all(device=dev, quick=args.quick)
+    for r in results:
+        print("  " + r.report() + "\n")
+    if results[0].passed and not results[1].passed:
+        print("READING: the model can build the circuit and does not build it when")
+        print("only one target per example requires it. Task Spec section 7")
+        print("supervises answer tokens only, so the number of such targets per")
+        print("episode IS the number of scored trials -- which makes T load-bearing.")
+    elif not results[0].passed:
+        print("READING: the model cannot build an induction head at this size.")
+        print("No family will train until that is fixed. Change the model.")
+    return 0 if results[0].passed else 1
+
+
 def cmd_read(args) -> int:
     from .sweep import read_curve
 
@@ -307,6 +326,15 @@ def main(argv=None) -> int:
     cal.add_argument("--steps", default="2500,10000,25000,60000")
     cal.add_argument("--device", default="auto")
     cal.set_defaults(fn=cmd_calibrate)
+
+    d = sub.add_parser(
+        "diagnose",
+        help="capability probes for the inducer, independent of every family. "
+             "Run this when a family will not learn and you need to know whether "
+             "the fault is the family, the harness, or the model.")
+    d.add_argument("--device", default="auto")
+    d.add_argument("--quick", action="store_true", help="short runs; indicative only")
+    d.set_defaults(fn=cmd_diagnose)
 
     r = sub.add_parser("read", help="apply the pre-committed reading to a saved sweep")
     r.add_argument("path")
