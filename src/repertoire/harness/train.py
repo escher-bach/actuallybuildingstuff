@@ -285,6 +285,7 @@ class RunRecord:
     seconds: float = 0.0
     bayes_floor: float | None = None  # lower end: H(y | context, encoding)
     bayes_floor_upper: float | None = None
+    held_out_answer_loss: float | None = None  # set by callers that run evaluate()
     label: str = ""
 
     def content(self) -> StructuralContent:

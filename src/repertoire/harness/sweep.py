@@ -56,7 +56,7 @@ from .entropy import measure_residual_entropy
 from .episode import EpisodeSpec
 from .metrics import Budget, BudgetMismatch, acquisition_slope
 from .model import ModelConfig, device_report
-from .train import RunRecord, train_run
+from .train import RunRecord, evaluate, train_run
 
 
 # --------------------------------------------------------------------------
@@ -147,6 +147,13 @@ class SweepPoint:
     theta_entropy: float = 0.0
     transfer: float | None = None  # S(fixed target | this model); lower is more transfer
     transfer_baseline: float | None = None  # the same, from random init
+    # Held-out answer-only loss on the fixed target after the probe, in nats.
+    # Not a replacement for `transfer` -- that is section 4's conditional
+    # structural content and is the defined quantity -- but an interpretable
+    # cross-check on it. An area under a curve can move for reasons that have
+    # nothing to do with competence (a different starting loss moves it); a
+    # held-out per-token loss cannot. When the two disagree, read this one first.
+    transfer_eval: float | None = None
     seconds: float = 0.0
 
     @property
@@ -521,6 +528,7 @@ def run_sweep(
             cached = _load_pair(main_path, probe_path, budget)
             if cached is not None:
                 rec, probe = cached
+                probe_eval = probe.held_out_answer_loss
                 if verbose:
                     print(f"  {tag}: resumed from cache", flush=True)
             else:
@@ -529,11 +537,14 @@ def run_sweep(
                     device=device, bayes_floor=ent.floor_lower,
                     bayes_floor_upper=ent.floor_upper, label=tag,
                 )
-                probe, _ = train_run(
+                probe, probe_model = train_run(
                     family, k, transfer_target, probe_budget, model_cfg=model_cfg,
                     seed=seed, device=device, init_state=model.state_dict(),
                     label=f"{tag}-transfer",
                 )
+                probe_eval = evaluate(probe_model, family, k, transfer_target,
+                                      n_episodes=64, device=device).answer_loss
+                probe.held_out_answer_loss = probe_eval
                 if main_path:
                     rec.save(main_path)
                     probe.save(probe_path)
@@ -548,6 +559,7 @@ def run_sweep(
                 converged=content.converged,
                 acq_slope=rec.slope().slope,
                 transfer=probe.content().value, transfer_baseline=baseline_S,
+                transfer_eval=probe_eval,
                 seconds=time.time() - t0,
             ))
             if verbose:
