@@ -189,6 +189,41 @@ This is docs/03 finding 1 arriving in the *x-axis* rather than in the target, an
 
 ---
 
+## 6.2 The first real sweep, and what it cost to learn
+
+Run on a T4: 27 points per dial, 3 seeds, 2500 steps. **The reading was refused, correctly.** Four things came out of it anyway.
+
+**Structural content alone would have said "stop the programme."** S rises monotonically as residual entropy falls — 754 → 850 on the observation dial, 756 → 854 on the preamble dial. Plotted as S against entropy that is a *monotone collapse*, the reading §8 step 5 says means §2–§9 are void. Transfer says the opposite: flat across the whole nonzero-entropy range, dropping only at exactly zero (0.735 at full reveal against ~0.885 elsewhere), in both parametrizations and all three seeds separately. **This is the confound predicted in `sweep.py`'s docstring, confirmed on real data.** Had the sweep reported only §4's quantity it would have argued for ending the programme.
+
+**§9's primary metric is mostly measuring the task.** The acquisition slope looked clean — −0.21 at high entropy, −0.006 at zero, monotone on both dials. Against the Bayes floor's *own* per-trial slope it is not:
+
+| setting | floor slope | model slope | difference |
+|---|---|---|---|
+| free obs 0 | −0.2411 | −0.2124 | +0.029 |
+| free obs 4 | −0.0514 | −0.0344 | +0.017 |
+| preamble 0.25 | −0.2199 | −0.1662 | +0.054 |
+
+The model tracks the floor's shape at a near-constant offset and is *shallower than optimal everywhere*. Per-trial loss falls within an episode because the task's information profile falls. **Unless the floor's slope is subtracted, the within-episode slope reports task difficulty as capability.**
+
+**`fit_to_read` was scoring against the unreachable floor.** It used the lower end of the band, which conditions on the encoding the model never observes. Fixed to use the achievable end. The refusal survives the fix — the model is 0.46–1.78 nats above even the achievable floor — but a guard that refuses for a misstated reason is its own failure.
+
+**And the finding that stops the sweep: the worked family's L0 is not currently learnable.**
+
+| steps | L_final | settled | tail slope |
+|---|---|---|---|
+| 10 000 | 1.7339 | yes | −4.4e−6 |
+| 30 000 | 1.7255 | yes | −1.0e−6 |
+
+L0 states θ outright, so the Bayes floor is exactly **0** and `L_final` *is* the distance from optimal. Uniform over the m symbols the preamble names, with m ~ U{5,6}, is `½·log5 + ½·log6 = 1.7006`. The model is at 1.7255 — **it has learned that the answer is one of the symbols listed in the preamble, and nothing beyond that.** Converged, flat, at two budgets 3× apart: this is not a step-count problem.
+
+What L0 demands is a reverse lookup (symbol → residue, from the preamble), a second one, modular addition of two *in-context-retrieved* values under an in-context modulus, then a forward lookup. Three attention hops plus arithmetic on retrieved quantities, in four layers. The grokking literature learns modular addition with the operand *as* the token; here the operand is a random symbol whose value must be dereferenced from a map that is resampled every episode.
+
+**Consequences.** No sweep on this family means anything until L0 comes down, because residual entropy only makes the task harder. §1.2's trace is the prescribed remedy — "at low k the untraced task may be unreachable and the trace is the only thing making learning possible" — and it was found to be wired backwards while diagnosing this (emitted *after* the answer, which decomposes nothing); now fixed. Whether traces, depth, or both are enough is the next measurement.
+
+`calibrate` exists so this costs one arm instead of 27, and it is now the Kaggle default.
+
+---
+
 ## 7. Compute
 
 Development is CPU-only; the sweep targets a Kaggle T4 or P100; §9's eventual run is a TPU. Nothing here uses a custom kernel, a CDN dependency, or a device-specific numeric path. `model.device_report()` turns autocast on only at sm_70+ — **P100 is sm_60, where fp16 has no tensor cores and is slower and noisier than fp32**, so "cuda" alone is not enough to justify it.
