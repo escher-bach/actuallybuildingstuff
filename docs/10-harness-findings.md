@@ -222,6 +222,40 @@ What L0 demands is a reverse lookup (symbol → residue, from the preamble), a s
 
 `calibrate` exists so this costs one arm instead of 27, and it is now the Kaggle default.
 
+## 6.3 Why nothing learns, and what it is not
+
+The L0 plateau took a day to attribute and cost four wrong hypotheses. The method that eventually worked was **deleting this repository from the experiment**, and the result is worth more than the plateau.
+
+**It is not the harness.** The same failure reproduces in forty lines of plain PyTorch — no episodes, no loss mask, no family protocol, no preamble, no level wrappers. Key-value pairs, one query, cross-entropy on one token: stalls at 1.894 against a 1.40 no-lookup baseline.
+
+**It is not the model or the optimizer.** The canonical induction task — repeat a random sequence, score the copy — reaches held-out **0.0000**, at *both* a flat 2e-3 and the harness's own warmup-plus-cosine 2e-3. The same settings that leave the lookup at 1.894.
+
+The two probes differ in one thing: how many supervised targets require the circuit. Sixteen in the canonical task, one in the lookup probe, T in an episode.
+
+**What every plateau in this repository equals.** Not "chance" loosely — a specific predictor:
+
+| run | measured | equals |
+|---|---|---|
+| `junk_trivial` L1 | 0.3475 | **optimal**, 0.3466 |
+| stub L0, binary | 0.6925 | uniform over the 2 symbols the preamble names (0.6931) |
+| stub L0, 8 values | 1.6112 | ≈ uniform over the distinct values present (1.4656) |
+| modular L0 | 1.7255 | uniform over the m symbols the preamble names (1.7006) |
+| stub L1 | per-trial | notation term collapsing 4.06 → 0.04; **distance above the rule floor flat at ~0.75** |
+
+The model reads the preamble, finds which symbols can be answers, and outputs approximately uniform over them. **It never reads the query.** `junk_trivial` is the exception that confirms it: its rule *is* the notation, so notation-learning is a complete solution, and it reaches the optimum exactly.
+
+**Two hypotheses this killed.**
+
+*Sparsity of the loss mask.* Supervising every token instead of the answers alone — seven times the targets — bought 0.03 nats. Because the added targets are random given their context (query symbols, unrevealed preamble slots), they are noise, not lookup opportunities. Good news for §7: its answer-only mask is not the problem.
+
+*Too cheap a fallback.* Raising the answer alphabet from 2 to 8 raised the absolute loss and changed nothing about the behaviour. It raises the price of guessing without adding a single reason to build the circuit.
+
+**Consequence §7 does not hint at.** Section 7 supervises answer tokens only, so the number of targets per episode that require in-context inference **is** the number of scored trials. That makes `T` — explicitly a harness parameter — potentially load-bearing for whether a capability forms at all, not merely for how long an episode runs. Under test; the early rows show only small gains (T=6 → 1.6549, T=16 → 1.5901), so the effect, if real, is weaker than the probe comparison suggested.
+
+`python -m repertoire.harness diagnose` runs both probes in the order that discriminates, so this does not have to be re-derived.
+
+**A methodological note, since it cost the most.** Four causal hypotheses failed; three were real defects fixed along the way and none was the cause. What separated the surviving claims from the failed ones was not care — it was whether the claim was checked against a **computed floor**. The notation decomposition, `junk_trivial` at optimum, the exact-posterior gate, canonical induction at zero: all held. Everything inferred from a loss curve without a floor to compare it to: all wrong. Three of my own diagnostics were unreadable for exactly the reason `read_curve` and `fit_to_read` exist — a number produced by a variable nobody controlled. The guards were on the sweep and not on me.
+
 ---
 
 ## 7. Compute
