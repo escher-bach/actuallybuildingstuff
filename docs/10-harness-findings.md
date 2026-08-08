@@ -228,9 +228,18 @@ The L0 plateau took a day to attribute and cost four wrong hypotheses. The metho
 
 **It is not the harness.** The same failure reproduces in forty lines of plain PyTorch — no episodes, no loss mask, no family protocol, no preamble, no level wrappers. Key-value pairs, one query, cross-entropy on one token: stalls at 1.894 against a 1.40 no-lookup baseline.
 
-**It is not the model or the optimizer.** The canonical induction task — repeat a random sequence, score the copy — reaches held-out **0.0000**, at *both* a flat 2e-3 and the harness's own warmup-plus-cosine 2e-3. The same settings that leave the lookup at 1.894.
+**It IS the model — and the probe that said otherwise was broken.** ~~The canonical induction task reaches 0.0000, so the model and optimizer are capable.~~ That control used `seq ++ seq` at a **fixed** length, so the match always sat exactly L positions back and *"attend to position −L" solves it with no content matching at all*. It scored 0.0000 and was read as an induction head forming. It is not one.
 
-The two probes differ in one thing: how many supervised targets require the circuit. Sixteen in the canonical task, one in the lookup probe, T in an episode.
+Put a random-length filler between the copies so the distance varies, and the same model at the same settings gets **2.4627** against chance 4.1589 and correct 0.0000. It copies by position; it does not match on content.
+
+| probe | result |
+|---|---|
+| copy at fixed offset | **0.0000** — solved by a positional rule |
+| copy at variable offset | **2.4627** — largely not solved |
+| key-value lookup, key at −1 | 1.9758 |
+| key-value lookup, key at −2 | 1.9851 |
+
+**A capability probe with a shortcut in it is worse than no probe**, because it certifies a capability that is absent. This one sent the search up the stack for hours and put a wrong conclusion into a commit message and into this document.
 
 **What every plateau in this repository equals.** Not "chance" loosely — a specific predictor:
 
@@ -250,7 +259,11 @@ The model reads the preamble, finds which symbols can be answers, and outputs ap
 
 *Too cheap a fallback.* Raising the answer alphabet from 2 to 8 raised the absolute loss and changed nothing about the behaviour. It raises the price of guessing without adding a single reason to build the circuit.
 
-**Consequence §7 does not hint at.** Section 7 supervises answer tokens only, so the number of targets per episode that require in-context inference **is** the number of scored trials. That makes `T` — explicitly a harness parameter — potentially load-bearing for whether a capability forms at all, not merely for how long an episode runs. Under test; the early rows show only small gains (T=6 → 1.6549, T=16 → 1.5901), so the effect, if real, is weaker than the probe comparison suggested.
+*Too few targets per episode.* Tested with steps, batch, model and lr held fixed and only T varied: 6 → 1.6549, 16 → 1.5901, 32 → 1.5428. **5.3× the targets buys 0.11 nats** and none reaches the 1.4005 no-lookup baseline. A padded control (T=6 with 26 unscored observations, so context grows without adding targets) came out *worse* at 1.7111, which at least confirms the small gain is from targets and not from context length. T is not the lever.
+
+**The consequence, and it is for the programme rather than the harness.** L1, L2 and L3 are *defined* by requiring in-context inference about a θ resampled every episode. Content matching is therefore not one requirement among several — it is the precondition for everything above L0. Until the inducer has it, no family trains, no matrix cell means anything, and the sweep measures nothing. The one family that escapes is `junk_trivial`, whose rule *is* positional, which is exactly why it alone reaches its optimum.
+
+**The signature to watch for: every family flat except the positional one.** That is what this repository has been producing all along.
 
 `python -m repertoire.harness diagnose` runs both probes in the order that discriminates, so this does not have to be re-derived.
 

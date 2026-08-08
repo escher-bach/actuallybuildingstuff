@@ -5,32 +5,44 @@ the family, the harness, or the model.  Each probe strips away one more layer of
 this repository until nothing is left but the model and an optimizer.
 
 **Written because a plateau cost most of a day to attribute.**  The worked family
-sat at 1.7255 nats against a floor of 0 through 30k steps.  Four hypotheses were
-tried and all four were wrong -- an inverted preamble, a mismatched preamble
-shape, a sparse loss mask, and a small answer alphabet.  Three were real defects
-and none of them was the cause.  What settled it was deleting the harness: the
-same failure reproduces in forty lines of plain PyTorch, and the canonical
-induction task then reaches zero loss at *the same learning rate that fails the
-lookup*.
+sat at 1.7255 nats against a floor of 0 through 30k steps.  Five hypotheses were
+tried and all five were wrong -- an inverted preamble, a mismatched preamble
+shape, a sparse loss mask, a small answer alphabet, and too few supervised
+targets per episode.  Three were real defects, now fixed, and none was the cause.
+
+What settled it was deleting the harness: the same failure reproduces in forty
+lines of plain PyTorch, so nothing in this repository is responsible.
+
+**And then the control itself was wrong**, which is the part worth remembering.
+A fixed-length `seq ++ seq` copy task scored 0.0000 and was read as "the model
+can build an induction head, so look elsewhere".  It cannot.  That task is
+solvable by attending to a *fixed position offset*, and once the offset is made
+variable the same model only gets partway.  The false negative sent the search
+up the stack for hours.  A capability probe with a shortcut in it is worse than
+none, because it certifies a capability that is absent.
 
 The probes, in the order they discriminate:
 
-    canonical_induction   Repeat a random sequence; score the copy. Every
-                          position of the second copy needs the same circuit, so
-                          supervision is dense. If this fails, the model or the
-                          optimizer is at fault and no family will train.
+    sequence_copy(fixed)     seq ++ seq. The match is always the same distance
+                             back, so a POSITIONAL rule solves it. Passing says
+                             nothing about content matching -- reading it as if
+                             it did is the mistake that cost a day here.
 
-    key_value_lookup      Key-value pairs, then one query. Structurally the same
-                          circuit, but only ONE supervised token per example
-                          requires it. If canonical passes and this fails, the
-                          scarce resource is not capacity or learning rate -- it
-                          is *how many targets require the circuit*.
+    sequence_copy(variable)  A random-length filler between the copies, so the
+                             distance varies and only content matching works.
+                             THIS is the capability every family needs.
 
-That distinction is the whole point.  A model can be entirely capable of a
-circuit and never build it, if the loss gives it too few reasons to.  Task Spec
-section 7 supervises answer tokens only, so in this design the number of reasons
-per episode is exactly the number of scored trials -- which makes T, a harness
-parameter, load-bearing in a way section 7 does not hint at.
+    key_value_lookup         Key-value pairs, then one query -- the same
+                             capability in the shape the families use it.
+
+**Why this matters for the whole programme.**  L1, L2 and L3 are *defined* by
+requiring in-context inference about a theta resampled every episode, so every
+family above L0 needs content matching.  A model that copies by position and not
+by content will sit at "uniform over the answer symbols this episode names" on
+all of them, forever, while looking like it is training.  The one family that
+escapes is `junk_trivial`, whose rule IS positional -- copy the previous answer --
+and it reaches its optimum exactly.  That pattern (everything flat except the
+positional family) is the signature to watch for.
 """
 
 from __future__ import annotations
@@ -65,36 +77,54 @@ def _optimizer(model, lr):
                              weight_decay=0.1)
 
 
-def canonical_induction(
-    length: int = 16, steps: int = 2500, batch: int = 32, lr: float = 2e-3,
+def sequence_copy(
+    length: int = 12, steps: int = 2500, batch: int = 32, lr: float = 2e-3,
     n_layer: int = 3, d_model: int = 128, device: str = "cpu", seed: int = 0,
+    variable_offset: bool = True,
 ) -> ProbeResult:
-    """Repeat a random sequence and score the copy. The textbook induction task.
+    """Repeat a random sequence and score the copy.
 
-    Dense supervision: every one of `length` positions in the second copy is
-    predictable only by attending to the first copy, so each is a reason to build
-    the circuit.  A model with an induction head scores ~0; one without scores
-    log(alphabet).
+    **`variable_offset` is the whole probe, and getting it wrong wasted a day.**
+
+    With `variable_offset=False` the input is `seq ++ seq` at a fixed length, so
+    the match always sits exactly `length` positions back.  That is solvable by
+    "attend to position -length" -- a *positional* rule needing no content
+    matching at all -- and this model solves it to 0.0000.  Read as evidence of
+    an induction head, which is what happened here, it is worse than no evidence:
+    it certifies a capability the model does not have.
+
+    With `variable_offset=True` a filler of random length sits between the
+    copies, so the distance to the match changes from batch to batch and no
+    fixed offset works.  Only content matching solves it.  That is the circuit
+    every family in this repository needs, because L1-L3 are *defined* by
+    requiring in-context inference about a theta resampled every episode.
+
+    Run both.  The pair is the diagnostic: fixed solving while variable fails
+    localizes the fault precisely, and either one alone is misleading.
     """
     torch.manual_seed(seed)
     dev = torch.device(device)
     syms = torch.tensor(vocab.SYMBOL_IDS, device=dev)
     chance = math.log(len(syms))
     cfg = ModelConfig(n_layer=n_layer, n_head=4, d_model=d_model,
-                      d_ff=2 * d_model, max_len=4 * length)
+                      d_ff=2 * d_model, max_len=6 * length)
     model = Inducer(cfg).to(dev)
     opt = _optimizer(model, lr)
 
     def make(n):
+        # One filler length per batch: sequences stay rectangular, and across
+        # batches the offset varies, which is what kills the positional route.
+        f = int(torch.randint(1, length + 1, (1,))) if variable_offset else 0
         s = syms[torch.randint(len(syms), (n, length), device=dev)]
-        return torch.cat([s, s], dim=1)
+        fill = syms[torch.randint(len(syms), (n, f), device=dev)] if f else s[:, :0]
+        return torch.cat([s, fill, s], dim=1), length + f
 
     for _ in range(steps):
-        x = make(batch)
+        x, start = make(batch)
         logits = model(x[:, :-1])
         loss = F.cross_entropy(
-            logits[:, length - 1:].reshape(-1, logits.size(-1)),
-            x[:, length:].reshape(-1),
+            logits[:, start - 1:].reshape(-1, logits.size(-1)),
+            x[:, start:].reshape(-1),
         )
         opt.zero_grad(set_to_none=True)
         loss.backward()
@@ -102,18 +132,27 @@ def canonical_induction(
         opt.step()
 
     model.eval()
+    tot = 0.0
     with torch.no_grad():
-        x = make(256)
-        lg = model(x[:, :-1])
-        v = float(F.cross_entropy(lg[:, length - 1:].reshape(-1, lg.size(-1)),
-                                  x[:, length:].reshape(-1)))
+        for _ in range(8):
+            x, start = make(128)
+            lg = model(x[:, :-1])
+            tot += float(F.cross_entropy(lg[:, start - 1:].reshape(-1, lg.size(-1)),
+                                         x[:, start:].reshape(-1)))
+    v = tot / 8
+    kind = "variable offset (content matching)" if variable_offset else \
+           "fixed offset (positional copy)"
     return ProbeResult(
-        "canonical induction", v, chance, 0.0, v < 0.5,
-        f"{length} supervised tokens per example, all needing the same circuit. "
-        + ("The model and optimizer are capable; look further up the stack."
-           if v < 0.5 else
-           "The model or the optimizer cannot build an induction head here. No "
-           "family will train until this passes -- change the model, not the family."),
+        f"sequence copy, {kind}", v, chance, 0.0, v < 0.5,
+        ("Solved." if v < 0.5 else "NOT solved.") + (
+            " Content matching works; look further up the stack."
+            if variable_offset and v < 0.5 else
+            " The model cannot match on content at this size, only on position. "
+            "Every family here needs content matching, so none will train until "
+            "this passes -- change the model, not the family."
+            if variable_offset else
+            " Positional copying only; this says nothing about content matching."
+        ),
     )
 
 
@@ -194,8 +233,16 @@ def key_value_lookup(
 
 
 def run_all(device: str = "cpu", quick: bool = False) -> list[ProbeResult]:
-    steps = (600, 900) if quick else (2500, 4000)
+    """The three probes, in the order that localizes the fault.
+
+    Fixed-offset copy first because it is the shortcut: if it fails, nothing else
+    is worth running. Variable-offset second because it is the capability every
+    family actually needs. Key-value last because it is the same capability in
+    the shape the families use it.
+    """
+    steps = (600, 900, 900) if quick else (2500, 2500, 4000)
     return [
-        canonical_induction(steps=steps[0], device=device),
-        key_value_lookup(steps=steps[1], device=device),
+        sequence_copy(steps=steps[0], device=device, variable_offset=False),
+        sequence_copy(steps=steps[1], device=device, variable_offset=True),
+        key_value_lookup(steps=steps[2], device=device),
     ]

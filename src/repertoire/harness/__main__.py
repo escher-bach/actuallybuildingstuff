@@ -248,15 +248,22 @@ def cmd_diagnose(args) -> int:
     results = run_all(device=dev, quick=args.quick)
     for r in results:
         print("  " + r.report() + "\n")
-    if results[0].passed and not results[1].passed:
-        print("READING: the model can build the circuit and does not build it when")
-        print("only one target per example requires it. Task Spec section 7")
-        print("supervises answer tokens only, so the number of such targets per")
-        print("episode IS the number of scored trials -- which makes T load-bearing.")
-    elif not results[0].passed:
-        print("READING: the model cannot build an induction head at this size.")
-        print("No family will train until that is fixed. Change the model.")
-    return 0 if results[0].passed else 1
+    fixed_ok, variable_ok = results[0].passed, results[1].passed
+    if fixed_ok and not variable_ok:
+        print("READING: the model copies by POSITION and cannot match on CONTENT.")
+        print("Every family here needs content matching -- L1-L3 are defined by")
+        print("in-context inference about a theta resampled every episode -- so no")
+        print("family will train until this passes. Change the model, not the family.")
+        print("A family that looks learnable under this fault is one whose rule is")
+        print("positional (junk_trivial: copy the previous answer), which is why")
+        print("that one alone reaches its optimum.")
+    elif not fixed_ok:
+        print("READING: the model cannot even copy at a fixed offset. Something is")
+        print("wrong with the model or the optimizer before any task question.")
+    elif variable_ok and not results[2].passed:
+        print("READING: content matching works in isolation but not in the family's")
+        print("shape. The fault is between the two -- look at rendering.")
+    return 0 if variable_ok else 1
 
 
 def cmd_read(args) -> int:
