@@ -11,19 +11,38 @@ exactly what makes it the right instrument here -- every quantity the harness
 computes has a closed form against it, so a disagreement is a harness bug and
 never an open question about the family.
 
-theta is a hidden bit vector b of length d.  A query is an index i; the answer is
-b[i].  Everything the harness needs is exact:
+theta is a hidden vector v of length d over an alphabet of `n_values`.  A query
+is an index i; the answer is v[i].  Everything the harness needs is exact:
 
     identification    needs all d indices queried; before that, exactly the
                       unqueried coordinates are open
-    posterior         0.5/0.5 on an unseen index, a point mass on a seen one --
+    posterior         uniform on an unseen index, a point mass on a seen one --
                       and therefore *query-dependent*, which is the property
                       docs/03 finding 1 says a harness must not lose
     q*                the lowest index not yet determined
-    residual entropy  (unknown coordinates / d) * log 2 nats per uniform query,
-                      in closed form, so the sweep's measured x-axis can be
-                      checked against arithmetic before it is trusted on a
+    residual entropy  (unknown coordinates / d) * log(n_values) nats per uniform
+                      query, in closed form, so the sweep's measured x-axis can
+                      be checked against arithmetic before it is trusted on a
                       family where it cannot be
+
+--------------------------------------------------------------------------
+Why `n_values` exists, which is a lesson about instruments
+--------------------------------------------------------------------------
+
+The original was binary, and that made it a **weak instrument in a way that took
+a long diagnosis to see**.  The task is a content-matching lookup; the fallback
+is to output a uniform over the answer symbols the preamble names.  With two
+values that fallback costs only log 2 = 0.69 nats, so the entire gradient
+available for building a matching circuit is 0.69 nats -- against a fallback the
+model reaches almost immediately.
+
+A model sitting at chance on a binary lookup is therefore ambiguous between "the
+circuit cannot be learned here" and "the circuit is barely worth learning here",
+and those call for completely different responses.  Raising `n_values` raises
+the price of the fallback without touching the task's structure, which separates
+them.  The same weakness is present in the real families -- the worked family's
+answer is one of m = 5..6 symbols, so guessing costs it 1.70 nats -- so this is
+not only a property of the stub.
 """
 
 from __future__ import annotations
@@ -46,13 +65,13 @@ class Encoding:
 
     name: str
     index_symbols: tuple[int, ...]  # index -> token
-    value_symbols: tuple[int, int]  # bit -> token
+    value_symbols: tuple[int, ...]  # value -> token
     separator: int
 
 
 @dataclass(frozen=True)
 class StubTheta:
-    bits: tuple[int, ...]
+    bits: tuple[int, ...]  # one value per coordinate, each in 0..n_values-1
 
 
 @dataclass(frozen=True)
@@ -62,7 +81,7 @@ class Query:
 
 @dataclass(frozen=True)
 class Answer:
-    bit: int
+    bit: int  # the value at the queried coordinate
 
 
 class StubLookupFamily:
@@ -74,10 +93,20 @@ class StubLookupFamily:
     emits_trace = False
     stochastic = False
 
-    def __init__(self, d: int = 8) -> None:
+    def __init__(self, d: int = 8, n_values: int = 2) -> None:
         if not 1 <= d <= 32:
             raise ValueError("d must fit the symbol alphabet with room for values")
+        if not 2 <= n_values <= 16 or d + n_values > vocab.N_SYMBOLS:
+            raise ValueError("n_values must be 2..16 and fit the alphabet beside d")
         self.d = d
+        # How many distinct answers a coordinate can take. Binary was the
+        # original and it makes the stub a WEAK instrument: guessing costs only
+        # log 2 = 0.69 nats, so the pressure to build a content-matching circuit
+        # rather than output a uniform over the two named symbols is slight.
+        # Raising it raises the cost of guessing without changing the task's
+        # structure, which is the difference between "cannot learn the lookup"
+        # and "has little reason to".
+        self.n_values = n_values
 
     def dimensions(self, k: int) -> int:
         return self.d
@@ -85,13 +114,13 @@ class StubLookupFamily:
     # -- section 7 ------------------------------------------------------
 
     def sample_theta(self, k: int, rng: Random) -> StubTheta:
-        return StubTheta(tuple(rng.randrange(2) for _ in range(self.d)))
+        return StubTheta(tuple(rng.randrange(self.n_values) for _ in range(self.d)))
 
     def enumerate_theta(self, k: int) -> list[StubTheta]:
-        out = []
-        for mask in range(1 << self.d):
-            out.append(StubTheta(tuple((mask >> i) & 1 for i in range(self.d))))
-        return out
+        import itertools
+
+        return [StubTheta(t) for t in
+                itertools.product(range(self.n_values), repeat=self.d)]
 
     def sample_encoding(self, rng: Random) -> Encoding:
         pool = list(vocab.SYMBOL_IDS)
@@ -99,7 +128,7 @@ class StubLookupFamily:
         return Encoding(
             name="lookup",
             index_symbols=tuple(pool[: self.d]),
-            value_symbols=(pool[self.d], pool[self.d + 1]),
+            value_symbols=tuple(pool[self.d : self.d + self.n_values]),
             separator=vocab.STOI["EQ"],
         )
 
@@ -189,12 +218,13 @@ class StubLookupFamily:
             if q is None or a is None:
                 continue
             known[q.index] = a.bit
+        flat = {v: 1.0 / self.n_values for v in range(self.n_values)}
         if query is None:
-            return {0: 0.5, 1: 0.5}  # the marginal; NOT the training target
+            return flat  # the marginal; NOT the training target
         if query.index in known:
             b = known[query.index]
-            return {0: 1.0 if b == 0 else 0.0, 1: 1.0 if b == 1 else 0.0}
-        return {0: 0.5, 1: 0.5}
+            return {v: (1.0 if v == b else 0.0) for v in range(self.n_values)}
+        return flat
 
     def permuted_alphabet_check(self, rng: Random) -> bool:
         """A2 under a *total* permutation of the symbol alphabet.
@@ -211,7 +241,7 @@ class StubLookupFamily:
         enc2 = replace(
             enc,
             index_symbols=tuple(perm[s] for s in enc.index_symbols),
-            value_symbols=(perm[enc.value_symbols[0]], perm[enc.value_symbols[1]]),
+            value_symbols=tuple(perm[v] for v in enc.value_symbols),
         )
         for i in range(self.d):
             q = Query(i)
