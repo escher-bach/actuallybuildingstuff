@@ -304,6 +304,67 @@ class TestTheStepTwoDecayGate(unittest.TestCase):
                         "L1 must identify faster than L0, which has nothing to identify")
 
 
+class TestEvaluate(unittest.TestCase):
+    """Held-out scoring. Added because its absence made an arm unreadable."""
+
+    def setUp(self):
+        self.fam = StubLookupFamily(d=6)
+        self.cfg = ModelConfig(n_layer=1, n_head=2, d_model=32, d_ff=64, max_len=192)
+
+    def test_untrained_model_scores_log_vocab_on_every_channel(self):
+        """The calibration that makes the number readable: a model at
+        initialization must sit at log(vocab) everywhere, or the scoring is
+        wrong before any training question is asked."""
+        from repertoire.harness.train import evaluate
+
+        r = evaluate(Inducer(self.cfg), self.fam, 1, spec_for_level(Level.L1, T=4),
+                     n_episodes=32, device="cpu")
+        for name, loss in r.per_channel.items():
+            self.assertAlmostEqual(loss, math.log(vocab.VOCAB_SIZE), delta=0.15,
+                                   msg=f"channel {name} at {loss}")
+
+    def test_scoring_is_independent_of_the_training_mask(self):
+        """The property the whole function exists for.
+
+        Two models scored the same way must be comparable however they were
+        trained. Before this, a run trained with extra supervision reported a
+        loss averaged over tokens the comparison run never scored, and the two
+        looked comparable while measuring different things.
+        """
+        from repertoire.harness.train import evaluate
+
+        model = Inducer(self.cfg)
+        spec = spec_for_level(Level.L1, T=4)
+        a = evaluate(model, self.fam, 1, spec, n_episodes=32, device="cpu")
+        b = evaluate(model, self.fam, 1, spec, n_episodes=32, device="cpu")
+        self.assertAlmostEqual(a.answer_loss, b.answer_loss, places=9)
+        self.assertEqual(a.n_tokens, b.n_tokens)
+
+    def test_answer_channel_is_separated_from_the_others(self):
+        from repertoire.harness.train import evaluate
+
+        r = evaluate(Inducer(self.cfg), self.fam, 1, spec_for_level(Level.L1, T=5),
+                     n_episodes=16, device="cpu")
+        self.assertIn("ANSWER", r.per_channel)
+        self.assertIn("QUERY", r.per_channel)
+        self.assertEqual(len(r.per_trial), 5)
+        # one answer token per trial for this family
+        self.assertEqual(r.n_tokens["ANSWER"], 16 * 5)
+
+    def test_evaluation_episodes_are_disjoint_from_training_ones(self):
+        """`train_run` streams from seed * 1_000_003; evaluation starts far above
+        it, so 'held out' is checkable rather than argued."""
+        from repertoire.harness.episode import build_episode
+        from repertoire.harness.train import episode_stream
+
+        spec = spec_for_level(Level.L1, T=4)
+        trained = {tuple(next(s).tokens) for s in [episode_stream(self.fam, 1, spec, 0)]
+                   for _ in range(200)}
+        held = {tuple(build_episode(self.fam, 1, 900_000_000 + i, spec).tokens)
+                for i in range(64)}
+        self.assertFalse(trained & held)
+
+
 class TestReproducibility(unittest.TestCase):
     def test_two_runs_at_the_same_seed_produce_the_same_curve(self):
         """Section 7 calls this non-negotiable: "the whole design depends on

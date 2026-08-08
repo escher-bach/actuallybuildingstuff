@@ -416,6 +416,108 @@ def _lr_at(step: int, budget: Budget) -> float:
     return budget.lr * (0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * min(1.0, p))))
 
 
+@dataclass
+class EvalResult:
+    """Held-out scoring, broken down by channel. Never a training curve."""
+
+    answer_loss: float  # nats per ANSWER token -- the headline number
+    per_trial: list[float]  # answer-only, by trial index
+    per_channel: dict[str, float]  # nats/token on every channel present
+    n_tokens: dict[str, int]
+    n_episodes: int
+
+    def report(self) -> str:
+        chans = "  ".join(
+            f"{k}={v:.4f}({self.n_tokens[k]})" for k, v in sorted(self.per_channel.items())
+        )
+        curve = " ".join(f"{x:.3f}" for x in self.per_trial)
+        return (f"answer-only {self.answer_loss:.4f} nats/token over "
+                f"{self.n_episodes} held-out episodes\n    per trial: {curve}\n"
+                f"    by channel: {chans}")
+
+
+def evaluate(
+    model: Inducer,
+    family: Any,
+    k: int,
+    spec: EpisodeSpec,
+    n_episodes: int = 128,
+    batch_size: int = 16,
+    device: str | torch.device = "auto",
+    seed0: int = 900_000_000,
+    query_fn=None,
+) -> EvalResult:
+    """Score a trained model on fresh episodes, on the ANSWER channel alone.
+
+    **Added because its absence made a measurement unreadable.**  Everything
+    before this read training-time loss under whatever mask happened to be
+    active, which is fine while the mask is fixed and wrong the moment anything
+    varies: a run trained with extra supervision reports a loss averaged over
+    tokens the comparison run never scored, and the two numbers look comparable
+    while measuring different things.  That happened, and the arm had to be
+    thrown away.
+
+    Scoring is independent of the training mask by construction -- per-token loss
+    is computed everywhere and then bucketed by the episode's own channel array,
+    so `answer_loss` means the same thing for every model, however it was
+    trained.
+
+    `seed0` sits far from any training stream (`train_run` uses
+    `seed * 1_000_003`), so these episodes are genuinely unseen. That matters
+    less than usual here, since a procedural generator never repeats an episode
+    anyway, but a held-out offset makes it checkable rather than argued.
+    """
+    dev = pick_device(device) if isinstance(device, str) else device
+    model = model.to(dev)
+    was_training = model.training
+    model.eval()
+
+    totals: dict[str, float] = {}
+    counts: dict[str, int] = {}
+    trial_tot: dict[int, float] = {}
+    trial_cnt: dict[int, int] = {}
+
+    try:
+        with torch.no_grad():
+            for start in range(0, n_episodes, batch_size):
+                eps = [
+                    build_episode(family, k, seed0 + start + i, spec, query_fn=query_fn)
+                    for i in range(min(batch_size, n_episodes - start))
+                ]
+                batch = collate(eps, spec_max_len(eps)).to(dev)
+                logits = model(batch.tokens[:, :-1])
+                logp = F.log_softmax(logits.float(), dim=-1)
+                tgt = batch.targets[:, 1:]
+                per_token = -logp.gather(-1, tgt.unsqueeze(-1)).squeeze(-1)
+
+                for b, ep in enumerate(eps):
+                    for pos in range(1, len(ep)):
+                        loss = float(per_token[b, pos - 1])
+                        name = ep.channel[pos].name
+                        totals[name] = totals.get(name, 0.0) + loss
+                        counts[name] = counts.get(name, 0) + 1
+                        if ep.channel[pos] is Channel.ANSWER:
+                            t = ep.trial_index[pos]
+                            trial_tot[t] = trial_tot.get(t, 0.0) + loss
+                            trial_cnt[t] = trial_cnt.get(t, 0) + 1
+    finally:
+        if was_training:
+            model.train()
+
+    per_channel = {n: totals[n] / counts[n] for n in totals}
+    return EvalResult(
+        answer_loss=per_channel.get(Channel.ANSWER.name, float("nan")),
+        per_trial=[trial_tot[t] / trial_cnt[t] for t in sorted(trial_tot)],
+        per_channel=per_channel,
+        n_tokens=counts,
+        n_episodes=n_episodes,
+    )
+
+
+def spec_max_len(episodes: list[Episode]) -> int:
+    return max(len(e) for e in episodes)
+
+
 def round_trip_all_levels(family: Any, k: int = 1, T: int = 6, seed: int = 0) -> dict:
     """Section 8 step 1's gate, minus the training: does an episode build at L0-L3?
 

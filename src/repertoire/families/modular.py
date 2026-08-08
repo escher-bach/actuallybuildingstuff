@@ -375,14 +375,27 @@ class ModularHiddenPermutationFamily:
         slots = list(range(n_slots))  # 0 = modulus, 1+r = residue r
         revealed = set(rng.sample(slots, n_reveal)) if n_reveal else set()
 
+        # SYMBOL -> RESIDUE, which is the direction section 6 writes it in:
+        #
+        #     MOD 7 | MAP q->0 f->1 z->2 k->3 w->4 h->5 t->6
+        #
+        # The first version of this rendered residue -> symbol, and the
+        # inversion is not cosmetic. A query names two *symbols*, so the solver
+        # needs symbol -> residue twice before it can add at all; written the
+        # other way round the model has to invert an in-context map that is
+        # resampled every episode, twice, before reaching the arithmetic. That
+        # turned out to be enough to make L0 unlearnable at 30k steps -- the run
+        # converged flat at uniform-over-the-preamble-symbols. Deviating from a
+        # worked example the spec supplies verbatim cost more than it looked
+        # like it would.
         out = [vocab.PREAMBLE]
         out += vocab.number(theta.m) if 0 in revealed else [vocab.STOI["NEG"]]
         out.append(vocab.STOI["PIPE"])
         for r in range(theta.m):
-            out += vocab.number(r)
-            out.append(vocab.STOI["ARROW"])
             out.append(encoding.token(theta.pi[r]) if (1 + r) in revealed
                        else vocab.STOI["NEG"])
+            out.append(vocab.STOI["ARROW"])
+            out += vocab.number(r)
             out.append(vocab.STOI["COMMA"])
 
         shown_m = theta.m if 0 in revealed else None

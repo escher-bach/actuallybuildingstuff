@@ -155,9 +155,17 @@ class StubLookupFamily:
         revealed = sorted(rng.sample(range(self.d), n_reveal)) if n_reveal else []
         shown = {i: theta.bits[i] for i in revealed}
 
+        # Rendered in the SAME SHAPE as a trial -- `index EQ value`, not
+        # `index value`. A preamble entry is a stated example, and if it is laid
+        # out differently from the trials then "find this symbol and read what
+        # follows it" needs one offset in the preamble and a different one in the
+        # history, for the same match. That is two circuits where one would do,
+        # and it is enough to keep a 3-layer model at chance on what is otherwise
+        # a match-and-copy task.
         out = [vocab.PREAMBLE]
         for i in range(self.d):
             out.append(encoding.index_symbols[i])
+            out.append(encoding.separator)
             out.append(
                 encoding.value_symbols[shown[i]] if i in shown else vocab.STOI["NEG"]
             )
