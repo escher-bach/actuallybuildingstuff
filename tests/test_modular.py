@@ -419,6 +419,30 @@ class TestTrace(unittest.TestCase):
         self.assertTrue(trace_positions)
         self.assertTrue(all(ep.supervised[i] for i in trace_positions))
 
+    def test_the_trace_precedes_the_answer_it_derives(self):
+        """Working that arrives after the result is not working.
+
+        Section 1.2's rationale is that "at low k the untraced task may be
+        unreachable and the trace is the only thing making learning possible".
+        A trace emitted after the answer cannot do that -- the model has already
+        had to produce the answer in one step -- and is strictly worse than no
+        trace at all, because it adds supervised tokens obtainable only by having
+        already solved the problem.
+
+        Checked per trial, not globally: a global "first trace before first
+        answer" would pass on an episode that got the order right once.
+        """
+        fam = small()
+        ep = build_episode(fam, 0, 0, spec_for_level(Level.L1, T=4, emit_trace=True))
+        for t in range(4):
+            traces = [i for i, (c, tr) in enumerate(zip(ep.channel, ep.trial_index))
+                      if c is Channel.TRACE and tr == t]
+            answers = [i for i, (c, tr) in enumerate(zip(ep.channel, ep.trial_index))
+                       if c is Channel.ANSWER and tr == t]
+            self.assertTrue(traces and answers, f"trial {t} missing a channel")
+            self.assertLess(max(traces), min(answers),
+                            f"trial {t}: the derivation comes after its own answer")
+
 
 class TestKnownLimits(unittest.TestCase):
     """The register row's own verdicts, asserted so they cannot quietly drift."""

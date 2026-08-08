@@ -399,19 +399,32 @@ def _emit_trial(ep, family, theta, enc, k, spec, history, rng, t, query_fn,
         # provide. It also holds the supervised-token count constant across the
         # whole sweep, which the preamble dial cannot promise for every family.
         _emit(ep, answer_tokens, Channel.OBSERVATION, t)
-    elif spec.target_mode is TargetMode.POSTERIOR:
+        history.append((query, answer))
+        return
+
+    # The trace comes BEFORE the answer, and the order is the whole point.
+    #
+    # Section 1.2 calls the trace "the teacher's working", and working that
+    # arrives after the result is not working -- the model has already had to
+    # produce the answer in one step, which is exactly the situation the trace
+    # exists to prevent: "at low k the untraced task may be unreachable and the
+    # trace is the only thing making learning possible."
+    #
+    # Emitted after the answer, the trace is strictly worse than no trace: it
+    # adds supervised tokens the model can only produce by having already solved
+    # the problem, so it raises the loss floor without decomposing anything.
+    if scored and spec.emit_trace and getattr(family, "emits_trace", False):
+        for step in family.trace(theta, query) or []:
+            _emit(ep, [vocab.STEP], Channel.STRUCTURAL, t)
+            _emit(ep, family.render(enc, step), Channel.TRACE, t, supervised=True)
+
+    if spec.target_mode is TargetMode.POSTERIOR:
         dist = _token_posterior(family, enc, history, query, k, answer_tokens)
         start = len(ep.tokens)
         _emit(ep, answer_tokens, Channel.ANSWER, t, supervised=True)
         ep.posterior_targets[start] = dist
     else:
         _emit(ep, answer_tokens, Channel.ANSWER, t, supervised=True)
-
-    if scored and spec.emit_trace and getattr(family, "emits_trace", False):
-        steps = family.trace(theta, query)
-        for step in steps or []:
-            _emit(ep, [vocab.STEP], Channel.STRUCTURAL, t)
-            _emit(ep, family.render(enc, step), Channel.TRACE, t, supervised=True)
 
     history.append((query, answer))
 
