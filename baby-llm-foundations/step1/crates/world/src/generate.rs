@@ -353,8 +353,10 @@ fn per_hypothesis_identifying_sets(
 /// The `Irreversible`/`Reversible` step overhead beyond the identifying
 /// set's own inspects: `Irreversible` needs one terminating `Commit`;
 /// `Reversible` needs two (a provisional `Commit`, then a repeat to
-/// confirm -- see `lib.rs::step`'s termination rule).
-fn commit_overhead(variant: Variant) -> u16 {
+/// confirm -- see `lib.rs::step`'s termination rule). `pub(crate)`: also
+/// used by `teacher::teach` to reserve step-budget room for the eventual
+/// commit(s) when deciding how many probes it can still afford to propose.
+pub(crate) fn commit_overhead(variant: Variant) -> u16 {
     match variant {
         Variant::Irreversible => 1,
         Variant::Reversible => 2,

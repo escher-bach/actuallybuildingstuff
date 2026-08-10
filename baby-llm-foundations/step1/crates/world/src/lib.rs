@@ -7,6 +7,7 @@
 //! `State::history`, populated exclusively by executed `Inspect` actions.
 
 pub mod generate;
+pub mod teacher;
 
 /// Identifies a hypothesis within an `Instance`. Values are `0..n_hyp`.
 pub type HypId = u16;
