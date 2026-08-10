@@ -6,6 +6,8 @@
 //! `Instance::truth`. Evidence reaches the learner only through
 //! `State::history`, populated exclusively by executed `Inspect` actions.
 
+pub mod generate;
+
 /// Identifies a hypothesis within an `Instance`. Values are `0..n_hyp`.
 pub type HypId = u16;
 /// Identifies a probe within an `Instance`. Values are `0..n_probe`.
