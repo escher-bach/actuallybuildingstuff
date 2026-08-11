@@ -5,12 +5,10 @@ import hashlib
 import json
 import mmap
 import os
-import random
 import struct
 from functools import partial
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
 
 import torch
 from torch.utils.data import DataLoader, Dataset, Sampler
@@ -20,15 +18,37 @@ from .artifacts import atomic_json, sha256_file
 PAD, BOS, EOS, OBS, ACTION, END_TURN = range(256, 262)
 VOCAB_SIZE = 262
 TOKEN_TABLE = {**{str(i): i for i in range(256)}, "PAD": PAD, "BOS": BOS, "EOS": EOS, "OBS": OBS, "ACTION": ACTION, "END_TURN": END_TURN}
-TOKENIZER_HASH = hashlib.sha256(json.dumps(TOKEN_TABLE, sort_keys=True).encode()).hexdigest()
-TOKENIZER_NAME = "byte-utf8-transport"
+TOKENIZER_NAME = "byte-utf8-fast"
+TOKENIZER_REVISION = "v2"
+TOKENIZER_ARTIFACT = Path(__file__).resolve().parents[2] / "artifacts" / "byte-utf8-tokenizer" / "tokenizer.json"
+TOKENIZER_HASH = sha256_file(TOKENIZER_ARTIFACT)
 
 
 def assert_rust_tokenizer_identity() -> None:
     from world_py import tokenizer_identity
     name, revision, vocabulary_hash = tokenizer_identity()
-    if (name, revision, vocabulary_hash) != (TOKENIZER_NAME, "v1", TOKENIZER_HASH):
+    if (name, revision, vocabulary_hash) != (TOKENIZER_NAME, TOKENIZER_REVISION, TOKENIZER_HASH):
         raise RuntimeError(f"Rust/Python tokenizer identity mismatch: {(name, revision, vocabulary_hash)}")
+
+
+def assert_fast_tokenizer_parity() -> None:
+    """Prove the checked-in Rust-backed tokenizer retains the protocol IDs."""
+    from tokenizers import Tokenizer
+    from .build_tokenizer import _byte_to_unicode
+
+    tokenizer = Tokenizer.from_file(str(TOKENIZER_ARTIFACT))
+    byte_ids = {byte: tokenizer.token_to_id(symbol) for byte, symbol in _byte_to_unicode().items()}
+    if byte_ids != {byte: byte for byte in range(256)}:
+        raise AssertionError("fast-tokenizer byte vocabulary no longer maps every byte to itself")
+    canonical_corpus = ("ASCII\x00", "héllo", "λ → observation", "inspect(3)", "commit(2)")
+    for text in canonical_corpus:
+        ids = tokenizer.encode(text).ids
+        expected = list(text.encode("utf-8", errors="strict"))
+        if ids != expected or tokenizer.decode(ids) != text:
+            raise AssertionError(f"fast-tokenizer UTF-8 parity failure for {text!r}: {ids}")
+    for token, expected_id in (("<|pad|>", PAD), ("<|bos|>", BOS), ("<|eos|>", EOS), ("<|obs|>", OBS), ("<|action|>", ACTION), ("<|end_turn|>", END_TURN)):
+        if tokenizer.encode(token).ids != [expected_id]:
+            raise AssertionError(f"fast-tokenizer special-token mismatch for {token}")
 
 
 def encode_bytes(text: str) -> list[int]:
@@ -101,6 +121,7 @@ class SequenceDataset(Dataset[Sequence]):
 
 
 def collate(sequences: list[Sequence], context: int) -> dict[str, torch.Tensor]:
+    """Turn Rust-packed examples into the standard causal-LM data contract."""
     if not sequences: raise AssertionError("empty batch")
     length = max(len(s.tokens) for s in sequences)
     if length > context: raise AssertionError(f"sequence {length} exceeds context {context}")
@@ -113,20 +134,9 @@ def collate(sequences: list[Sequence], context: int) -> dict[str, torch.Tensor]:
         loss[row, :n], channels[row, :n], attention[row, :n] = torch.tensor(sequence.loss, dtype=torch.uint8), torch.tensor(sequence.channels, dtype=torch.uint8), True
     if not ((tokens >= 0).all() and (tokens < VOCAB_SIZE).all()): raise AssertionError("token ID out of vocabulary")
     if (loss[tokens == PAD] != 0).any(): raise AssertionError("padding has nonzero loss")
-    return {"tokens": tokens, "loss_mask": loss, "target_channels": channels, "attention_mask": attention}
-
-
-class DistributedSequenceSampler(Sampler[int]):
-    def __init__(self, dataset: Dataset[Sequence], seed: int, rank: int, world_size: int, drop_last: bool = True):
-        self.dataset, self.seed, self.rank, self.world_size, self.drop_last, self.epoch = dataset, seed, rank, world_size, drop_last, 0
-    def set_epoch(self, epoch: int) -> None: self.epoch = epoch
-    def __iter__(self) -> Iterator[int]:
-        values = list(range(len(self.dataset)))
-        random.Random((self.seed << 32) ^ self.epoch).shuffle(values)
-        usable = len(values) - (len(values) % self.world_size) if self.drop_last else len(values)
-        return iter(values[:usable][self.rank:usable:self.world_size])
-    def __len__(self) -> int:
-        return len(self.dataset) // self.world_size if self.drop_last else (len(self.dataset) + self.world_size - 1) // self.world_size
+    labels = tokens.clone()
+    labels[loss == 0] = -100
+    return {"input_ids": tokens, "labels": labels, "attention_mask": attention}
 
 
 def _family(params: dict):

@@ -199,6 +199,57 @@ impl PyBatch {
         Ok(())
     }
 
+    /// Apply rendered learner attempts independently and return the actual
+    /// per-episode transition record needed by dense correction collection.
+    /// A malformed or invalid attempt affects only its own episode; it leaves
+    /// that state unchanged and receives targets from that unchanged state.
+    fn step_attempts(&mut self, py: Python<'_>, attempts: Vec<String>, rendering: &str) -> PyResult<Vec<Py<PyAny>>> {
+        let rendering = parse_rendering(rendering)?;
+        let live = self.live_episode_indices();
+        if attempts.len() != live.len() {
+            return Err(PyValueError::new_err(format!(
+                "expected one rendered attempt for each of {} live episodes, got {}",
+                live.len(), attempts.len()
+            )));
+        }
+        let mut records = Vec::with_capacity(live.len());
+        for (episode, learner_text) in live.into_iter().zip(attempts) {
+            let instance = &self.instances[episode];
+            let observation_before = render_observation(instance, &self.states[episode], rendering);
+            let parsed = parse_rendered_action(&learner_text, rendering).ok().and_then(|action| match action {
+                Action::Inspect(q) if q < instance.n_probe => Some(action),
+                Action::Commit(h) if h < instance.n_hyp => Some(action),
+                _ => None,
+            });
+            let parsed_encoded = parsed.map(|action| encode_action(action, instance.n_probe));
+            let accepted = if let Some(action) = parsed {
+                let mut successor = self.states[episode].clone();
+                if step(instance, &mut successor, action).is_ok() {
+                    self.states[episode] = successor;
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
+            let observation_after = render_observation(instance, &self.states[episode], rendering);
+            let targets = teach(instance, &self.states[episode]);
+            let outcome = outcome(instance, &self.states[episode]);
+            let item = PyDict::new(py);
+            item.set_item("episode_index", episode)?;
+            item.set_item("learner_text", learner_text)?;
+            item.set_item("parsed_action", parsed_encoded)?;
+            item.set_item("accepted", accepted)?;
+            item.set_item("observation_before", observation_before)?;
+            item.set_item("observation_after", observation_after)?;
+            item.set_item("preferred_corrections", PySet::new(py, targets.preferred_actions.into_iter().map(|a| encode_action(a, instance.n_probe)))?)?;
+            item.set_item("terminal_outcome", if outcome.terminated { Some((outcome.correct, outcome.spent, outcome.steps, outcome.budget_violation, outcome.unreachable)) } else { None })?;
+            records.push(item.into_any().unbind());
+        }
+        Ok(records)
+    }
+
     /// Original batch indices of currently live episodes, in the exact order
     /// accepted by `step`. All other batched return values stay indexed by the
     /// original batch position and include terminated episodes.

@@ -15,11 +15,11 @@ from pathlib import Path
 
 from .artifacts import RunArtifacts, atomic_json
 from .benchmarks import cpu_benchmark, dataloader_benchmark
-from .data import ACTION, BOS, BinaryShard, END_TURN, OBS, TOKENIZER_HASH, VOCAB_SIZE, DistributedSequenceSampler, Sequence, assert_rust_tokenizer_identity, encode_bytes, generate_rust_shard
+from .data import ACTION, BOS, BinaryShard, END_TURN, OBS, TOKENIZER_HASH, VOCAB_SIZE, Sequence, assert_fast_tokenizer_parity, assert_rust_tokenizer_identity, encode_bytes, generate_rust_shard
 from .environment import assert_two_t4s, capture, command, git_info
 
 
-PHASES = ("capture_environment", "install_and_build", "correctness_tests", "cpu_throughput", "prepare_shards", "dataloader_throughput", "gpu_preflight", "instrument_check", "train", "evaluate")
+PHASES = ("capture_environment", "install_and_build", "correctness_tests", "cpu_throughput", "prepare_shards", "dataloader_throughput", "gpu_preflight", "train", "evaluate")
 
 
 def _repo_root() -> Path: return Path(__file__).resolve().parents[3]
@@ -71,11 +71,11 @@ def _correctness(repo: Path, artifacts: RunArtifacts) -> None:
     log = artifacts.run_dir / "logs" / "tests.log"
     _run_checked(["cargo", "test", "--workspace", "--locked"], log, repo / "step1", 1800)
     _run_checked([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"], log, repo / "step1" / "python", 300)
-    # Python contracts: byte table, mask shift, and distributed partitions.
+    # Python contracts: byte table, labels, and distributed partitions.
     script = """
 import torch
 from step1_experiments.data import *
-from step1_experiments.model import masked_next_token_loss
+from step1_experiments.data import collate
 from world_py import Batch, FamilyParams, generate_teacher_shard, parse_action, render_action
 from pathlib import Path
 import tempfile
@@ -83,6 +83,7 @@ assert all(decode_bytes([i]).encode() == bytes([i]) for i in range(128))
 for rendering in ('a', 'b'):
     text=render_action(0, 5, 6, rendering); assert parse_action(text, 5, 6, rendering)==0
 assert_rust_tokenizer_identity()
+assert_fast_tokenizer_parity()
 params = FamilyParams(n_hyp=6,n_probe=5,n_evidence=2,cost_lo=1,cost_hi=3,budget_slack=1,min_depth=2,step_slack=2,variant='irreversible')
 batch = Batch(params, seed=20260811, n_episodes=1)
 prefix = [BOS, OBS] + encode_bytes(batch.observations('a')[0]) + [ACTION]
@@ -92,9 +93,7 @@ with tempfile.TemporaryDirectory() as d:
     assert sequence.tokens[:len(prefix)] == prefix
     end = sequence.tokens.index(END_TURN)
     assert sequence.loss[end] == 1 and all(sequence.loss[i] == 1 for i in range(prefix.__len__(), end + 1))
-seq=[Sequence([1,2,3],[0,1,0],[0,1,0]) for _ in range(11)]
-d=SequenceDataset(seq); a=set(DistributedSequenceSampler(d,7,0,2)); b=set(DistributedSequenceSampler(d,7,1,2)); assert not a & b and len(a|b)==10
-logits=torch.zeros(1,3,VOCAB_SIZE,requires_grad=True); total,n=masked_next_token_loss(logits,torch.tensor([[1,2,3]]),torch.tensor([[0,1,0]])); assert n.item()==1; total.backward()
+batch=collate([Sequence([1,2,3],[0,1,0],[0,1,0])], 8); assert batch['labels'].tolist()==[[-100,2,-100]]
 """
     _run_checked([sys.executable, "-c", script], log, repo / "step1" / "python", 120)
 
@@ -118,10 +117,6 @@ def _torchrun(config_path: Path, artifacts: RunArtifacts, preflight: bool, resum
     if preflight: args.append("--preflight-only")
     if resume and not preflight: args.append("--resume")
     _run_checked(args, artifacts.run_dir / "logs" / ("preflight.log" if preflight else "train.log"), _repo_root() / "step1" / "python", 24 * 3600)
-
-
-def _instrument_torchrun(config_path: Path, artifacts: RunArtifacts) -> None:
-    _run_checked(["torchrun", "--standalone", "--nproc_per_node=2", "-m", "step1_experiments.instrument", "--resolved-config", str(config_path), "--run-dir", str(artifacts.run_dir)], artifacts.run_dir / "logs" / "instrument.log", _repo_root() / "step1" / "python", 24 * 3600)
 
 
 def run(config_path: Path, output_root: Path, resume: str) -> None:
@@ -154,15 +149,10 @@ def run(config_path: Path, output_root: Path, resume: str) -> None:
         def gpu_preflight():
             assert_two_t4s(); resolved_path = _save_resolved(config, artifacts)
             _torchrun(resolved_path, artifacts, True)
-            child_resolved = json.loads(resolved_path.read_text())
-            config.clear(); config.update(child_resolved)
-            return {"resolved_microbatch_sequences": config["training"]["resolved_microbatch_sequences"]}
+            return {"model_artifact": str(artifacts.run_dir / "model")}
         phase("gpu_preflight", gpu_preflight)
-        resolved_after_preflight = artifacts.run_dir / "resolved_config.json"
-        if resolved_after_preflight.exists():
-            child_resolved = json.loads(resolved_after_preflight.read_text())
-            config.clear(); config.update(child_resolved)
-        if config["run"]["mode"] == "preflight": phase("instrument_check", lambda: _instrument_torchrun(_save_resolved(config, artifacts), artifacts))
+        if config["run"]["mode"] == "preflight":
+            pass
         elif config["run"]["mode"] == "dense":
             phase("train", lambda: _torchrun(_save_resolved(config, artifacts), artifacts, False, resume == "auto"))
             phase("evaluate", lambda: __import__("step1_experiments.evaluate", fromlist=["evaluate"]).evaluate(_save_resolved(config, artifacts), artifacts.run_dir))

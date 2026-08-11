@@ -8,7 +8,6 @@ import torch
 
 from .artifacts import atomic_json
 from .data import ACTION, BOS, BinaryShard, END_TURN, OBS, collate, encode_bytes
-from .model import Step1Transformer, masked_next_token_loss
 
 
 def _family(params: dict):
@@ -17,20 +16,27 @@ def _family(params: dict):
 
 
 @torch.no_grad()
-def _decode_action(model: Step1Transformer, prefix: list[int], device: torch.device, limit: int = 96) -> tuple[str | None, float]:
-    generated: list[int] = []; confidences: list[float] = []
-    for _ in range(limit):
-        if len(prefix) + len(generated) >= model.context_length: return None, 0.0
-        ids = torch.tensor([prefix + generated], dtype=torch.long, device=device)
-        with torch.autocast(device.type, dtype=torch.float16, enabled=device.type == "cuda"):
-            probabilities = model(ids)[:, -1].float().softmax(-1)
-        value, token = probabilities.max(-1); token = int(token.item()); confidences.append(float(value.item()))
-        if token == END_TURN:
-            try: return bytes(generated).decode("utf-8", errors="strict"), sum(confidences) / len(confidences)
-            except UnicodeDecodeError: return None, 0.0
-        if token < 256: generated.append(token)
-        else: return None, 0.0
-    return None, 0.0
+def _decode_action(model, prefix: list[int], device: torch.device, limit: int = 96) -> tuple[str | None, float]:
+    if len(prefix) >= model.config.max_position_embeddings:
+        return None, 0.0
+    ids = torch.tensor([prefix], dtype=torch.long, device=device)
+    generated = model.generate(
+        input_ids=ids,
+        max_new_tokens=min(limit, model.config.max_position_embeddings - len(prefix)),
+        do_sample=False,
+        eos_token_id=END_TURN,
+        pad_token_id=model.config.pad_token_id,
+        use_cache=True,
+    )[0, len(prefix):].tolist()
+    if END_TURN not in generated:
+        return None, 0.0
+    payload = generated[:generated.index(END_TURN)]
+    if any(token >= 256 for token in payload):
+        return None, 0.0
+    try:
+        return bytes(payload).decode("utf-8", errors="strict"), 0.0
+    except UnicodeDecodeError:
+        return None, 0.0
 
 
 @torch.no_grad()
@@ -44,7 +50,7 @@ def _teacher_cost(params: dict, seed: int) -> int:
 
 
 @torch.no_grad()
-def _execute(model: Step1Transformer, params: dict, seed: int, rendering: str, device: torch.device) -> dict:
+def _execute(model, params: dict, seed: int, rendering: str, device: torch.device) -> dict:
     from world_py import Batch, parse_action
     batch, prefix = Batch(_family(params), seed=seed, n_episodes=1), [BOS]
     malformed, confidences, steps = 0, [], 0
@@ -63,12 +69,12 @@ def _execute(model: Step1Transformer, params: dict, seed: int, rendering: str, d
 
 @torch.no_grad()
 def evaluate(resolved_config: Path, run_dir: Path) -> dict:
-    config = json.loads(resolved_config.read_text()); checkpoint = torch.load(run_dir / "checkpoints" / "latest.pt", map_location="cpu", weights_only=False)
-    if checkpoint["config_hash"] != config["_meta"]["hash"]: raise RuntimeError("checkpoint configuration hash mismatch")
+    config = json.loads(resolved_config.read_text())
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = Step1Transformer(**{k: config["model"][k] for k in ("layers", "width", "heads", "mlp_width", "rope_base")}).to(device)
-    model.context_length = config["world"]["context_length"]; model.load_state_dict(checkpoint["model"]); model.eval()
-    output = {"checkpoint": "latest.pt", "checkpoint_tokens": checkpoint["tokens"], "sets": {}}
+    from transformers import AutoModelForCausalLM
+    artifact = run_dir / "model"
+    model = AutoModelForCausalLM.from_pretrained(artifact, local_files_only=True).to(device).eval()
+    output = {"checkpoint": str(artifact), "sets": {}}
     sets = {"validation": (config["world"], config["run"]["root_seed"] + 1_000_000, config["world"]["validation_episodes"], config["world"]["rendering"]),
             "structural": ({**config["world"], "n_hyp": config["world"]["n_hyp"] + 1}, config["run"]["root_seed"] + 2_000_000, config["world"]["structural_episodes"], config["world"]["rendering"]),
             "rendering_b": ({**config["world"], "rendering": "b"}, config["run"]["root_seed"] + 3_000_000, config["world"]["transfer_episodes"], "b"),
@@ -82,7 +88,10 @@ def evaluate(resolved_config: Path, run_dir: Path) -> dict:
     # Retain teacher-forced NLL as a diagnostic, never as the success metric.
     dataset = BinaryShard(run_dir / "datasets" / "validation.bin"); total, count = 0.0, 0
     for start in range(0, len(dataset), 4):
-        batch = collate([dataset[i] for i in range(start, min(start + 4, len(dataset)))], config["world"]["context_length"]); ids, mask = batch["tokens"].to(device), batch["loss_mask"].to(device)
-        loss, labels = masked_next_token_loss(model(ids), ids, mask); total += float(loss); count += int(labels)
+        batch = collate([dataset[i] for i in range(start, min(start + 4, len(dataset)))], config["world"]["context_length"])
+        batch = {key: value.to(device) for key, value in batch.items()}
+        loss = model(**batch).loss
+        labels = int((batch["labels"][:, 1:] != -100).sum())
+        total += float(loss) * labels; count += labels
     output["teacher_forced_action_nll"] = total / count
     atomic_json(run_dir / "evaluation" / "metrics.json", output); return output

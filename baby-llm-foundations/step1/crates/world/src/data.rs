@@ -34,10 +34,12 @@ pub struct TokenizerIdentity {
 impl TokenizerIdentity {
     pub fn byte_utf8() -> Self {
         Self {
-            name: "byte-utf8-transport".to_string(),
-            revision: "v1".to_string(),
-            // Hash of IDs 0..255 plus fixed PAD/BOS/EOS/OBS/ACTION/END_TURN.
-            vocabulary_hash: "dcb84350b969fbcbec931b50af29309af4956c606f02fa5a40950c6cd36e104e".to_string(),
+            name: "byte-utf8-fast".to_string(),
+            revision: "v2".to_string(),
+            // SHA-256 of step1/artifacts/byte-utf8-tokenizer/tokenizer.json.
+            // ByteTokenizer remains a direct packer only after parity tests
+            // establish that its byte IDs exactly match this artifact.
+            vocabulary_hash: "7ff210fae4c0cd4cff12d7d1028350142abc4b6a9380fa26bc1be93d8168bd92".to_string(),
         }
     }
 }
