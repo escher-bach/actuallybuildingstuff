@@ -15,7 +15,7 @@ from pathlib import Path
 
 from .artifacts import RunArtifacts, atomic_json
 from .benchmarks import cpu_benchmark, dataloader_benchmark
-from .data import TOKENIZER_HASH, VOCAB_SIZE, DistributedSequenceSampler, Sequence, generate_world_sequences, load_generated_dataset, write_generated_dataset
+from .data import BinaryShard, TOKENIZER_HASH, VOCAB_SIZE, DistributedSequenceSampler, Sequence, generate_rust_shard
 from .environment import assert_two_t4s, capture, command, git_info
 
 
@@ -85,8 +85,8 @@ def _prepare(config: dict, artifacts: RunArtifacts) -> dict:
     partitions.extend([("structural", structural, seed + 2_000_000, world["structural_episodes"], world["rendering"]), ("transfer", transfer, seed + 3_000_000, world["transfer_episodes"], "b")])
     result = {}
     for name, params, part_seed, count, rendering in partitions:
-        sequences, manifest = generate_world_sequences(params, part_seed, count, world["context_length"], rendering)
-        result[name] = {"path": str(write_generated_dataset(root, name, sequences, manifest)), "content_hash": manifest["content_hash"]}
+        binary, manifest, replay = generate_rust_shard(params, part_seed, count, world["context_length"], rendering, root, name)
+        result[name] = {"path": str(binary), "manifest": str(manifest), "replay": str(replay), "content_hash": hashlib.sha256(binary.read_bytes()).hexdigest()}
     if result["train"]["content_hash"] in {result["validation"]["content_hash"], result["structural"]["content_hash"], result["transfer"]["content_hash"]}: raise RuntimeError("dataset partition collision")
     return result
 
@@ -120,7 +120,7 @@ def run(config_path: Path, output_root: Path, resume: str) -> None:
             return result
         phase("cpu_throughput", cpu_gate)
         phase("prepare_shards", lambda: _prepare(config, artifacts))
-        phase("dataloader_throughput", lambda: dataloader_benchmark(load_generated_dataset(artifacts.run_dir / "datasets" / "train.pt"), config["world"]["context_length"], artifacts.run_dir / "benchmarks"))
+        phase("dataloader_throughput", lambda: dataloader_benchmark(BinaryShard(artifacts.run_dir / "datasets" / "train.bin"), config["world"]["context_length"], artifacts.run_dir / "benchmarks"))
         phase("gpu_preflight", lambda: (assert_two_t4s(), _torchrun(_save_resolved(config, artifacts), artifacts, True))[1])
         if config["run"]["mode"] == "preflight": phase("instrument_check", lambda: _instrument_torchrun(_save_resolved(config, artifacts), artifacts))
         elif config["run"]["mode"] == "dense":

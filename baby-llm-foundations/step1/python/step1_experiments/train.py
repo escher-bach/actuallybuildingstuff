@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import math
 import os
@@ -14,7 +15,7 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from .artifacts import atomic_json
-from .data import DistributedSequenceSampler, collate, load_generated_dataset
+from .data import BinaryShard, DistributedSequenceSampler, make_dataloader
 from .model import Step1Transformer, masked_next_token_loss
 
 
@@ -55,18 +56,30 @@ def _lr(config: dict, tokens: int) -> float:
 def run(resolved_config: Path, run_dir: Path, preflight_only: bool = False, resume: bool = False) -> None:
     config = json.loads(resolved_config.read_text()); local, rank, world_size = _rank(); device = torch.device("cuda", local)
     random.seed(config["run"]["root_seed"] + rank); torch.manual_seed(config["run"]["root_seed"] + rank); torch.cuda.manual_seed_all(config["run"]["root_seed"] + rank)
-    dataset = load_generated_dataset(run_dir / "datasets" / "train.pt")
+    dataset = BinaryShard(run_dir / "datasets" / "train.bin")
     sampler = DistributedSequenceSampler(dataset, config["run"]["root_seed"], rank, world_size)
     model = Step1Transformer(**{k: config["model"][k] for k in ("layers", "width", "heads", "mlp_width", "rope_base")}).to(device)
     model.context_length = config["world"]["context_length"]
     ddp = DDP(model, device_ids=[local], output_device=local)
     optimizer, scaler = _optimizer(ddp.module, config["training"]), torch.amp.GradScaler("cuda")
     micro = config["training"]["microbatch_sequences"]
-    samples = list(iter(sampler))
-    if not samples: raise RuntimeError("DDP rank received no sequences")
+    if len(sampler) == 0: raise RuntimeError("DDP rank received no sequences")
+    global_worker_budget = max(1, min(8, (os.cpu_count() or 2) // 2))
+    workers = max(1, global_worker_budget // world_size)
+    loader = make_dataloader(dataset, config["world"]["context_length"], micro, workers=workers, sampler=sampler)
+    iterator = iter(loader)
+    def next_batch(batch_size: int) -> dict[str, torch.Tensor]:
+        nonlocal loader, iterator
+        if loader.batch_size != batch_size:
+            loader = make_dataloader(dataset, config["world"]["context_length"], batch_size, workers=workers, sampler=sampler)
+            iterator = iter(loader)
+        try: return next(iterator)
+        except StopIteration:
+            sampler.set_epoch(sampler.epoch + 1)
+            iterator = iter(loader)
+            return next(iterator)
     def one_step(microbatch: int, commit: bool) -> int:
-        subset = [dataset[samples[i % len(samples)]] for i in range(microbatch)]
-        batch = {k: v.to(device, non_blocking=True) for k, v in collate(subset, config["world"]["context_length"]).items()}
+        batch = {k: v.to(device, non_blocking=True) for k, v in next_batch(microbatch).items()}
         if batch["tokens"].dtype != torch.long or not all(v.shape == batch["tokens"].shape for v in batch.values()): raise AssertionError("invalid batch tensor contract")
         with torch.autocast("cuda", dtype=torch.float16):
             logits = ddp(batch["tokens"]); total, count = masked_next_token_loss(logits, batch["tokens"], batch["loss_mask"])
@@ -82,12 +95,18 @@ def run(resolved_config: Path, run_dir: Path, preflight_only: bool = False, resu
         input_count = batch["attention_mask"].sum().detach().to(torch.int64)
         dist.all_reduce(input_count, op=dist.ReduceOp.SUM)
         return int(input_count.item())
-    # Bounded OOM-only adjustment before real training.
+    # Bounded OOM-only adjustment before real training. The probe includes the
+    # full optimizer/checkpoint path, then restores every mutable state so no
+    # uncounted 6e-4 update leaks into the official warm-up or token budget.
+    baseline = {"model": copy.deepcopy(ddp.module.state_dict()), "optimizer": copy.deepcopy(optimizer.state_dict()), "scaler": copy.deepcopy(scaler.state_dict()), "rng": torch.get_rng_state(), "cuda_rng": torch.cuda.get_rng_state_all()}
     while True:
         try:
             optimizer.zero_grad(set_to_none=True); one_step(micro, True); torch.cuda.synchronize(device)
+            ddp.module.load_state_dict(baseline["model"]); optimizer.load_state_dict(baseline["optimizer"]); scaler.load_state_dict(baseline["scaler"])
+            torch.set_rng_state(baseline["rng"]); torch.cuda.set_rng_state_all(baseline["cuda_rng"]); optimizer.zero_grad(set_to_none=True)
             break
         except torch.OutOfMemoryError:
+            ddp.module.load_state_dict(baseline["model"]); optimizer.load_state_dict(baseline["optimizer"]); scaler.load_state_dict(baseline["scaler"])
             optimizer.zero_grad(set_to_none=True); torch.cuda.empty_cache(); micro //= 2
             if micro < 1: raise RuntimeError("preflight exhausted configured microbatch retries")
     if rank == 0:
@@ -109,8 +128,7 @@ def run(resolved_config: Path, run_dir: Path, preflight_only: bool = False, resu
     while tokens < config["training"]["token_budget"]:
         optimizer.zero_grad(set_to_none=True); update_tokens = update_action_tokens = 0
         while update_tokens < config["training"]["global_tokens_per_update"]:
-            subset = [dataset[samples[(index + i) % len(samples)]] for i in range(micro)]; index += micro
-            batch = {k: v.to(device, non_blocking=True) for k, v in collate(subset, config["world"]["context_length"]).items()}
+            batch = {k: v.to(device, non_blocking=True) for k, v in next_batch(micro).items()}; index += int(batch["tokens"].shape[0])
             with torch.autocast("cuda", dtype=torch.float16): logits = ddp(batch["tokens"]); total, count = masked_next_token_loss(logits, batch["tokens"], batch["loss_mask"])
             scaler.scale(total).backward()
             action_count = count.detach().to(torch.float64); dist.all_reduce(action_count, op=dist.ReduceOp.SUM); update_action_tokens += int(action_count.item())

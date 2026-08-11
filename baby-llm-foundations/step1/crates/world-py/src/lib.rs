@@ -7,9 +7,12 @@
 use pyo3::exceptions::{PyIndexError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyModule, PySet};
+use std::path::Path;
+use world::data::{generate_dataset_shard, write_dataset_shard, ShardSpec, TokenizerIdentity};
 use world::generate::{sample, FamilyParams};
 use world::render::{parse_action as parse_rendered_action, render_action as render_rendered_action, render_observation, Rendering};
 use world::teacher::{outcome, teach};
+use world::trajectory::ByteTokenizer;
 use world::{reset, step, valid_actions, Action, Instance, State, StepError, Variant};
 
 const WORLD_FAMILY_VERSION: &str = "world-0.1.0";
@@ -372,11 +375,46 @@ fn parse_action(text: &str, n_probe: u16, n_hyp: u16, rendering: &str) -> PyResu
     }
 }
 
+/// Produces the existing Rust binary shard format so the measured DataLoader
+/// and the training loop consume identical mmap-able payloads.
+#[pyfunction]
+#[pyo3(signature = (params, seed, episode_count, rendering, max_sequence_tokens, directory, stem))]
+fn generate_teacher_shard(
+    params: &PyFamilyParams,
+    seed: u64,
+    episode_count: usize,
+    rendering: &str,
+    max_sequence_tokens: usize,
+    directory: &str,
+    stem: &str,
+) -> PyResult<(String, String, String)> {
+    let rendering = parse_rendering(rendering)?;
+    let spec = ShardSpec {
+        params: params.inner,
+        root_seed: seed,
+        first_instance_index: 0,
+        episode_count,
+        rendering,
+        max_sequence_tokens,
+        tokenizer: TokenizerIdentity::byte_utf8(),
+    };
+    let shard = generate_dataset_shard(&spec, &ByteTokenizer)
+        .map_err(|error| PyValueError::new_err(format!("shard generation failed: {error:?}")))?;
+    let paths = write_dataset_shard(Path::new(directory), stem, &shard)
+        .map_err(|error| PyValueError::new_err(format!("shard write failed: {error:?}")))?;
+    Ok((
+        paths.0.display().to_string(),
+        paths.1.display().to_string(),
+        paths.2.display().to_string(),
+    ))
+}
+
 #[pymodule]
 fn world_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyFamilyParams>()?;
     m.add_class::<PyBatch>()?;
     m.add_function(wrap_pyfunction!(render_action, m)?)?;
     m.add_function(wrap_pyfunction!(parse_action, m)?)?;
+    m.add_function(wrap_pyfunction!(generate_teacher_shard, m)?)?;
     Ok(())
 }

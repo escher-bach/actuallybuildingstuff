@@ -7,7 +7,7 @@ from pathlib import Path
 import torch
 
 from .artifacts import atomic_json
-from .data import ACTION, BOS, END_TURN, OBS, Sequence, collate, encode_bytes, load_generated_dataset
+from .data import ACTION, BOS, BinaryShard, END_TURN, OBS, collate, encode_bytes
 from .model import Step1Transformer, masked_next_token_loss
 
 
@@ -80,7 +80,7 @@ def evaluate(resolved_config: Path, run_dir: Path) -> dict:
                                 "mean_probe_cost": sum(row["spent"] for row in rows) / count, "regret_to_teacher": sum(row["spent"] - row["teacher_spent"] for row in rows) / count,
                                 "mean_action_confidence": sum(row["confidence"] for row in rows) / count, "mean_steps": sum(row["steps"] for row in rows) / count}
     # Retain teacher-forced NLL as a diagnostic, never as the success metric.
-    dataset = load_generated_dataset(run_dir / "datasets" / "validation.pt"); total, count = 0.0, 0
+    dataset = BinaryShard(run_dir / "datasets" / "validation.bin"); total, count = 0.0, 0
     for start in range(0, len(dataset), 4):
         batch = collate([dataset[i] for i in range(start, min(start + 4, len(dataset)))], config["world"]["context_length"]); ids, mask = batch["tokens"].to(device), batch["loss_mask"].to(device)
         loss, labels = masked_next_token_loss(model(ids), ids, mask); total += float(loss); count += int(labels)

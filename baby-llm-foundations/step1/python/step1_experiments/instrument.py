@@ -12,7 +12,7 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from .artifacts import atomic_json
-from .data import Sequence, collate, load_generated_dataset
+from .data import BinaryShard, collate
 from .model import Step1Transformer, masked_next_token_loss
 from .train import _optimizer
 
@@ -23,10 +23,14 @@ def retrieval_batch(seed: int, batch_size: int = 16, length: int = 128) -> tuple
     for _ in range(batch_size):
         row, mask = [256] + [rng.randrange(1, 220) for _ in range(length - 1)], [0] * length
         keys = rng.sample(range(1, 96), 4); values = rng.sample(range(128, 220), 4)
-        sources = rng.sample(range(2, 72), 4)
+        sources = rng.sample(range(2, 72, 3), 4)
         for position, key, value in zip(sources, keys, values): row[position:position + 2] = [key, value]
+        # Four-token slots prevent query triples from overwriting one another.
+        # The marker is before (not at) each query, so the supervised target is
+        # always the independently sampled value rather than the marker token.
         for position, (key, value) in enumerate(zip(keys * 2, values * 2), start=96):
-            row[position - 1:position + 2] = [255, key, value]; mask[position + 1] = 1
+            query = 96 + (position - 96) * 4
+            row[query:query + 3] = [255, key, value]; mask[query + 2] = 1
         rows.append(row); masks.append(mask)
     return torch.tensor(rows, dtype=torch.long), torch.tensor(masks, dtype=torch.uint8)
 
@@ -37,7 +41,8 @@ def run(resolved_config: Path, run_dir: Path) -> None:
     torch.manual_seed(config["run"]["root_seed"] + rank)
     model = Step1Transformer(**{k: config["model"][k] for k in ("layers", "width", "heads", "mlp_width", "rope_base")}).to(device)
     ddp = DDP(model, device_ids=[local]); optimizer = _optimizer(ddp.module, config["training"]); scaler = torch.amp.GradScaler("cuda")
-    tiny = load_generated_dataset(run_dir / "datasets" / "train.pt").sequences[:32]
+    tiny_shard = BinaryShard(run_dir / "datasets" / "train.bin")
+    tiny = [tiny_shard[index] for index in range(min(32, len(tiny_shard)))]
     input_tokens, turn = 0, 0
     # This is capped by input tokens, not labels. Half the updates are world traces.
     while input_tokens < config["training"]["token_budget"]:

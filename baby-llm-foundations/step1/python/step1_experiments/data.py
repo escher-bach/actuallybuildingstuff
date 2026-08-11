@@ -157,10 +157,17 @@ def load_generated_dataset(path: Path) -> SequenceDataset:
     return SequenceDataset([Sequence(**item) for item in torch.load(path, map_location="cpu", weights_only=True)])
 
 
-def make_dataloader(dataset: Dataset[Sequence], context: int, batch_size: int, workers: int | None = None) -> DataLoader:
+def make_dataloader(dataset: Dataset[Sequence], context: int, batch_size: int, workers: int | None = None, sampler: Sampler[int] | None = None) -> DataLoader:
     """One global worker budget; callers divide it across DDP ranks."""
     if workers is None:
         workers = max(1, min(8, (os.cpu_count() or 2) // 2))
-    return DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=workers,
+    return DataLoader(dataset, batch_size=batch_size, shuffle=False, sampler=sampler, num_workers=workers,
                       collate_fn=partial(collate, context=context), pin_memory=True,
                       persistent_workers=workers > 0, prefetch_factor=2 if workers else None)
+
+
+def generate_rust_shard(params: dict, seed: int, episodes: int, context: int, rendering: str, directory: Path, stem: str) -> tuple[Path, Path, Path]:
+    """Delegate generation/packing to Rust; Python only reads the stable binary."""
+    from world_py import generate_teacher_shard
+    paths = generate_teacher_shard(_family(params), seed, episodes, rendering, context, str(directory), stem)
+    return tuple(Path(path) for path in paths)
