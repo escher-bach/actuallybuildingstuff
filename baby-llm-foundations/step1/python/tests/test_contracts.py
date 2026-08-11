@@ -20,10 +20,17 @@ from step1_experiments.data import (
 from step1_experiments.instrument import retrieval_batch
 from step1_experiments.model import Step1Transformer, masked_next_token_loss
 from step1_experiments.runner import _run_checked
-from step1_experiments.train import _atomic_checkpoint, _lr, ddp_global_mean_loss
+from step1_experiments.train import _atomic_checkpoint, _gradients_are_finite, _lr, ddp_global_mean_loss
 
 
 class OptimizationContracts(unittest.TestCase):
+    def test_gradient_finiteness_is_checked_after_unscaling(self) -> None:
+        model = torch.nn.Linear(2, 1, bias=False)
+        model.weight.grad = torch.ones_like(model.weight)
+        self.assertTrue(_gradients_are_finite(model))
+        model.weight.grad[0, 0] = torch.inf
+        self.assertFalse(_gradients_are_finite(model))
+
     def test_ddp_loss_is_normalized_before_backward(self) -> None:
         local_sum = torch.tensor(2321.0, requires_grad=True)
         normalized = ddp_global_mean_loss(local_sum, global_count=817, world_size=2)

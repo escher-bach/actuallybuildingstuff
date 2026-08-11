@@ -41,6 +41,11 @@ def _finite(model: torch.nn.Module, loss: torch.Tensor) -> None:
         if parameter.grad is not None and not torch.isfinite(parameter.grad).all(): raise FloatingPointError(f"non-finite gradient: {name}")
 
 
+def _gradients_are_finite(model: torch.nn.Module) -> bool:
+    """Return whether every materialized gradient is finite after unscaling."""
+    return all(parameter.grad is None or torch.isfinite(parameter.grad).all().item() for parameter in model.parameters())
+
+
 def ddp_global_mean_loss(local_sum: torch.Tensor, global_count: torch.Tensor | int, world_size: int) -> torch.Tensor:
     """Scale a local loss sum so DDP's gradient average is the global token mean.
 

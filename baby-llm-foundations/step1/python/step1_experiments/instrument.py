@@ -14,7 +14,10 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from .artifacts import atomic_json
 from .data import BinaryShard, collate
 from .model import Step1Transformer, masked_next_token_loss
-from .train import _all_reduce_count, _backward_global_mean, _optimizer
+from .train import _all_reduce_count, _backward_global_mean, _gradients_are_finite, _optimizer
+
+
+MAX_CONSECUTIVE_AMP_BACKOFFS = 8
 
 
 def retrieval_batch(seed: int, batch_size: int = 16, length: int = 128) -> tuple[torch.Tensor, torch.Tensor]:
@@ -44,6 +47,8 @@ def run(resolved_config: Path, run_dir: Path) -> None:
     tiny_shard = BinaryShard(run_dir / "datasets" / "train.bin")
     tiny = [tiny_shard[index] for index in range(min(32, len(tiny_shard)))]
     input_tokens, turn = 0, 0
+    amp_backoffs = consecutive_amp_backoffs = 0
+    minimum_grad_scale = scaler.get_scale()
     # This is capped by input tokens, not labels. Half the updates are world traces.
     while input_tokens < config["training"]["token_budget"]:
         optimizer.zero_grad(set_to_none=True)
@@ -57,8 +62,28 @@ def run(resolved_config: Path, run_dir: Path) -> None:
         global_labels = _all_reduce_count(labels, device)
         _backward_global_mean(scaler, total, global_labels, dist.get_world_size())
         scaler.unscale_(optimizer)
+        # GradScaler's initial scale is intentionally optimistic.  A finite
+        # FP32 loss can therefore overflow an FP16 backward pass, especially
+        # for the retrieval probe.  That is a recoverable scale calibration,
+        # not evidence that the model itself is numerically unstable.
+        finite_ranks = torch.tensor(int(_gradients_are_finite(ddp)), device=device, dtype=torch.int32)
+        dist.all_reduce(finite_ranks, op=dist.ReduceOp.SUM)
+        if finite_ranks.item() == 0:
+            previous_scale = scaler.get_scale()
+            scaler.step(optimizer)  # skipped on every rank because unscale_ found inf/nan
+            scaler.update()
+            minimum_grad_scale = min(minimum_grad_scale, scaler.get_scale())
+            amp_backoffs += 1; consecutive_amp_backoffs += 1
+            if scaler.get_scale() >= previous_scale:
+                raise FloatingPointError("GradScaler did not reduce its scale after non-finite gradients")
+            if consecutive_amp_backoffs > MAX_CONSECUTIVE_AMP_BACKOFFS:
+                raise FloatingPointError(f"instrument exceeded {MAX_CONSECUTIVE_AMP_BACKOFFS} consecutive AMP scale backoffs")
+            continue
+        if finite_ranks.item() != dist.get_world_size():
+            raise FloatingPointError("DDP ranks disagreed about gradient finiteness")
         torch.nn.utils.clip_grad_norm_(ddp.parameters(), 1.0, error_if_nonfinite=True)
         scaler.step(optimizer); scaler.update()
+        consecutive_amp_backoffs = 0
         local_inputs = torch.tensor(local_input_count, device=device, dtype=torch.int64); dist.all_reduce(local_inputs); input_tokens += int(local_inputs)
         turn += 1
     # Held-out randomized bindings: a fixed positional rule cannot pass this.
@@ -72,7 +97,7 @@ def run(resolved_config: Path, run_dir: Path) -> None:
             batch = collate(tiny[start:start + 4], config["world"]["context_length"]); ids, loss = batch["tokens"].to(device), batch["loss_mask"].to(device)
             value, count = masked_next_token_loss(ddp.module(ids), ids, loss); world_sum += value; world_count += count
     dist.all_reduce(world_sum); dist.all_reduce(world_count)
-    result = {"input_tokens": input_tokens, "variable_gap_associative_retrieval_accuracy": (correct / total_targets).item(), "tiny_world_action_nll": (world_sum / world_count).item()}
+    result = {"input_tokens": input_tokens, "variable_gap_associative_retrieval_accuracy": (correct / total_targets).item(), "tiny_world_action_nll": (world_sum / world_count).item(), "amp_scale_backoffs": amp_backoffs, "minimum_grad_scale": minimum_grad_scale}
     failure_code = torch.zeros((), device=device, dtype=torch.int32)
     if rank == 0:
         thresholds = config["instrument"]
