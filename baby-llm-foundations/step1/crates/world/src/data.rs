@@ -34,9 +34,10 @@ pub struct TokenizerIdentity {
 impl TokenizerIdentity {
     pub fn byte_utf8() -> Self {
         Self {
-            name: "byte-utf8".to_string(),
+            name: "byte-utf8-transport".to_string(),
             revision: "v1".to_string(),
-            vocabulary_hash: sha256_hex(b"one-utf8-byte-per-token-id-0-through-255"),
+            // Hash of IDs 0..255 plus fixed PAD/BOS/EOS/OBS/ACTION/END_TURN.
+            vocabulary_hash: "dcb84350b969fbcbec931b50af29309af4956c606f02fa5a40950c6cd36e104e".to_string(),
         }
     }
 }

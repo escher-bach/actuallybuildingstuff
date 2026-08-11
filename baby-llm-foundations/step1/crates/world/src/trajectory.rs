@@ -13,6 +13,14 @@ pub trait FragmentTokenizer {
     fn encode_fragment(&self, text: &str) -> Vec<u32>;
 }
 
+/// Frozen transport vocabulary shared with `step1_experiments.data`.
+pub const PAD_ID: u32 = 256;
+pub const BOS_ID: u32 = 257;
+pub const EOS_ID: u32 = 258;
+pub const OBS_ID: u32 = 259;
+pub const ACTION_ID: u32 = 260;
+pub const END_TURN_ID: u32 = 261;
+
 /// Dependency-free, lossless reference tokenizer: one UTF-8 byte per token.
 /// It is for tests and debug fixtures, not a final model vocabulary.
 #[derive(Debug, Clone, Copy, Default)]
@@ -235,8 +243,9 @@ pub struct PackedTrajectory {
     pub debug_transcript: String,
 }
 
-/// Packs `OBSERVATION + "\\nACTION " + ACTION + "\\n"` for each state.
-/// Only the rendered action is directly supervised.
+/// Packs the exact model protocol used by Python evaluation:
+/// `BOS (OBS observation ACTION rendered-action END_TURN)* EOS`.
+/// Action bytes and the end-of-turn delimiter are directly supervised.
 pub fn pack_teacher_trajectory<T: FragmentTokenizer>(
     trajectory: &TeacherTrajectory,
     tokenizer: &T,
@@ -247,15 +256,11 @@ pub fn pack_teacher_trajectory<T: FragmentTokenizer>(
         target_channel_ids: Vec::new(),
         debug_transcript: String::new(),
     };
-
+    append_special(&mut packed, BOS_ID, TargetChannel::None);
     for item in &trajectory.steps {
-        append_fragment(
-            &mut packed,
-            tokenizer,
-            &item.observation,
-            TargetChannel::None,
-        );
-        append_fragment(&mut packed, tokenizer, "\nACTION ", TargetChannel::None);
+        append_special(&mut packed, OBS_ID, TargetChannel::None);
+        append_fragment(&mut packed, tokenizer, &item.observation, TargetChannel::None);
+        append_special(&mut packed, ACTION_ID, TargetChannel::None);
         let action = render_action(item.selected_action, trajectory.rendering);
         append_fragment(
             &mut packed,
@@ -263,8 +268,13 @@ pub fn pack_teacher_trajectory<T: FragmentTokenizer>(
             &action,
             TargetChannel::TeacherPreferredAction,
         );
-        append_fragment(&mut packed, tokenizer, "\n", TargetChannel::None);
+        append_special(
+            &mut packed,
+            END_TURN_ID,
+            TargetChannel::TeacherPreferredAction,
+        );
     }
+    append_special(&mut packed, EOS_ID, TargetChannel::None);
     packed
 }
 
@@ -357,6 +367,12 @@ fn append_fragment<T: FragmentTokenizer>(
     packed.debug_transcript.push_str(fragment);
 }
 
+fn append_special(packed: &mut PackedTrajectory, id: u32, channel: TargetChannel) {
+    packed.token_ids.push(id);
+    packed.loss_mask.push(u8::from(channel != TargetChannel::None));
+    packed.target_channel_ids.push(channel.id());
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -405,14 +421,15 @@ mod tests {
     }
 
     #[test]
-    fn byte_packing_is_lossless_and_masks_only_action_spans() {
+    fn byte_packing_uses_shared_transport_protocol_and_masks_action_spans() {
         let trajectory =
             generate_teacher_trajectory(&instance(Variant::Irreversible), Rendering::B).unwrap();
         let packed = pack_teacher_trajectory(&trajectory, &ByteTokenizer);
-        assert_eq!(
-            ByteTokenizer::decode(&packed.token_ids).as_deref(),
-            Some(packed.debug_transcript.as_str())
-        );
+        assert_eq!(packed.token_ids.first(), Some(&BOS_ID));
+        assert_eq!(packed.token_ids.last(), Some(&EOS_ID));
+        assert_eq!(packed.token_ids.iter().filter(|&&id| id == OBS_ID).count(), trajectory.steps.len());
+        assert_eq!(packed.token_ids.iter().filter(|&&id| id == ACTION_ID).count(), trajectory.steps.len());
+        assert_eq!(packed.token_ids.iter().filter(|&&id| id == END_TURN_ID).count(), trajectory.steps.len());
         assert_eq!(packed.token_ids.len(), packed.loss_mask.len());
         assert_eq!(packed.token_ids.len(), packed.target_channel_ids.len());
         assert!(packed.loss_mask.iter().any(|&mask| mask == 1));
@@ -426,12 +443,18 @@ mod tests {
             .token_ids
             .iter()
             .zip(&packed.loss_mask)
-            .filter_map(|(&id, &mask)| (mask == 1).then_some(id))
+            .filter_map(|(&id, &mask)| (mask == 1 && id < 256).then_some(id))
             .collect();
         assert_eq!(
             ByteTokenizer::decode(&action_ids).as_deref(),
             Some(expected_actions.as_str())
         );
+        assert!(packed
+            .token_ids
+            .iter()
+            .zip(&packed.loss_mask)
+            .filter(|(id, _)| **id == END_TURN_ID)
+            .all(|(_, &mask)| mask == 1));
         for (&mask, &channel) in packed.loss_mask.iter().zip(&packed.target_channel_ids) {
             assert_eq!(
                 mask == 1,

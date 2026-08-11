@@ -409,6 +409,12 @@ fn generate_teacher_shard(
     ))
 }
 
+#[pyfunction]
+fn tokenizer_identity() -> (String, String, String) {
+    let identity = TokenizerIdentity::byte_utf8();
+    (identity.name, identity.revision, identity.vocabulary_hash)
+}
+
 #[pymodule]
 fn world_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyFamilyParams>()?;
@@ -416,5 +422,6 @@ fn world_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(render_action, m)?)?;
     m.add_function(wrap_pyfunction!(parse_action, m)?)?;
     m.add_function(wrap_pyfunction!(generate_teacher_shard, m)?)?;
+    m.add_function(wrap_pyfunction!(tokenizer_identity, m)?)?;
     Ok(())
 }

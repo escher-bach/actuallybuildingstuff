@@ -15,7 +15,7 @@ from pathlib import Path
 
 from .artifacts import RunArtifacts, atomic_json
 from .benchmarks import cpu_benchmark, dataloader_benchmark
-from .data import BinaryShard, TOKENIZER_HASH, VOCAB_SIZE, DistributedSequenceSampler, Sequence, generate_rust_shard
+from .data import ACTION, BOS, BinaryShard, END_TURN, OBS, TOKENIZER_HASH, VOCAB_SIZE, DistributedSequenceSampler, Sequence, assert_rust_tokenizer_identity, encode_bytes, generate_rust_shard
 from .environment import assert_two_t4s, capture, command, git_info
 
 
@@ -67,10 +67,22 @@ def _correctness(repo: Path, artifacts: RunArtifacts) -> None:
 import torch
 from step1_experiments.data import *
 from step1_experiments.model import masked_next_token_loss
-from world_py import parse_action, render_action
+from world_py import Batch, FamilyParams, generate_teacher_shard, parse_action, render_action
+from pathlib import Path
+import tempfile
 assert all(decode_bytes([i]).encode() == bytes([i]) for i in range(128))
 for rendering in ('a', 'b'):
     text=render_action(0, 5, 6, rendering); assert parse_action(text, 5, 6, rendering)==0
+assert_rust_tokenizer_identity()
+params = FamilyParams(n_hyp=6,n_probe=5,n_evidence=2,cost_lo=1,cost_hi=3,budget_slack=1,min_depth=2,step_slack=2,variant='irreversible')
+batch = Batch(params, seed=20260811, n_episodes=1)
+prefix = [BOS, OBS] + encode_bytes(batch.observations('a')[0]) + [ACTION]
+with tempfile.TemporaryDirectory() as d:
+    binary, _, _ = generate_teacher_shard(params, 20260811, 1, 'a', 2048, d, 'protocol')
+    sequence = BinaryShard(Path(binary))[0]
+    assert sequence.tokens[:len(prefix)] == prefix
+    end = sequence.tokens.index(END_TURN)
+    assert sequence.loss[end] == 1 and all(sequence.loss[i] == 1 for i in range(prefix.__len__(), end + 1))
 seq=[Sequence([1,2,3],[0,1,0],[0,1,0]) for _ in range(11)]
 d=SequenceDataset(seq); a=set(DistributedSequenceSampler(d,7,0,2)); b=set(DistributedSequenceSampler(d,7,1,2)); assert not a & b and len(a|b)==10
 logits=torch.zeros(1,3,VOCAB_SIZE,requires_grad=True); total,n=masked_next_token_loss(logits,torch.tensor([[1,2,3]]),torch.tensor([[0,1,0]])); assert n.item()==1; total.backward()
@@ -80,6 +92,7 @@ logits=torch.zeros(1,3,VOCAB_SIZE,requires_grad=True); total,n=masked_next_token
 
 def _prepare(config: dict, artifacts: RunArtifacts) -> dict:
     root = artifacts.run_dir / "datasets"; world = config["world"]; seed = config["run"]["root_seed"]
+    assert_rust_tokenizer_identity()
     partitions = [("train", world, seed, world["train_episodes"], world["rendering"]), ("validation", world, seed + 1_000_000, world["validation_episodes"], world["rendering"])]
     structural = {**world, "n_hyp": world["n_hyp"] + 1}; transfer = {**world, "rendering": "b"}
     partitions.extend([("structural", structural, seed + 2_000_000, world["structural_episodes"], world["rendering"]), ("transfer", transfer, seed + 3_000_000, world["transfer_episodes"], "b")])

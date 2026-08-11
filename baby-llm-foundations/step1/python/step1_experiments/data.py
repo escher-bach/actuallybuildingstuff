@@ -21,6 +21,14 @@ PAD, BOS, EOS, OBS, ACTION, END_TURN = range(256, 262)
 VOCAB_SIZE = 262
 TOKEN_TABLE = {**{str(i): i for i in range(256)}, "PAD": PAD, "BOS": BOS, "EOS": EOS, "OBS": OBS, "ACTION": ACTION, "END_TURN": END_TURN}
 TOKENIZER_HASH = hashlib.sha256(json.dumps(TOKEN_TABLE, sort_keys=True).encode()).hexdigest()
+TOKENIZER_NAME = "byte-utf8-transport"
+
+
+def assert_rust_tokenizer_identity() -> None:
+    from world_py import tokenizer_identity
+    name, revision, vocabulary_hash = tokenizer_identity()
+    if (name, revision, vocabulary_hash) != (TOKENIZER_NAME, "v1", TOKENIZER_HASH):
+        raise RuntimeError(f"Rust/Python tokenizer identity mismatch: {(name, revision, vocabulary_hash)}")
 
 
 def encode_bytes(text: str) -> list[int]:
