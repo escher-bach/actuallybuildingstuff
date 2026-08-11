@@ -36,8 +36,16 @@ def _run_checked(args: list[str], log: Path, cwd: Path, timeout: int = 3600) -> 
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("a", encoding="utf-8") as handle:
         handle.write("$ " + " ".join(args) + "\n"); handle.flush()
-        result = subprocess.run(args, cwd=cwd, stdout=handle, stderr=subprocess.STDOUT, timeout=timeout, check=False, env={**os.environ, "PYTHONUNBUFFERED": "1", "WANDB_MODE": "disabled", "TOKENIZERS_PARALLELISM": "false"})
-    if result.returncode: raise RuntimeError(f"subprocess failed ({result.returncode}): {' '.join(args)}")
+        try:
+            result = subprocess.run(args, cwd=cwd, stdout=handle, stderr=subprocess.STDOUT, timeout=timeout, check=False, env={**os.environ, "PYTHONUNBUFFERED": "1", "WANDB_MODE": "disabled", "TOKENIZERS_PARALLELISM": "false"})
+        except subprocess.TimeoutExpired:
+            handle.write(f"\nTIMEOUT after {timeout} seconds\n"); handle.flush()
+            result = None
+    if result is None or result.returncode:
+        lines = log.read_text(encoding="utf-8", errors="replace").splitlines()
+        tail = "\n".join(lines[-120:])
+        reason = f"timed out after {timeout}s" if result is None else f"failed ({result.returncode})"
+        raise RuntimeError(f"subprocess {reason}: {' '.join(args)}\nlog: {log}\n--- child log tail ---\n{tail}")
 
 
 def _build(repo: Path, artifacts: RunArtifacts) -> None:
@@ -62,6 +70,7 @@ def _build(repo: Path, artifacts: RunArtifacts) -> None:
 def _correctness(repo: Path, artifacts: RunArtifacts) -> None:
     log = artifacts.run_dir / "logs" / "tests.log"
     _run_checked(["cargo", "test", "--workspace", "--locked"], log, repo / "step1", 1800)
+    _run_checked([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"], log, repo / "step1" / "python", 300)
     # Python contracts: byte table, mask shift, and distributed partitions.
     script = """
 import torch
@@ -122,7 +131,12 @@ def run(config_path: Path, output_root: Path, resume: str) -> None:
     try:
         def phase(name: str, action):
             if artifacts.complete(name): return
-            artifacts.begin(name); details = action(); artifacts.finish(name, details if isinstance(details, dict) else {})
+            artifacts.begin(name)
+            try:
+                details = action()
+            except BaseException as error:
+                artifacts.phase_failed(name, error); raise
+            artifacts.finish(name, details if isinstance(details, dict) else {})
         phase("capture_environment", lambda: capture(artifacts.run_dir / "environment" / "environment.json", repo, config, sys.argv))
         phase("install_and_build", lambda: _build(repo, artifacts))
         phase("correctness_tests", lambda: _correctness(repo, artifacts))
@@ -137,7 +151,17 @@ def run(config_path: Path, output_root: Path, resume: str) -> None:
         phase("cpu_throughput", cpu_gate)
         phase("prepare_shards", lambda: _prepare(config, artifacts))
         phase("dataloader_throughput", lambda: dataloader_benchmark(BinaryShard(artifacts.run_dir / "datasets" / "train.bin"), config["world"]["context_length"], artifacts.run_dir / "benchmarks"))
-        phase("gpu_preflight", lambda: (assert_two_t4s(), _torchrun(_save_resolved(config, artifacts), artifacts, True))[1])
+        def gpu_preflight():
+            assert_two_t4s(); resolved_path = _save_resolved(config, artifacts)
+            _torchrun(resolved_path, artifacts, True)
+            child_resolved = json.loads(resolved_path.read_text())
+            config.clear(); config.update(child_resolved)
+            return {"resolved_microbatch_sequences": config["training"]["resolved_microbatch_sequences"]}
+        phase("gpu_preflight", gpu_preflight)
+        resolved_after_preflight = artifacts.run_dir / "resolved_config.json"
+        if resolved_after_preflight.exists():
+            child_resolved = json.loads(resolved_after_preflight.read_text())
+            config.clear(); config.update(child_resolved)
         if config["run"]["mode"] == "preflight": phase("instrument_check", lambda: _instrument_torchrun(_save_resolved(config, artifacts), artifacts))
         elif config["run"]["mode"] == "dense":
             phase("train", lambda: _torchrun(_save_resolved(config, artifacts), artifacts, False, resume == "auto"))

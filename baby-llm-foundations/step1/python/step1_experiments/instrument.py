@@ -14,7 +14,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from .artifacts import atomic_json
 from .data import BinaryShard, collate
 from .model import Step1Transformer, masked_next_token_loss
-from .train import _optimizer
+from .train import _all_reduce_count, _backward_global_mean, _optimizer
 
 
 def retrieval_batch(seed: int, batch_size: int = 16, length: int = 128) -> tuple[torch.Tensor, torch.Tensor]:
@@ -54,11 +54,11 @@ def run(resolved_config: Path, run_dir: Path) -> None:
             batch = collate([tiny[(turn * 4 + i) % len(tiny)] for i in range(4)], config["world"]["context_length"])
             local_input_count = int(batch["attention_mask"].sum()); tokens, mask = batch["tokens"].to(device), batch["loss_mask"].to(device)
         with torch.autocast("cuda", dtype=torch.float16): logits = ddp(tokens); total, labels = masked_next_token_loss(logits, tokens, mask)
-        scaler.scale(total).backward(); scaler.unscale_(optimizer)
-        global_labels = labels.detach().to(torch.float64); dist.all_reduce(global_labels)
-        for parameter in ddp.parameters():
-            if parameter.grad is not None: parameter.grad.mul_(dist.get_world_size() / global_labels.item())
-        torch.nn.utils.clip_grad_norm_(ddp.parameters(), 1.0); scaler.step(optimizer); scaler.update()
+        global_labels = _all_reduce_count(labels, device)
+        _backward_global_mean(scaler, total, global_labels, dist.get_world_size())
+        scaler.unscale_(optimizer)
+        torch.nn.utils.clip_grad_norm_(ddp.parameters(), 1.0, error_if_nonfinite=True)
+        scaler.step(optimizer); scaler.update()
         local_inputs = torch.tensor(local_input_count, device=device, dtype=torch.int64); dist.all_reduce(local_inputs); input_tokens += int(local_inputs)
         turn += 1
     # Held-out randomized bindings: a fixed positional rule cannot pass this.
@@ -73,14 +73,20 @@ def run(resolved_config: Path, run_dir: Path) -> None:
             value, count = masked_next_token_loss(ddp.module(ids), ids, loss); world_sum += value; world_count += count
     dist.all_reduce(world_sum); dist.all_reduce(world_count)
     result = {"input_tokens": input_tokens, "variable_gap_associative_retrieval_accuracy": (correct / total_targets).item(), "tiny_world_action_nll": (world_sum / world_count).item()}
+    failure_code = torch.zeros((), device=device, dtype=torch.int32)
     if rank == 0:
         thresholds = config["instrument"]
         atomic_json(run_dir / "benchmarks" / "instrument.json", {**result, "thresholds": thresholds})
-        if result["variable_gap_associative_retrieval_accuracy"] < thresholds["associative_retrieval_accuracy"]: raise RuntimeError("instrument variable-gap associative retrieval failed")
-        if result["tiny_world_action_nll"] > thresholds["tiny_world_loss"]: raise RuntimeError("instrument tiny-world overfit failed")
-    dist.barrier(); dist.destroy_process_group()
+        if result["variable_gap_associative_retrieval_accuracy"] < thresholds["associative_retrieval_accuracy"]: failure_code.fill_(1)
+        elif result["tiny_world_action_nll"] > thresholds["tiny_world_loss"]: failure_code.fill_(2)
+    dist.broadcast(failure_code, src=0); dist.barrier(); dist.destroy_process_group()
+    if failure_code.item() == 1: raise RuntimeError("instrument variable-gap associative retrieval failed")
+    if failure_code.item() == 2: raise RuntimeError("instrument tiny-world overfit failed")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(); parser.add_argument("--resolved-config", type=Path, required=True); parser.add_argument("--run-dir", type=Path, required=True)
-    args = parser.parse_args(); run(args.resolved_config, args.run_dir)
+    args = parser.parse_args()
+    try: run(args.resolved_config, args.run_dir)
+    finally:
+        if dist.is_initialized(): dist.destroy_process_group()

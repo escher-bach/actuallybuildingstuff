@@ -71,9 +71,19 @@ class RunArtifacts:
         self.status["phases"][phase] = {"state": "complete", "finished_at": utc_now(), "details": details or {}}
         atomic_json(self.phase_path, self.status)
 
+    def phase_failed(self, phase: str, error: BaseException) -> None:
+        started = self.status.get("phases", {}).get(phase, {}).get("started_at")
+        self.status["phases"][phase] = {
+            "state": "failed", "started_at": started, "finished_at": utc_now(),
+            "exception_class": type(error).__name__, "message": str(error),
+        }
+        atomic_json(self.phase_path, self.status)
+
     def fail(self, error: BaseException, extra: dict[str, Any] | None = None) -> None:
+        completed = [name for name, value in self.status.get("phases", {}).items() if value.get("state") == "complete"]
         payload = {
-            "timestamp": utc_now(), "last_completed_phase": self.last_phase,
+            "timestamp": utc_now(), "failed_phase": self.last_phase,
+            "last_completed_phase": completed[-1] if completed else "not_started",
             "exception_class": type(error).__name__, "message": str(error),
             "traceback": traceback.format_exc(), "git_sha": self.git_sha,
             "config_hash": self.config_hash, **(extra or {}),

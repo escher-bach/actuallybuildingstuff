@@ -80,6 +80,19 @@ class BinaryShard(Dataset[Sequence]):
         channels = list(self.map[loss_start + length:loss_start + 2 * length])
         return Sequence(tokens, loss, channels)
 
+    def close(self) -> None:
+        mapping, handle = getattr(self, "map", None), getattr(self, "handle", None)
+        if mapping is not None:
+            mapping.close(); self.map = None
+        if handle is not None:
+            handle.close(); self.handle = None
+
+    def __enter__(self) -> "BinaryShard": return self
+    def __exit__(self, *_args) -> None: self.close()
+    def __del__(self) -> None:
+        try: self.close()
+        except Exception: pass
+
 
 class SequenceDataset(Dataset[Sequence]):
     def __init__(self, sequences: list[Sequence]): self.sequences = sequences
