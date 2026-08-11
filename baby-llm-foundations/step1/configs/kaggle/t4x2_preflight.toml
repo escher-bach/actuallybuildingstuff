@@ -1,0 +1,47 @@
+[run]
+name = "t4x2-preflight"
+root_seed = 20260811
+mode = "preflight"
+resume = "auto"
+
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+rendering = "a"
+# Measured A/B trajectories reach 950 bytes.  2048 is the smallest power of
+# two with 10% headroom over the 99.9th-percentile measurement.
+context_length = 2048
+train_episodes = 2048
+validation_episodes = 256
+structural_episodes = 256
+transfer_episodes = 256
+
+[model]
+layers = 12
+width = 384
+heads = 6
+mlp_width = 1024
+rope_base = 10000
+
+[training]
+token_budget = 2000000
+global_tokens_per_update = 32768
+microbatch_sequences = 4
+max_preflight_retries = 3
+learning_rate = 0.0006
+min_learning_rate = 0.00006
+warmup_fraction = 0.02
+weight_decay = 0.1
+checkpoint_minutes = 20
+save_tokens = [1000000, 2000000]
+
+[instrument]
+associative_retrieval_accuracy = 0.90
+tiny_world_loss = 0.15

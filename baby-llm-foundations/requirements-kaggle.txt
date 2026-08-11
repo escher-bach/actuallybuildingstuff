@@ -1,0 +1,3 @@
+# Kaggle supplies the PyTorch/CUDA runtime. Keep this list deliberately small.
+maturin==1.8.3
+psutil==6.1.1

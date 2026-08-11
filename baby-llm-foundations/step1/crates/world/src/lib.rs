@@ -9,6 +9,8 @@
 pub mod generate;
 pub mod render;
 pub mod teacher;
+pub mod trajectory;
+pub mod data;
 
 /// Identifies a hypothesis within an `Instance`. Values are `0..n_hyp`.
 pub type HypId = u16;

@@ -1,0 +1,11 @@
+{
+  "id": "escher-bach/step1-t4x2",
+  "title": "Step 1 T4 x2",
+  "code_file": "step1_t4x2.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "accelerator": "nvidiaTeslaT4"
+}
