@@ -12,9 +12,23 @@ MARKER = "__FINAL_COMMIT_SHA__"
 NOTEBOOK_RELATIVE_PATH = Path("step1/kaggle/step1_t4x2_preflight.ipynb")
 
 
-def render(commit: str, output: Path | None = None) -> Path:
+def validate_commit(commit: str) -> None:
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise ValueError("--commit must be a lowercase, full 40-character Git SHA")
+
+
+def render_template(template: str, commit: str, output: Path) -> Path:
+    """Render a validated template without consulting Git; used by regression tests."""
+    validate_commit(commit)
+    if template.count(MARKER) != 1:
+        raise RuntimeError("the checked-in preflight notebook must contain exactly one commit placeholder")
+    document = json.loads(template.replace(MARKER, commit))
+    output.write_text(json.dumps(document, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    return output
+
+
+def render(commit: str, output: Path | None = None) -> Path:
+    validate_commit(commit)
     project_root = Path(__file__).resolve().parents[2]
     repository_root = Path(subprocess.check_output(
         ["git", "-C", str(project_root), "rev-parse", "--show-toplevel"], text=True
@@ -26,13 +40,9 @@ def render(commit: str, output: Path | None = None) -> Path:
         ["git", "-C", str(repository_root), "show", f"HEAD:{template_path.as_posix()}"],
         text=True,
     )
-    if template.count(MARKER) != 2:
-        raise RuntimeError("the checked-in preflight notebook is not the expected SHA template")
-    document = json.loads(template.replace(MARKER, commit))
     if output is None:
         output = project_root / NOTEBOOK_RELATIVE_PATH
-    output.write_text(json.dumps(document, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    return output
+    return render_template(template, commit, output)
 
 
 def main() -> None:
