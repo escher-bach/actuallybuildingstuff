@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import importlib.util
 import hashlib
+import tempfile
 import unittest
+from pathlib import Path
 
 from transformers import AutoConfig, AutoTokenizer
 
@@ -63,6 +65,21 @@ class StandardArtifactContracts(unittest.TestCase):
         model = create_model()
         assert_model_contract(model)
         self.assertEqual(sum(parameter.numel() for parameter in model.parameters()), EXPECTED_PARAMETER_COUNT)
+
+    @unittest.skipUnless(importlib.util.find_spec("torch"), "requires the Kaggle PyTorch runtime")
+    def test_save_pretrained_round_trip_has_exact_model_state(self) -> None:
+        """Serialization is proved by state equality, not output tolerance."""
+        from transformers import AutoModelForCausalLM
+        from step1_experiments.standard_stack import create_model
+        from step1_experiments.train import assert_exact_state_dict_roundtrip
+
+        model = create_model().eval()
+        with tempfile.TemporaryDirectory() as directory:
+            model.save_pretrained(directory, safe_serialization=True)
+            reloaded = AutoModelForCausalLM.from_pretrained(Path(directory), local_files_only=True).eval()
+        report = assert_exact_state_dict_roundtrip(model, reloaded)
+        self.assertTrue(report["exact"])
+        self.assertEqual(report["expected_key_count"], report["actual_key_count"])
 
 
 if __name__ == "__main__":

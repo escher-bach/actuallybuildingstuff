@@ -7,9 +7,17 @@ import tomllib
 import unittest
 from pathlib import Path
 
+import torch
+
 from step1_experiments.data import END_TURN, BinaryShard, Sequence, collate
 from step1_experiments.runner import _run_checked
-from step1_experiments.train import training_plan
+from step1_experiments.train import (
+    _per_rank_numerical_diagnostic,
+    _tensor_difference_report,
+    assert_exact_state_dict_roundtrip,
+    exact_state_dict_report,
+    training_plan,
+)
 
 
 class DataContracts(unittest.TestCase):
@@ -39,6 +47,52 @@ class DataContracts(unittest.TestCase):
         }
         with self.assertRaisesRegex(ValueError, "token_budget must be divisible"):
             training_plan(config, world_size=2)
+
+    def test_serialization_gate_requires_exact_state_dict_values(self) -> None:
+        torch.manual_seed(7)
+        expected = torch.nn.Linear(3, 2)
+        actual = torch.nn.Linear(3, 2)
+        actual.load_state_dict(expected.state_dict())
+        exact = assert_exact_state_dict_roundtrip(expected, actual)
+        self.assertTrue(exact["exact"])
+        self.assertEqual(exact["expected_state_sha256"], exact["actual_state_sha256"])
+        with torch.no_grad():
+            actual.bias.add_(0.25)
+        report = exact_state_dict_report(expected, actual)
+        self.assertFalse(report["exact"])
+        self.assertNotEqual(report["expected_state_sha256"], report["actual_state_sha256"])
+        self.assertEqual(report["unequal_keys"], ["bias"])
+        self.assertGreater(report["max_parameter_abs_difference_for_unequal_floats"], 0.24)
+        with self.assertRaisesRegex(AssertionError, "save_pretrained reload changed model state"):
+            assert_exact_state_dict_roundtrip(expected, actual)
+
+    def test_numerical_differences_are_reported_without_a_tolerance_gate(self) -> None:
+        report = _tensor_difference_report(torch.tensor([1.0, 2.0]), torch.tensor([1.5, 1.0]))
+        self.assertFalse(report["exactly_equal"])
+        self.assertEqual(report["max_abs_difference"], 1.0)
+        self.assertEqual(report["mean_abs_difference"], 0.75)
+
+    def test_rank_safe_numerical_diagnostic_records_every_rank(self) -> None:
+        class Accelerator:
+            num_processes = 2
+
+            @staticmethod
+            def gather_for_metrics(_values):
+                return torch.tensor([0.0, 0.0, 1.0, 0.125, 0.03125, 0.0], dtype=torch.float64)
+
+        class Trainer:
+            accelerator = Accelerator()
+
+            class args:
+                device = torch.device("cpu")
+
+        report = _per_rank_numerical_diagnostic(
+            Trainer(), {"max_abs_difference": 0.0, "mean_abs_difference": 0.0, "exactly_equal": True}
+        )
+        self.assertEqual(report, [
+            {"rank": 0, "max_abs_difference": 0.0, "mean_abs_difference": 0.0, "exactly_equal": True},
+            {"rank": 1, "max_abs_difference": 0.125, "mean_abs_difference": 0.03125, "exactly_equal": False},
+        ])
 
     def test_collator_uses_standard_minus_100_labels(self) -> None:
         batch = collate([Sequence([1, 2, END_TURN], [0, 1, 1], [0, 1, 1])], context=8)
