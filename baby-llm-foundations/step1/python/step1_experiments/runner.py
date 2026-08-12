@@ -119,6 +119,16 @@ def _torchrun(config_path: Path, artifacts: RunArtifacts, preflight: bool, resum
     _run_checked(args, artifacts.run_dir / "logs" / ("preflight.log" if preflight else "train.log"), _repo_root() / "step1" / "python", 24 * 3600)
 
 
+def _last_trainer_checkpoint(checkpoint_dir: Path) -> str | None:
+    """Report the actual standard Trainer checkpoint, never the removed .pt path."""
+    try:
+        from transformers.trainer_utils import get_last_checkpoint
+        result = get_last_checkpoint(str(checkpoint_dir))
+    except (ImportError, OSError):
+        return None
+    return result
+
+
 def run(config_path: Path, output_root: Path, resume: str) -> None:
     repo = _repo_root(); config, config_hash = _resolved(config_path); sha, _ = git_info(repo)
     run_id = f"{config['run']['name']}-{sha[:12]}-{config_hash[:12]}"; artifacts = RunArtifacts(output_root, run_id, sha, config_hash)
@@ -149,7 +159,16 @@ def run(config_path: Path, output_root: Path, resume: str) -> None:
         def gpu_preflight():
             assert_two_t4s(); resolved_path = _save_resolved(config, artifacts)
             _torchrun(resolved_path, artifacts, True)
-            return {"model_artifact": str(artifacts.run_dir / "model")}
+            report_path = artifacts.run_dir / "preflight_report.json"
+            if not report_path.is_file():
+                raise RuntimeError("two-T4 preflight finished without preflight_report.json")
+            report = json.loads(report_path.read_text())
+            return {
+                "model_artifact": str(artifacts.run_dir / "model"),
+                "trainer_checkpoint": report["checkpoint"],
+                "resumed_global_step": report["resumed_global_step"],
+                "preflight_report": str(report_path),
+            }
         phase("gpu_preflight", gpu_preflight)
         if config["run"]["mode"] == "preflight":
             pass
@@ -159,7 +178,10 @@ def run(config_path: Path, output_root: Path, resume: str) -> None:
         else: raise RuntimeError("RLVR budget is intentionally unset until dense seed-0 measurements freeze it")
         success = True
     except BaseException as error:
-        extra = {"nvidia_smi": command(["nvidia-smi"], 30), "last_checkpoint": str(artifacts.run_dir / "checkpoints" / "latest.pt")}
+        extra = {
+            "nvidia_smi": command(["nvidia-smi"], 30),
+            "last_trainer_checkpoint": _last_trainer_checkpoint(artifacts.run_dir / "checkpoints"),
+        }
         artifacts.fail(error, extra); raise
     finally:
         artifacts.begin("package_results")

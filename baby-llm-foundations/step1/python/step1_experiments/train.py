@@ -1,17 +1,27 @@
-"""Transformers Trainer entry point for teacher-conditioned causal training."""
+"""Transformers Trainer entry point for teacher-conditioned causal training.
+
+The training budget is deliberately expressed in *nominal global input tokens*:
+``world_size * per_device_sequences * context_length`` for each forward pass.
+This is the only token unit that has a fixed value before a batch is read, and
+therefore the only one that can be used honestly for Trainer accumulation,
+``max_steps``, and standard step-based checkpointing.  Supervised action tokens
+are sparse and data dependent; they are reported separately and never used to
+silently change an optimizer update.
+"""
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
-import math
+import os
+from dataclasses import asdict, dataclass
 from functools import partial
 from pathlib import Path
 
 import torch
 
 from .artifacts import atomic_json
-from .data import BinaryShard, collate
+from .data import BinaryShard, SequenceDataset, collate
 from .standard_stack import (
     EXPECTED_PARAMETER_COUNT,
     assert_model_contract,
@@ -20,14 +30,108 @@ from .standard_stack import (
 )
 
 
-def _training_arguments(config: dict, checkpoint_dir: Path, max_steps: int):
+@dataclass(frozen=True)
+class TrainingPlan:
+    """The exact Trainer-compatible interpretation of the training config."""
+
+    world_size: int
+    per_device_sequences: int
+    context_length: int
+    nominal_global_input_tokens_per_microstep: int
+    gradient_accumulation_steps: int
+    nominal_global_input_tokens_per_update: int
+    token_budget: int
+    max_steps: int
+    checkpoint_interval_updates: int
+    checkpoint_interval_nominal_global_input_tokens: int
+    checkpoint_total_limit: int
+
+    def report(self) -> dict:
+        return {
+            **asdict(self),
+            "token_unit": "nominal global input tokens (world_size * per_device_sequences * context_length)",
+            "supervised_token_unit": "action-label tokens after the causal shift; variable and reported separately",
+        }
+
+
+def distributed_world_size() -> int:
+    """Read the launcher contract before Trainer constructs Accelerate state."""
+    value = int(os.environ.get("WORLD_SIZE", "1"))
+    if value < 1:
+        raise ValueError(f"WORLD_SIZE must be positive, got {value}")
+    return value
+
+
+def training_plan(config: dict, world_size: int | None = None) -> TrainingPlan:
+    """Validate exact global-input-token accounting for Trainer/Accelerate."""
+    training, world = config["training"], config["world"]
+    size = distributed_world_size() if world_size is None else world_size
+    if size < 1:
+        raise ValueError(f"world_size must be positive, got {size}")
+    per_device, context = training["microbatch_sequences"], world["context_length"]
+    if per_device < 1 or context < 1:
+        raise ValueError("microbatch_sequences and context_length must both be positive")
+    microstep_tokens = size * per_device * context
+    requested_update_tokens = training["global_tokens_per_update"]
+    if requested_update_tokens < microstep_tokens:
+        raise ValueError(
+            "global_tokens_per_update is smaller than one global microstep: "
+            f"{requested_update_tokens} < {microstep_tokens}"
+        )
+    if requested_update_tokens % microstep_tokens:
+        raise ValueError(
+            "global_tokens_per_update must be divisible by world_size * "
+            "microbatch_sequences * context_length so Trainer accumulation is exact: "
+            f"{requested_update_tokens} % {microstep_tokens} != 0"
+        )
+    accumulation = requested_update_tokens // microstep_tokens
+    token_budget = training["token_budget"]
+    if token_budget < 0:
+        raise ValueError("token_budget cannot be negative")
+    if token_budget == 0 and config["run"]["mode"] != "rlvr":
+        raise ValueError("token_budget must be positive for base training")
+    if token_budget and token_budget % requested_update_tokens:
+        raise ValueError(
+            "token_budget must be divisible by global_tokens_per_update; partial "
+            "updates would make the reported global input-token budget inaccurate: "
+            f"{token_budget} % {requested_update_tokens} != 0"
+        )
+    checkpoint_interval_updates = training["checkpoint_interval_updates"]
+    checkpoint_total_limit = training["checkpoint_total_limit"]
+    if checkpoint_interval_updates < 1 or checkpoint_total_limit < 1:
+        raise ValueError("checkpoint_interval_updates and checkpoint_total_limit must be positive")
+    return TrainingPlan(
+        world_size=size,
+        per_device_sequences=per_device,
+        context_length=context,
+        nominal_global_input_tokens_per_microstep=microstep_tokens,
+        gradient_accumulation_steps=accumulation,
+        nominal_global_input_tokens_per_update=requested_update_tokens,
+        token_budget=token_budget,
+        max_steps=token_budget // requested_update_tokens,
+        checkpoint_interval_updates=checkpoint_interval_updates,
+        checkpoint_interval_nominal_global_input_tokens=checkpoint_interval_updates * requested_update_tokens,
+        checkpoint_total_limit=checkpoint_total_limit,
+    )
+
+
+def _training_arguments(
+    config: dict,
+    checkpoint_dir: Path,
+    max_steps: int,
+    plan: TrainingPlan,
+    *,
+    save_strategy: str = "steps",
+    save_steps: int | None = None,
+    save_total_limit: int | None = None,
+):
     from transformers import TrainingArguments
 
     training = config["training"]
     return TrainingArguments(
         output_dir=str(checkpoint_dir),
-        per_device_train_batch_size=training["microbatch_sequences"],
-        gradient_accumulation_steps=max(1, training["global_tokens_per_update"] // (training["microbatch_sequences"] * config["world"]["context_length"])),
+        per_device_train_batch_size=plan.per_device_sequences,
+        gradient_accumulation_steps=plan.gradient_accumulation_steps,
         learning_rate=training["learning_rate"],
         weight_decay=training["weight_decay"],
         lr_scheduler_type="cosine",
@@ -35,9 +139,9 @@ def _training_arguments(config: dict, checkpoint_dir: Path, max_steps: int):
         max_steps=max_steps,
         fp16=torch.cuda.is_available(),
         bf16=False,
-        save_strategy="steps",
-        save_steps=max(1, min(max_steps, training["save_tokens"][0] // max(1, training["global_tokens_per_update"]))),
-        save_total_limit=2,
+        save_strategy=save_strategy,
+        save_steps=plan.checkpoint_interval_updates if save_steps is None else save_steps,
+        save_total_limit=plan.checkpoint_total_limit if save_total_limit is None else save_total_limit,
         logging_strategy="steps",
         logging_steps=1,
         report_to="none",
@@ -45,75 +149,289 @@ def _training_arguments(config: dict, checkpoint_dir: Path, max_steps: int):
         dataloader_pin_memory=torch.cuda.is_available(),
         seed=config["run"]["root_seed"],
         data_seed=config["run"]["root_seed"],
+        # This asks Trainer/Accelerate to normalize sparse causal-LM labels by
+        # their global token count.  Project code neither implements a loss nor
+        # rescales distributed gradients.
         average_tokens_across_devices=True,
     )
 
 
-def _trainer(config: dict, run_dir: Path, max_steps: int):
-    from transformers import Trainer
+def _trainer(
+    config: dict,
+    run_dir: Path,
+    max_steps: int,
+    plan: TrainingPlan,
+    *,
+    train_dataset=None,
+    save_strategy: str = "steps",
+    save_steps: int | None = None,
+    save_total_limit: int | None = None,
+):
+    from transformers import Trainer, set_seed
 
-    dataset = BinaryShard(run_dir / "datasets" / "train.bin")
+    # The process seed is intentionally identical before Accelerate/DDP wraps
+    # the model.  Trainer subsequently owns sampler/rank seeding and DDP sync.
+    set_seed(config["run"]["root_seed"])
+    shard = BinaryShard(run_dir / "datasets" / "train.bin")
     model = create_model()
     assert_model_contract(model)
     return Trainer(
         model=model,
-        args=_training_arguments(config, run_dir / "checkpoints", max_steps),
-        train_dataset=dataset,
+        args=_training_arguments(
+            config, run_dir / "checkpoints", max_steps, plan,
+            save_strategy=save_strategy,
+            save_steps=save_steps,
+            save_total_limit=save_total_limit,
+        ),
+        train_dataset=shard if train_dataset is None else train_dataset,
         data_collator=partial(collate, context=config["world"]["context_length"]),
         processing_class=load_tokenizer(),
-    ), dataset
+    ), shard
+
+
+def _wait_for_everyone(trainer) -> None:
+    trainer.accelerator.wait_for_everyone()
+
+
+def _write_rank_zero_json(trainer, path: Path, value: dict) -> None:
+    if trainer.is_world_process_zero():
+        atomic_json(path, value)
+    _wait_for_everyone(trainer)
 
 
 def _model_artifact(run_dir: Path) -> Path:
     return run_dir / "model"
 
 
-def _save_model_artifact(trainer, run_dir: Path, config: dict) -> Path:
+def _save_model_artifact(trainer, run_dir: Path, config: dict, plan: TrainingPlan) -> Path:
+    """Save one complete HF artifact before any rank attempts to reload it."""
     artifact = _model_artifact(run_dir)
+    # Trainer owns model serialization and writes only on its world process
+    # zero.  Synchronize before adding project-owned artifact metadata.
     trainer.save_model(str(artifact))
-    load_tokenizer().save_pretrained(artifact)
-    atomic_json(artifact / "experiment.json", {
-        "initialization": "random_from_local_gpt_neox_config",
-        "parameter_count": EXPECTED_PARAMETER_COUNT,
-        "config_hash": config["_meta"]["hash"],
-        "model_config_sha256": hashlib.sha256((artifact / "config.json").read_bytes()).hexdigest(),
-        "root_seed": config["run"]["root_seed"],
-    })
+    _wait_for_everyone(trainer)
+    if trainer.is_world_process_zero():
+        load_tokenizer().save_pretrained(artifact)
+        atomic_json(artifact / "experiment.json", {
+            "initialization": "random_from_local_gpt_neox_config",
+            "parameter_count": EXPECTED_PARAMETER_COUNT,
+            "config_hash": config["_meta"]["hash"],
+            "model_config_sha256": hashlib.sha256((artifact / "config.json").read_bytes()).hexdigest(),
+            "root_seed": config["run"]["root_seed"],
+            "token_accounting": plan.report(),
+        })
+    # A second barrier prevents nonzero ranks from racing a partial tokenizer or
+    # metadata directory during the preflight reload check.
+    _wait_for_everyone(trainer)
     return artifact
 
 
-def _real_batch_preflight(trainer, dataset, config: dict, run_dir: Path) -> None:
-    """Exercise a real Rust batch, then prove save/reload logits are stable."""
-    batch = collate([dataset[0]], config["world"]["context_length"])
-    if not (batch["labels"] == -100).any() or not (batch["labels"] != -100).any():
-        raise AssertionError("real batch must contain both context and supervised labels")
-    trainer.train()
-    artifact = _save_model_artifact(trainer, run_dir, config)
+def _batch_on_device(batch: dict[str, torch.Tensor], device: torch.device) -> dict[str, torch.Tensor]:
+    return {name: value.to(device) for name, value in batch.items()}
+
+
+def _fixed_batch_loss(model, batch: dict[str, torch.Tensor], device: torch.device) -> float:
+    model.eval()
+    with torch.no_grad():
+        loss = model(**_batch_on_device(batch, device)).loss
+    if loss is None or not torch.isfinite(loss):
+        raise FloatingPointError("fixed real-batch loss is absent or non-finite")
+    return float(loss.detach().float().cpu())
+
+
+def _scored_token_count(batch: dict[str, torch.Tensor]) -> torch.Tensor:
+    # GPT-NeoX scores labels after shifting them one position to the left.
+    return (batch["labels"][:, 1:] != -100).sum()
+
+
+def _assert_one_vs_two_process_loss_equivalence(trainer, dataset, config: dict) -> dict:
+    """Compare Trainer's two-rank effective loss with a one-process reference.
+
+    Each rank receives a different, real Rust sequence.  ``Trainer.compute_loss``
+    and the model's standard ``num_items_in_batch`` path are used directly; the
+    reduction below only observes the DDP average that Trainer will apply to
+    gradients.  No project loss or gradient scaling is introduced here.
+    """
+    world_size = trainer.accelerator.num_processes
+    if world_size != 2:
+        raise RuntimeError(f"two-process loss check requires exactly two processes, got {world_size}")
+    context = config["world"]["context_length"]
+    rank = trainer.args.process_index
+    local_batch = collate([dataset[rank]], context)
+    local_count = _scored_token_count(local_batch).to(trainer.args.device)
+    global_count = trainer.accelerator.reduce(local_count, reduction="sum")
+    if int(global_count.item()) <= 0:
+        raise AssertionError("two-process loss check received no supervised action tokens")
+    trainer.model.eval()
+    with torch.no_grad():
+        # Trainer multiplies this local value by the number of ranks when
+        # average_tokens_across_devices is enabled; DDP then averages the
+        # gradients.  Their composition must equal the global token mean.
+        local_effective_loss = trainer.compute_loss(
+            trainer.model_wrapped,
+            _batch_on_device(local_batch, trainer.args.device),
+            num_items_in_batch=global_count,
+        )
+        two_process_effective_loss = trainer.accelerator.reduce(local_effective_loss.detach(), reduction="sum") / world_size
+        reference_batch = collate([dataset[index] for index in range(world_size)], context)
+        reference_loss = trainer.accelerator.unwrap_model(trainer.model_wrapped)(
+            **_batch_on_device(reference_batch, trainer.args.device)
+        ).loss
+    if reference_loss is None or not torch.isfinite(two_process_effective_loss) or not torch.isfinite(reference_loss):
+        raise FloatingPointError("loss-equivalence diagnostic produced a non-finite loss")
+    rtol, atol = (2e-3, 2e-3) if trainer.args.fp16 else (1e-5, 1e-6)
+    if not torch.allclose(two_process_effective_loss, reference_loss, rtol=rtol, atol=atol):
+        raise AssertionError(
+            "Trainer two-process loss normalization differs from the one-process reference: "
+            f"{float(two_process_effective_loss):.8f} vs {float(reference_loss):.8f}"
+        )
+    return {
+        "world_size": world_size,
+        "global_supervised_action_tokens": int(global_count.item()),
+        "one_process_reference_loss": float(reference_loss.detach().float().cpu()),
+        "two_process_effective_loss": float(two_process_effective_loss.detach().float().cpu()),
+    }
+
+
+def _stop_at_step_callback(step: int):
+    """Build a narrow Trainer callback used only to split save and resume."""
+    from transformers import TrainerCallback
+
+    class StopAtStep(TrainerCallback):
+        def on_step_end(self, _args, state, control, **_kwargs):
+            if state.global_step == step:
+                control.should_training_stop = True
+            return control
+
+    return StopAtStep()
+
+
+def _preflight_settings(config: dict) -> tuple[int, int]:
+    settings = config["preflight"]
+    checkpoint_after_updates = settings["checkpoint_after_updates"]
+    resume_updates = settings["resume_updates"]
+    if checkpoint_after_updates < 2 or resume_updates < 1:
+        raise ValueError("preflight needs at least two diagnostic updates and one resumed update")
+    return checkpoint_after_updates, resume_updates
+
+
+def _assert_artifact_reload(trainer, fixed_batch: dict[str, torch.Tensor], run_dir: Path, config: dict, plan: TrainingPlan) -> Path:
+    """Save one standard artifact and require stable fixed-batch logits."""
     from transformers import AutoModelForCausalLM
+    artifact = _save_model_artifact(trainer, run_dir, config, plan)
     trainer.model.eval()
     reloaded = AutoModelForCausalLM.from_pretrained(artifact, local_files_only=True).to(trainer.args.device).eval()
-    inputs = {name: value.to(trainer.args.device) for name, value in batch.items() if name != "labels"}
+    inputs = _batch_on_device({name: value for name, value in fixed_batch.items() if name != "labels"}, trainer.args.device)
     with torch.no_grad():
         expected = trainer.model(**inputs).logits.float().cpu()
         actual = reloaded(**inputs).logits.float().cpu()
     if not torch.allclose(expected, actual, rtol=2e-3 if trainer.args.fp16 else 1e-5, atol=2e-3 if trainer.args.fp16 else 1e-6):
         raise AssertionError("save_pretrained reload changed fixed-batch logits")
+    return artifact
+
+
+def _run_preflight(config: dict, run_dir: Path, plan: TrainingPlan) -> None:
+    """Checkpoint once, resume once, and leave an inspectable rank-zero report."""
+    from transformers.trainer_utils import get_last_checkpoint
+
+    checkpoint_after, resume_updates = _preflight_settings(config)
+    total_updates = checkpoint_after + resume_updates
+    source = BinaryShard(run_dir / "datasets" / "train.bin")
+    try:
+        # The same real sequence is intentionally repeated so the short run is
+        # a deterministic label/mask diagnostic, not a capability benchmark.
+        fixed_dataset = SequenceDataset([source[0]] * (plan.world_size * plan.per_device_sequences))
+    finally:
+        source.close()
+    trainer, shard = _trainer(
+        config, run_dir, total_updates, plan, train_dataset=fixed_dataset,
+        save_strategy="steps", save_steps=checkpoint_after, save_total_limit=1,
+    )
+    resumed = None
+    resumed_shard = None
+    try:
+        fixed_batch = collate([shard[0]], config["world"]["context_length"])
+        if not (fixed_batch["labels"] == -100).any() or not (fixed_batch["labels"] != -100).any():
+            raise AssertionError("real batch must contain both context and supervised labels")
+        initial_loss = _fixed_batch_loss(trainer.model, fixed_batch, trainer.args.device)
+        trainer.add_callback(_stop_at_step_callback(checkpoint_after))
+        trainer.train()
+        if trainer.state.global_step != checkpoint_after:
+            raise AssertionError(f"preflight stopped at {trainer.state.global_step}, expected {checkpoint_after}")
+        _wait_for_everyone(trainer)
+        checkpoint_loss = _fixed_batch_loss(trainer.model, fixed_batch, trainer.args.device)
+        if not checkpoint_loss < initial_loss:
+            raise AssertionError(
+                f"fixed real-batch overfit did not reduce loss: {initial_loss:.6f} -> {checkpoint_loss:.6f}"
+            )
+        equivalence = _assert_one_vs_two_process_loss_equivalence(trainer, shard, config)
+        checkpoint_name = f"checkpoint-{checkpoint_after}"
+        checkpoint_path = run_dir / "checkpoints" / checkpoint_name
+        found = get_last_checkpoint(str(run_dir / "checkpoints"))
+        if found is None or Path(found).resolve() != checkpoint_path.resolve():
+            raise AssertionError(f"expected exactly {checkpoint_name}, found {found}")
+        if sorted(path.name for path in (run_dir / "checkpoints").glob("checkpoint-*")) != [checkpoint_name]:
+            raise AssertionError("preflight must create exactly one Trainer checkpoint before resume")
+        _wait_for_everyone(trainer)
+
+        # Reconstruct a standard Trainer and restore its standard checkpoint;
+        # no project checkpoint loader or optimizer state is involved.
+        resumed, resumed_shard = _trainer(
+            config, run_dir, total_updates, plan, train_dataset=fixed_dataset,
+            save_strategy="no",
+        )
+        resumed.train(resume_from_checkpoint=found)
+        if resumed.state.global_step != total_updates:
+            raise AssertionError(f"resume ended at {resumed.state.global_step}, expected {total_updates}")
+        _wait_for_everyone(resumed)
+        resumed_loss = _fixed_batch_loss(resumed.model, fixed_batch, resumed.args.device)
+        if not resumed_loss < initial_loss:
+            raise AssertionError(
+                f"fixed real-batch loss was not lower after checkpoint/resume: {initial_loss:.6f} -> {resumed_loss:.6f}"
+            )
+        artifact = _assert_artifact_reload(resumed, fixed_batch, run_dir, config, plan)
+        finished_ranks = resumed.accelerator.gather_for_metrics(
+            torch.tensor([resumed.args.process_index], device=resumed.args.device)
+        ).detach().cpu().tolist()
+        if sorted(finished_ranks) != list(range(resumed.accelerator.num_processes)):
+            raise AssertionError(f"not every rank reached preflight completion: {finished_ranks}")
+        report = {
+            "checkpoint": str(checkpoint_path),
+            "fixed_real_batch_loss": {
+                "initial": initial_loss,
+                "after_checkpoint": checkpoint_loss,
+                "after_resume": resumed_loss,
+            },
+            "loss_equivalence": equivalence,
+            "model_artifact": str(artifact),
+        }
+        report.update({
+            "checkpoint_after_updates": checkpoint_after,
+            "resume_updates": resume_updates,
+            "resumed_global_step": resumed.state.global_step,
+            "ranks_finished": finished_ranks,
+            "token_accounting": plan.report(),
+        })
+        _write_rank_zero_json(resumed, run_dir / "preflight_report.json", report)
+    finally:
+        shard.close()
+        if resumed_shard is not None:
+            resumed_shard.close()
 
 
 def run(resolved_config: Path, run_dir: Path, preflight_only: bool = False, resume: bool = False) -> None:
     config = json.loads(resolved_config.read_text())
-    # A one-update preflight is a plumbing diagnostic, not a capability gate.
-    target_tokens = config["training"]["global_tokens_per_update"] if preflight_only else config["training"]["token_budget"]
-    max_steps = max(1, math.ceil(target_tokens / config["training"]["global_tokens_per_update"]))
-    trainer, dataset = _trainer(config, run_dir, max_steps)
+    plan = training_plan(config)
+    if preflight_only:
+        _run_preflight(config, run_dir, plan)
+        return
+    trainer, dataset = _trainer(config, run_dir, plan.max_steps, plan)
     try:
-        if preflight_only:
-            _real_batch_preflight(trainer, dataset, config, run_dir)
-        else:
-            from transformers.trainer_utils import get_last_checkpoint
-            checkpoint = get_last_checkpoint(str(run_dir / "checkpoints")) if resume else None
-            trainer.train(resume_from_checkpoint=checkpoint)
-            _save_model_artifact(trainer, run_dir, config)
+        _write_rank_zero_json(trainer, run_dir / "training_plan.json", plan.report())
+        from transformers.trainer_utils import get_last_checkpoint
+        checkpoint = get_last_checkpoint(str(run_dir / "checkpoints")) if resume else None
+        trainer.train(resume_from_checkpoint=checkpoint)
+        _save_model_artifact(trainer, run_dir, config, plan)
     finally:
         dataset.close()
 

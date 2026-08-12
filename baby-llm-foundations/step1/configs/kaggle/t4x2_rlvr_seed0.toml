@@ -29,4 +29,5 @@ microbatch_sequences = 4
 learning_rate = 0.0006
 warmup_fraction = 0.02
 weight_decay = 0.1
-save_tokens = []
+checkpoint_interval_updates = 32
+checkpoint_total_limit = 6
