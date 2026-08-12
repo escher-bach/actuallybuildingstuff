@@ -34,3 +34,7 @@ weight_decay = 0.1
 # resumable checkpoint as well as the periodic ones.
 checkpoint_interval_updates = 28
 checkpoint_total_limit = 6
+
+[preflight]
+checkpoint_after_updates = 8
+resume_updates = 1

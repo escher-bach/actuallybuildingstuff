@@ -9,6 +9,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 NOTEBOOK_PATH = PROJECT_ROOT / "step1" / "kaggle" / "step1_t4x2_preflight.ipynb"
+DENSE_NOTEBOOK_PATH = PROJECT_ROOT / "step1" / "kaggle" / "step1_t4x2.ipynb"
 RENDERER_PATH = PROJECT_ROOT / "step1" / "kaggle" / "render_preflight_notebook.py"
 
 
@@ -51,6 +52,29 @@ class KagglePreflightNotebookContracts(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(RuntimeError, "exactly one commit placeholder"):
                 renderer.render_template("__FINAL_COMMIT_SHA__ __FINAL_COMMIT_SHA__", "a" * 40, Path(directory) / "bad.ipynb")
+
+    def test_rendered_dense_notebook_has_exact_operational_not_scientific_contract(self) -> None:
+        renderer = _renderer_module()
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "dense.ipynb"
+            renderer.render_template(DENSE_NOTEBOOK_PATH.read_text(encoding="utf-8"), "b" * 40, output)
+            document = json.loads(output.read_text(encoding="utf-8"))
+        bootstrap = self._bootstrap_prefix(document)
+        namespace: dict[str, object] = {}
+        exec(bootstrap, namespace)
+        self.assertEqual(namespace["GIT_COMMIT"], "b" * 40)
+        contract = "".join(document["cells"][-1]["source"])
+        self.assertIn("production/training_report.json", contract)
+        self.assertIn("exact_state_dict", contract)
+        self.assertIn("expected_state_sha256", contract)
+        self.assertIn("actual_state_sha256", contract)
+        self.assertIn("expected_plan", contract)
+        self.assertIn("'world_size': world_size", contract)
+        self.assertIn("'gradient_accumulation_steps'", contract)
+        self.assertIn("'checkpoint_interval_nominal_global_input_tokens'", contract)
+        self.assertIn("report['token_accounting'] == expected_plan", contract)
+        self.assertIn("print(json.dumps(metrics", contract)
+        self.assertNotIn("success_rate >=", contract)
 
 
 if __name__ == "__main__":

@@ -15,7 +15,10 @@ from step1_experiments.train import (
     _per_rank_numerical_diagnostic,
     _tensor_difference_report,
     assert_exact_state_dict_roundtrip,
+    assert_training_report_contract,
     exact_state_dict_report,
+    production_dir,
+    select_production_resume_checkpoint,
     training_plan,
 )
 
@@ -93,6 +96,52 @@ class DataContracts(unittest.TestCase):
             {"rank": 0, "max_abs_difference": 0.0, "mean_abs_difference": 0.0, "exactly_equal": True},
             {"rank": 1, "max_abs_difference": 0.125, "mean_abs_difference": 0.03125, "exactly_equal": False},
         ])
+
+    def test_fresh_dense_run_cannot_select_diagnostic_checkpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory)
+            workspace = production_dir(run_dir)
+            diagnostic = run_dir / "diagnostic-preflight" / "checkpoints" / "checkpoint-8"
+            diagnostic.mkdir(parents=True)
+            self.assertIsNone(select_production_resume_checkpoint(None, diagnostic, workspace))
+            with self.assertRaisesRegex(AssertionError, "diagnostic preflight state"):
+                select_production_resume_checkpoint(diagnostic, diagnostic, workspace)
+
+    def test_training_report_requires_exact_production_completion_fields(self) -> None:
+        config = {
+            "run": {"mode": "dense"},
+            "world": {"context_length": 8},
+            "training": {
+                "microbatch_sequences": 1, "global_tokens_per_update": 16,
+                "token_budget": 32, "checkpoint_interval_updates": 1,
+                "checkpoint_total_limit": 2,
+            },
+            "_meta": {"hash": "config-hash", "source_git_sha": "a" * 40},
+        }
+        plan = training_plan(config, world_size=2)
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = production_dir(Path(directory))
+            checkpoint = workspace / "checkpoints" / "checkpoint-2"
+            artifact = workspace / "model"
+            checkpoint.mkdir(parents=True)
+            artifact.mkdir(parents=True)
+            (artifact / "config.json").write_text("{}")
+            (artifact / "experiment.json").write_text("{}")
+            report = {
+                "contract": "step1_dense_training_v1",
+                "global_step": 2,
+                "last_trainer_checkpoint": str(checkpoint.resolve()),
+                "model_artifact": str(artifact.resolve()),
+                "ranks_finished": [0, 1],
+                "config_hash": "config-hash",
+                "source_git_sha": "a" * 40,
+                "token_accounting": plan.report(),
+                "serialization": {"exact_state_dict": {"exact": True}},
+            }
+            assert_training_report_contract(report, plan, workspace, config)
+            report["last_trainer_checkpoint"] = "diagnostic-preflight/checkpoint-8"
+            with self.assertRaisesRegex(AssertionError, "completion contract mismatch"):
+                assert_training_report_contract(report, plan, workspace, config)
 
     def test_collator_uses_standard_minus_100_labels(self) -> None:
         batch = collate([Sequence([1, 2, END_TURN], [0, 1, 1], [0, 1, 1])], context=8)

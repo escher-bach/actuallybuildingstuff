@@ -51,7 +51,10 @@ class RunArtifacts:
         self.status: dict[str, Any] = {"git_sha": git_sha, "config_hash": config_hash, "phases": {}}
         self.last_phase = "not_started"
         self.run_dir.mkdir(parents=True, exist_ok=True)
-        for name in ("environment", "logs", "benchmarks", "datasets/manifests", "checkpoints", "evaluation", "plots"):
+        # Trainer state belongs only to ``production/`` or
+        # ``diagnostic-preflight/``.  A top-level checkpoint directory would
+        # make cross-phase resume selection ambiguous.
+        for name in ("environment", "logs", "benchmarks", "datasets/manifests", "evaluation", "plots"):
             (self.run_dir / name).mkdir(parents=True, exist_ok=True)
         if self.phase_path.exists():
             previous = json.loads(self.phase_path.read_text())

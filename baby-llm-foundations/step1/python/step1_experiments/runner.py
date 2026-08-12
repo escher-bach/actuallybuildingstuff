@@ -131,6 +131,7 @@ def _last_trainer_checkpoint(checkpoint_dir: Path) -> str | None:
 
 def run(config_path: Path, output_root: Path, resume: str) -> None:
     repo = _repo_root(); config, config_hash = _resolved(config_path); sha, _ = git_info(repo)
+    config["_meta"]["source_git_sha"] = sha
     run_id = f"{config['run']['name']}-{sha[:12]}-{config_hash[:12]}"; artifacts = RunArtifacts(output_root, run_id, sha, config_hash)
     success = False
     try:
@@ -159,12 +160,13 @@ def run(config_path: Path, output_root: Path, resume: str) -> None:
         def gpu_preflight():
             assert_two_t4s(); resolved_path = _save_resolved(config, artifacts)
             _torchrun(resolved_path, artifacts, True)
-            report_path = artifacts.run_dir / "preflight_report.json"
+            diagnostic_dir = artifacts.run_dir / "diagnostic-preflight"
+            report_path = diagnostic_dir / "preflight_report.json"
             if not report_path.is_file():
                 raise RuntimeError("two-T4 preflight finished without preflight_report.json")
             report = json.loads(report_path.read_text())
             return {
-                "model_artifact": str(artifacts.run_dir / "model"),
+                "model_artifact": str(diagnostic_dir / "model"),
                 "trainer_checkpoint": report["checkpoint"],
                 "resumed_global_step": report["resumed_global_step"],
                 "preflight_report": str(report_path),
@@ -173,14 +175,27 @@ def run(config_path: Path, output_root: Path, resume: str) -> None:
         if config["run"]["mode"] == "preflight":
             pass
         elif config["run"]["mode"] == "dense":
-            phase("train", lambda: _torchrun(_save_resolved(config, artifacts), artifacts, False, resume == "auto"))
+            def dense_train():
+                _torchrun(_save_resolved(config, artifacts), artifacts, False, resume == "auto")
+                report_path = artifacts.run_dir / "production" / "training_report.json"
+                if not report_path.is_file():
+                    raise RuntimeError("dense Trainer finished without production/training_report.json")
+                report = json.loads(report_path.read_text())
+                return {
+                    "training_report": str(report_path),
+                    "global_step": report["global_step"],
+                    "trainer_checkpoint": report["last_trainer_checkpoint"],
+                    "model_artifact": report["model_artifact"],
+                }
+            phase("train", dense_train)
             phase("evaluate", lambda: __import__("step1_experiments.evaluate", fromlist=["evaluate"]).evaluate(_save_resolved(config, artifacts), artifacts.run_dir))
         else: raise RuntimeError("RLVR budget is intentionally unset until dense seed-0 measurements freeze it")
         success = True
     except BaseException as error:
         extra = {
             "nvidia_smi": command(["nvidia-smi"], 30),
-            "last_trainer_checkpoint": _last_trainer_checkpoint(artifacts.run_dir / "checkpoints"),
+            "last_production_trainer_checkpoint": _last_trainer_checkpoint(artifacts.run_dir / "production" / "checkpoints"),
+            "last_diagnostic_trainer_checkpoint": _last_trainer_checkpoint(artifacts.run_dir / "diagnostic-preflight" / "checkpoints"),
         }
         artifacts.fail(error, extra); raise
     finally:

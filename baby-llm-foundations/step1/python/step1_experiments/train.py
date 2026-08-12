@@ -30,6 +30,20 @@ from .standard_stack import (
 )
 
 
+DIAGNOSTIC_PREFLIGHT_NAMESPACE = "diagnostic-preflight"
+PRODUCTION_NAMESPACE = "production"
+
+
+def diagnostic_preflight_dir(run_dir: Path) -> Path:
+    """Keep plumbing diagnostics outside every production-resume namespace."""
+    return run_dir / DIAGNOSTIC_PREFLIGHT_NAMESPACE
+
+
+def production_dir(run_dir: Path) -> Path:
+    """The only namespace from which a dense run may resume or evaluate."""
+    return run_dir / PRODUCTION_NAMESPACE
+
+
 @dataclass(frozen=True)
 class TrainingPlan:
     """The exact Trainer-compatible interpretation of the training config."""
@@ -158,11 +172,12 @@ def _training_arguments(
 
 def _trainer(
     config: dict,
-    run_dir: Path,
+    workspace: Path,
     max_steps: int,
     plan: TrainingPlan,
     *,
     train_dataset=None,
+    dataset_run_dir: Path | None = None,
     save_strategy: str = "steps",
     save_steps: int | None = None,
     save_total_limit: int | None = None,
@@ -172,13 +187,14 @@ def _trainer(
     # The process seed is intentionally identical before Accelerate/DDP wraps
     # the model.  Trainer subsequently owns sampler/rank seeding and DDP sync.
     set_seed(config["run"]["root_seed"])
-    shard = BinaryShard(run_dir / "datasets" / "train.bin")
+    dataset_run_dir = workspace if dataset_run_dir is None else dataset_run_dir
+    shard = BinaryShard(dataset_run_dir / "datasets" / "train.bin")
     model = create_model()
     assert_model_contract(model)
     return Trainer(
         model=model,
         args=_training_arguments(
-            config, run_dir / "checkpoints", max_steps, plan,
+            config, workspace / "checkpoints", max_steps, plan,
             save_strategy=save_strategy,
             save_steps=save_steps,
             save_total_limit=save_total_limit,
@@ -199,13 +215,13 @@ def _write_rank_zero_json(trainer, path: Path, value: dict) -> None:
     _wait_for_everyone(trainer)
 
 
-def _model_artifact(run_dir: Path) -> Path:
-    return run_dir / "model"
+def _model_artifact(workspace: Path) -> Path:
+    return workspace / "model"
 
 
-def _save_model_artifact(trainer, run_dir: Path, config: dict, plan: TrainingPlan) -> Path:
+def _save_model_artifact(trainer, workspace: Path, config: dict, plan: TrainingPlan) -> Path:
     """Save one complete HF artifact before any rank attempts to reload it."""
-    artifact = _model_artifact(run_dir)
+    artifact = _model_artifact(workspace)
     # Trainer owns model serialization and writes only on its world process
     # zero.  Synchronize before adding project-owned artifact metadata.
     trainer.save_model(str(artifact))
@@ -216,6 +232,7 @@ def _save_model_artifact(trainer, run_dir: Path, config: dict, plan: TrainingPla
             "initialization": "random_from_local_gpt_neox_config",
             "parameter_count": EXPECTED_PARAMETER_COUNT,
             "config_hash": config["_meta"]["hash"],
+            "source_git_sha": config["_meta"]["source_git_sha"],
             "model_config_sha256": hashlib.sha256((artifact / "config.json").read_bytes()).hexdigest(),
             "root_seed": config["run"]["root_seed"],
             "token_accounting": plan.report(),
@@ -441,6 +458,7 @@ def _run_preflight(config: dict, run_dir: Path, plan: TrainingPlan) -> None:
     """Checkpoint once, resume once, and leave an inspectable rank-zero report."""
     from transformers.trainer_utils import get_last_checkpoint
 
+    workspace = diagnostic_preflight_dir(run_dir)
     checkpoint_after, resume_updates = _preflight_settings(config)
     total_updates = checkpoint_after + resume_updates
     source = BinaryShard(run_dir / "datasets" / "train.bin")
@@ -451,7 +469,7 @@ def _run_preflight(config: dict, run_dir: Path, plan: TrainingPlan) -> None:
     finally:
         source.close()
     trainer, shard = _trainer(
-        config, run_dir, total_updates, plan, train_dataset=fixed_dataset,
+        config, workspace, total_updates, plan, train_dataset=fixed_dataset, dataset_run_dir=run_dir,
         save_strategy="steps", save_steps=checkpoint_after, save_total_limit=1,
     )
     resumed = None
@@ -473,18 +491,18 @@ def _run_preflight(config: dict, run_dir: Path, plan: TrainingPlan) -> None:
             )
         equivalence = _one_vs_two_process_loss_diagnostic(trainer, shard, config)
         checkpoint_name = f"checkpoint-{checkpoint_after}"
-        checkpoint_path = run_dir / "checkpoints" / checkpoint_name
-        found = get_last_checkpoint(str(run_dir / "checkpoints"))
+        checkpoint_path = workspace / "checkpoints" / checkpoint_name
+        found = get_last_checkpoint(str(workspace / "checkpoints"))
         if found is None or Path(found).resolve() != checkpoint_path.resolve():
             raise AssertionError(f"expected exactly {checkpoint_name}, found {found}")
-        if sorted(path.name for path in (run_dir / "checkpoints").glob("checkpoint-*")) != [checkpoint_name]:
+        if sorted(path.name for path in (workspace / "checkpoints").glob("checkpoint-*")) != [checkpoint_name]:
             raise AssertionError("preflight must create exactly one Trainer checkpoint before resume")
         _wait_for_everyone(trainer)
 
         # Reconstruct a standard Trainer and restore its standard checkpoint;
         # no project checkpoint loader or optimizer state is involved.
         resumed, resumed_shard = _trainer(
-            config, run_dir, total_updates, plan, train_dataset=fixed_dataset,
+            config, workspace, total_updates, plan, train_dataset=fixed_dataset, dataset_run_dir=run_dir,
             save_strategy="no", save_steps=checkpoint_after,
         )
         resumed.train(resume_from_checkpoint=found)
@@ -496,7 +514,7 @@ def _run_preflight(config: dict, run_dir: Path, plan: TrainingPlan) -> None:
             raise AssertionError(
                 f"fixed real-batch loss was not lower after checkpoint/resume: {initial_loss:.6f} -> {resumed_loss:.6f}"
             )
-        artifact_diagnostics = _artifact_reload_diagnostics(resumed, fixed_batch, run_dir, config, plan)
+        artifact_diagnostics = _artifact_reload_diagnostics(resumed, fixed_batch, workspace, config, plan)
         finished_ranks = resumed.accelerator.gather_for_metrics(
             torch.tensor([resumed.args.process_index], device=resumed.args.device)
         ).detach().cpu().tolist()
@@ -528,11 +546,114 @@ def _run_preflight(config: dict, run_dir: Path, plan: TrainingPlan) -> None:
             "ranks_finished": finished_ranks,
             "token_accounting": plan.report(),
         })
-        _write_rank_zero_json(resumed, run_dir / "preflight_report.json", report)
+        _write_rank_zero_json(resumed, workspace / "preflight_report.json", report)
     finally:
         shard.close()
         if resumed_shard is not None:
             resumed_shard.close()
+
+
+def select_production_resume_checkpoint(
+    production_checkpoint: Path | None,
+    diagnostic_checkpoint: Path | None,
+    workspace: Path,
+) -> Path | None:
+    """Pure namespace guard for dense resume selection and its tests."""
+    selected = production_checkpoint.resolve() if production_checkpoint else None
+    diagnostic = diagnostic_checkpoint.resolve() if diagnostic_checkpoint else None
+    if diagnostic is not None and selected == diagnostic:
+        raise AssertionError("fresh dense run selected diagnostic preflight state")
+    if selected is not None and selected.parent != (workspace / "checkpoints").resolve():
+        raise AssertionError(f"dense resume selected a non-production checkpoint: {selected}")
+    return selected
+
+
+def production_resume_checkpoint(run_dir: Path, resume: bool) -> Path | None:
+    """Select only a standard production checkpoint, never diagnostic state."""
+    from transformers.trainer_utils import get_last_checkpoint
+
+    workspace = production_dir(run_dir)
+    production = get_last_checkpoint(str(workspace / "checkpoints")) if resume else None
+    diagnostic = get_last_checkpoint(str(diagnostic_preflight_dir(run_dir) / "checkpoints"))
+    return select_production_resume_checkpoint(
+        Path(production) if production else None,
+        Path(diagnostic) if diagnostic else None,
+        workspace,
+    )
+
+
+def _require_final_checkpoint(workspace: Path, max_steps: int) -> Path:
+    from transformers.trainer_utils import get_last_checkpoint
+
+    expected = (workspace / "checkpoints" / f"checkpoint-{max_steps}").resolve()
+    found = get_last_checkpoint(str(workspace / "checkpoints"))
+    if found is None or Path(found).resolve() != expected:
+        raise AssertionError(f"final standard Trainer checkpoint must be {expected}, found {found}")
+    return expected
+
+
+def assert_training_report_contract(report: dict, plan: TrainingPlan, workspace: Path, config: dict) -> None:
+    """Exact operational completion contract; it sets no scientific threshold."""
+    checkpoint_path = (workspace / "checkpoints" / f"checkpoint-{plan.max_steps}").resolve()
+    artifact_path = (workspace / "model").resolve()
+    expected_checkpoint = str(checkpoint_path)
+    expected_artifact = str(artifact_path)
+    expected_ranks = list(range(plan.world_size))
+    checks = {
+        "contract": "step1_dense_training_v1",
+        "global_step": plan.max_steps,
+        "last_trainer_checkpoint": expected_checkpoint,
+        "model_artifact": expected_artifact,
+        "ranks_finished": expected_ranks,
+        "config_hash": config["_meta"]["hash"],
+        "source_git_sha": config["_meta"]["source_git_sha"],
+        "token_accounting": plan.report(),
+    }
+    mismatches = {name: {"expected": value, "actual": report.get(name)} for name, value in checks.items() if report.get(name) != value}
+    if mismatches:
+        raise AssertionError(f"training completion contract mismatch: {json.dumps(mismatches, sort_keys=True)}")
+    if report.get("serialization", {}).get("exact_state_dict", {}).get("exact") is not True:
+        raise AssertionError("final model artifact did not pass exact state_dict save/reload validation")
+    required_paths = (checkpoint_path, artifact_path / "config.json", artifact_path / "experiment.json")
+    missing_paths = [str(path) for path in required_paths if not path.exists()]
+    if missing_paths:
+        raise AssertionError(f"production completion artifacts are missing: {missing_paths}")
+
+
+def _run_production_training(config: dict, run_dir: Path, plan: TrainingPlan, resume: bool) -> None:
+    """Run and exactly certify only the production namespace."""
+    workspace = production_dir(run_dir)
+    trainer, dataset = _trainer(config, workspace, plan.max_steps, plan, dataset_run_dir=run_dir)
+    try:
+        _write_rank_zero_json(trainer, workspace / "training_plan.json", plan.report())
+        checkpoint = production_resume_checkpoint(run_dir, resume)
+        trainer.train(resume_from_checkpoint=str(checkpoint) if checkpoint else None)
+        if trainer.state.global_step != plan.max_steps:
+            raise AssertionError(f"production training ended at step {trainer.state.global_step}, expected {plan.max_steps}")
+        _wait_for_everyone(trainer)
+        final_checkpoint = _require_final_checkpoint(workspace, plan.max_steps)
+        fixed_batch = collate([dataset[0]], config["world"]["context_length"])
+        if int(_scored_token_count(fixed_batch)) <= 0:
+            raise AssertionError("production artifact diagnostic batch has no supervised tokens")
+        artifact_diagnostics = _artifact_reload_diagnostics(trainer, fixed_batch, workspace, config, plan)
+        ranks_finished = trainer.accelerator.gather_for_metrics(
+            torch.tensor([trainer.args.process_index], device=trainer.args.device)
+        ).detach().cpu().tolist()
+        report = {
+            "contract": "step1_dense_training_v1",
+            "global_step": trainer.state.global_step,
+            "last_trainer_checkpoint": str(final_checkpoint),
+            "model_artifact": artifact_diagnostics["artifact"],
+            "ranks_finished": ranks_finished,
+            "config_hash": config["_meta"]["hash"],
+            "source_git_sha": config["_meta"]["source_git_sha"],
+            "token_accounting": plan.report(),
+            "serialization": artifact_diagnostics,
+        }
+        assert_training_report_contract(report, plan, workspace, config)
+        _write_rank_zero_json(trainer, workspace / "training_report.json", report)
+    finally:
+        dataset.close()
 
 
 def run(resolved_config: Path, run_dir: Path, preflight_only: bool = False, resume: bool = False) -> None:
@@ -541,15 +662,7 @@ def run(resolved_config: Path, run_dir: Path, preflight_only: bool = False, resu
     if preflight_only:
         _run_preflight(config, run_dir, plan)
         return
-    trainer, dataset = _trainer(config, run_dir, plan.max_steps, plan)
-    try:
-        _write_rank_zero_json(trainer, run_dir / "training_plan.json", plan.report())
-        from transformers.trainer_utils import get_last_checkpoint
-        checkpoint = get_last_checkpoint(str(run_dir / "checkpoints")) if resume else None
-        trainer.train(resume_from_checkpoint=checkpoint)
-        _save_model_artifact(trainer, run_dir, config, plan)
-    finally:
-        dataset.close()
+    _run_production_training(config, run_dir, plan, resume)
 
 
 if __name__ == "__main__":
