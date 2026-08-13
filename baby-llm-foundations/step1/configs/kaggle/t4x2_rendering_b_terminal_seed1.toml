@@ -1,0 +1,44 @@
+[run]
+name = "rendering-b-terminal-seed1"
+root_seed = 20260812
+
+[source]
+run_name = "t4x2-dense-seed1"
+git_sha = "e592ba12c19992a33246123fad82a6406f4bc771"
+config_hash = "09aeed773a4eec4299e20d1bc0200adb4d939fb5078b460616d1001a5e87f367"
+model_state_sha256 = "837165e09c4f58fc00da53ce88d240d34871d504b40075bb1aa57b9f7f92492f"
+model_config_sha256 = "5c901b862af89419e73357b55d2a0ee98d6027dc18f8a1f1b10508bc54feff9e"
+calibration_data_sha256 = "9f4e61e3a0ab14015f919f45ff565612f9b5c6bfad4081fe2cf027ea38eb6ca3"
+calibration_replay_sha256 = "0f1d1d403bbb31165916e7848637b3459b02af949d389ba1d2449d3162f1f1ef"
+
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+rendering = "b"
+context_length = 2048
+
+[calibration]
+# Each nonzero point is an independent run whose cosine schedule terminates at
+# that exact budget. These are not snapshots of the 100M-token schedule.
+budgets_updates = [0, 92, 306, 916, 3052]
+global_input_tokens_per_update = 32768
+per_device_sequences = 4
+learning_rate = 0.0006
+warmup_fraction = 0.02
+weight_decay = 0.1
+calibration_seed_offset = 3000000
+calibration_episodes = 32768
+include_full_b_reference = true
+
+[evaluation]
+seed_offset = 1000000
+episodes = 1024
+generation_batch_size = 32
+include_reversible_control = true

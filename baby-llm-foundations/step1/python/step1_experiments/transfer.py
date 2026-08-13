@@ -192,10 +192,26 @@ class _MilestoneSaves:
         return Callback()
 
 
-def _trainer(model, shard: BinaryShard, workspace: Path, config: dict, plan: TransferPlan):
+def _trainer(
+    model,
+    shard: BinaryShard,
+    workspace: Path,
+    config: dict,
+    plan: TransferPlan,
+    *,
+    max_steps: int | None = None,
+    save_milestones: tuple[int, ...] | None = None,
+):
     from transformers import Trainer, TrainingArguments
 
     calibration = config["calibration"]
+    max_steps = max(plan.budgets_updates) if max_steps is None else max_steps
+    if max_steps <= 0:
+        raise ValueError("Trainer max_steps must be positive")
+    if save_milestones is None:
+        save_milestones = tuple(step for step in plan.budgets_updates if step)
+    if not save_milestones or save_milestones[-1] != max_steps:
+        raise ValueError("save milestones must end at the Trainer terminal step")
     args = TrainingArguments(
         output_dir=str(workspace / "checkpoints"),
         per_device_train_batch_size=plan.per_device_sequences,
@@ -204,7 +220,7 @@ def _trainer(model, shard: BinaryShard, workspace: Path, config: dict, plan: Tra
         weight_decay=calibration["weight_decay"],
         lr_scheduler_type="cosine",
         warmup_ratio=calibration["warmup_fraction"],
-        max_steps=max(plan.budgets_updates),
+        max_steps=max_steps,
         fp16=torch.cuda.is_available(),
         bf16=False,
         save_strategy="steps",
@@ -225,7 +241,7 @@ def _trainer(model, shard: BinaryShard, workspace: Path, config: dict, plan: Tra
         train_dataset=shard,
         data_collator=partial(collate, context=plan.context_length),
         processing_class=load_tokenizer(),
-        callbacks=[_MilestoneSaves(tuple(step for step in plan.budgets_updates if step))],
+        callbacks=[_MilestoneSaves(save_milestones)],
     )
     return trainer
 
@@ -445,7 +461,7 @@ def run(config_path: Path, source_run: Path, output_dir: Path) -> Path:
                     if torch.cuda.is_available():
                         torch.cuda.empty_cache()
                 arms[arm] = {
-                    "initialization": "dense_A_checkpoint" if arm == "a_trained" else "random_from_original_seed0_config",
+                    "initialization": "dense_A_checkpoint" if arm == "a_trained" else "random_from_root_seed_config",
                     "root_seed": plan.root_seed,
                     "ranks_finished": finished_ranks,
                     "calibration_data_sha256": calibration_identity["data_sha256"],
