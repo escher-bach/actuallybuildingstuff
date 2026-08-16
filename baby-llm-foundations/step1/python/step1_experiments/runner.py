@@ -67,10 +67,14 @@ def _build(repo: Path, artifacts: RunArtifacts) -> None:
         cargo = shutil.which("cargo")
         if not cargo: raise RuntimeError(f"pinned Rust 1.85.0 installation did not provide Cargo under {cargo_home}")
     _run_checked([sys.executable, "-m", "pip", "install", "-r", str(repo / "requirements-kaggle.txt")], log, repo, 900)
-    _run_checked([sys.executable, "-m", "maturin", "build", "--release", "--manifest-path", str(repo / "step1" / "crates" / "world-py" / "Cargo.toml")], log, repo / "step1", 1800)
-    wheels = sorted((repo / "step1" / "target" / "wheels").glob("world_py-*.whl"))
-    if not wheels: raise RuntimeError("maturin did not produce a world_py wheel")
-    _run_checked([sys.executable, "-m", "pip", "install", "--force-reinstall", str(wheels[-1])], log, repo, 900)
+    with tempfile.TemporaryDirectory(prefix="world-py-wheel-") as wheelhouse:
+        # maturin writes into CARGO_TARGET_DIR when the environment sets it, so
+        # name the output directory rather than guessing where the wheel landed.
+        _run_checked([sys.executable, "-m", "maturin", "build", "--release", "--out", wheelhouse,
+                      "--manifest-path", str(repo / "step1" / "crates" / "world-py" / "Cargo.toml")], log, repo / "step1", 1800)
+        wheels = sorted(Path(wheelhouse).glob("world_py-*.whl"))
+        if not wheels: raise RuntimeError(f"maturin did not produce a world_py wheel in {wheelhouse}")
+        _run_checked([sys.executable, "-m", "pip", "install", "--force-reinstall", str(wheels[-1])], log, repo, 900)
     _run_checked([sys.executable, str(repo / "step1" / "python" / "smoke.py")], log, repo, 120)
 
 

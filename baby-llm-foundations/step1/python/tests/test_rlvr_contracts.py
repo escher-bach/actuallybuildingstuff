@@ -303,7 +303,7 @@ class LauncherContracts(unittest.TestCase):
     def test_ephemeral_source_and_output_only_working_tree(self) -> None:
         self.assertIn('RUNTIME = Path("/tmp/step1-runtime")', self.text)
         self.assertIn("SOURCE = RUNTIME /", self.text)
-        self.assertIn("CARGO_TARGET_DIR", self.text)
+        self.assertIn("CARGO_HOME", self.text)
         # Nothing may clone or build beneath the published output tree.
         self.assertNotIn('SOURCE = WORKING', self.text)
         self.assertIn('OUTPUT = WORKING / "step1-results"', self.text)
