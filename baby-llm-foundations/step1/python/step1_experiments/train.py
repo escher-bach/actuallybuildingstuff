@@ -102,7 +102,9 @@ def training_plan(config: dict, world_size: int | None = None) -> TrainingPlan:
     token_budget = training["token_budget"]
     if token_budget < 0:
         raise ValueError("token_budget cannot be negative")
-    if token_budget == 0 and config["run"]["mode"] != "rlvr":
+    if token_budget == 0:
+        # Outcome-only RLVR no longer passes through this plan; its budget is
+        # expressed in rollout episodes by `step1_experiments.rlvr`.
         raise ValueError("token_budget must be positive for base training")
     if token_budget and token_budget % requested_update_tokens:
         raise ValueError(

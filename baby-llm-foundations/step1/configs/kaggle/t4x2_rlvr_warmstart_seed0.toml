@@ -1,0 +1,66 @@
+[run]
+name = "t4x2-rlvr-warmstart-seed0"
+root_seed = 20260811
+mode = "rlvr"
+# STEP-1 §6's optional hybrid row: dense teaching followed by outcome-only
+# optimization. It is a diagnostic for the cold-start arm, not a substitute for
+# it: any capability it shows was partly installed by the dense teacher.
+arm = "outcome_only_from_dense"
+
+[source]
+run_name = "t4x2-dense-seed0"
+git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+config_hash = "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14"
+model_state_sha256 = "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e"
+
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+rendering = "a"
+context_length = 2048
+train_episodes = 32768
+validation_episodes = 1024
+structural_episodes = 1024
+transfer_episodes = 1024
+
+[rollout]
+train_seed_offset = 4000000
+max_turns = 12
+max_action_tokens = 96
+max_prompt_tokens = 256
+max_completion_tokens = 1536
+generation_rows = 32
+temperature = 1.0
+top_p = 1.0
+top_k = 0
+
+[grpo]
+num_generations = 8
+per_device_sequences = 4
+steps_per_generation = 8
+# One quarter of the cold-start episode budget: this arm exists to show whether
+# outcome-only optimization moves an already competent policy, and its prior
+# dense cost is reported separately in the run report.
+max_steps = 191
+learning_rate = 0.000003
+warmup_fraction = 0.02
+weight_decay = 0.0
+lr_scheduler_type = "constant_with_warmup"
+beta = 0.0
+epsilon = 0.2
+loss_type = "dapo"
+scale_rewards = "group"
+num_iterations = 1
+mask_truncated_completions = false
+spend_reward_weight = 0.0
+milestones_updates = [48, 95, 191]
+
+[evaluation]
+milestone_episodes = 512

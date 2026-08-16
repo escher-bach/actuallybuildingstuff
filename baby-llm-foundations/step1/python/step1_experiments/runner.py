@@ -189,7 +189,11 @@ def run(config_path: Path, output_root: Path, resume: str) -> None:
                 }
             phase("train", dense_train)
             phase("evaluate", lambda: __import__("step1_experiments.evaluate", fromlist=["evaluate"]).evaluate(_save_resolved(config, artifacts), artifacts.run_dir))
-        else: raise RuntimeError("RLVR budget is intentionally unset until dense seed-0 measurements freeze it")
+        # Outcome-only RLVR is its own stage, launched directly through
+        # `step1_experiments.rlvr` from step1/kaggle/step1_rlvr_*.ipynb: it
+        # generates no teacher shards and its budget is expressed in rollout
+        # episodes rather than packed input tokens.  See RLVR-STAGE-PLAN.md.
+        else: raise RuntimeError(f"mode {config['run']['mode']!r} is not run by this runner; see RLVR-STAGE-PLAN.md")
         success = True
     except BaseException as error:
         extra = {

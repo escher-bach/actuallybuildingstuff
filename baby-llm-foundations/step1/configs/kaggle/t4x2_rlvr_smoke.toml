@@ -1,0 +1,57 @@
+[run]
+name = "t4x2-rlvr-smoke"
+root_seed = 20260811
+mode = "rlvr"
+# Plumbing smoke required before any retained RLVR seed: it proves the GRPO
+# path, the byte-action rollout, the verifier reward, milestone checkpoints,
+# and the evaluator run end to end on two T4s. It is not a result.
+arm = "outcome_only_from_initialization"
+
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+rendering = "a"
+context_length = 2048
+train_episodes = 32768
+validation_episodes = 64
+structural_episodes = 64
+transfer_episodes = 64
+
+[rollout]
+train_seed_offset = 4000000
+max_turns = 12
+max_action_tokens = 96
+max_prompt_tokens = 256
+max_completion_tokens = 1536
+generation_rows = 32
+temperature = 1.0
+top_p = 1.0
+top_k = 0
+
+[grpo]
+num_generations = 8
+per_device_sequences = 4
+steps_per_generation = 8
+max_steps = 6
+learning_rate = 0.00001
+warmup_fraction = 0.02
+weight_decay = 0.0
+lr_scheduler_type = "constant_with_warmup"
+beta = 0.0
+epsilon = 0.2
+loss_type = "dapo"
+scale_rewards = "group"
+num_iterations = 1
+mask_truncated_completions = false
+spend_reward_weight = 0.0
+milestones_updates = [3, 6]
+
+[evaluation]
+milestone_episodes = 32
