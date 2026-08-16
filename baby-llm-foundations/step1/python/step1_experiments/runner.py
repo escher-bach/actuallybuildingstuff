@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import tomllib
 import urllib.request
@@ -51,14 +52,20 @@ def _run_checked(args: list[str], log: Path, cwd: Path, timeout: int = 3600) -> 
 def _build(repo: Path, artifacts: RunArtifacts) -> None:
     log = artifacts.run_dir / "logs" / "build.log"; cargo = shutil.which("cargo")
     if not cargo:
-        # Kaggle normally has Cargo. This is the bounded, non-interactive fallback.
-        installer = artifacts.run_dir / "rustup-init"
-        urllib.request.urlretrieve("https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init", installer)
-        installer.chmod(0o755)
-        _run_checked([str(installer), "-y", "--profile", "minimal", "--default-toolchain", "1.85.0"], log, repo, 900)
-        os.environ["PATH"] = f"{Path.home() / '.cargo' / 'bin'}{os.pathsep}{os.environ['PATH']}"
+        # The Kaggle image no longer ships Cargo, so this bounded, non-interactive
+        # install is the normal path.  The installer is build debris and stays out
+        # of the published run directory.
+        with tempfile.TemporaryDirectory(prefix="rustup-") as scratch:
+            installer = Path(scratch) / "rustup-init"
+            urllib.request.urlretrieve("https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init", installer)
+            installer.chmod(0o755)
+            _run_checked([str(installer), "-y", "--profile", "minimal", "--default-toolchain", "1.85.0"], log, repo, 900)
+        # rustup installs into CARGO_HOME, which the launcher points at ephemeral
+        # storage; only fall back to the default when it is unset.
+        cargo_home = Path(os.environ.get("CARGO_HOME") or (Path.home() / ".cargo"))
+        os.environ["PATH"] = f"{cargo_home / 'bin'}{os.pathsep}{os.environ['PATH']}"
         cargo = shutil.which("cargo")
-        if not cargo: raise RuntimeError("pinned Rust 1.85.0 installation did not provide Cargo")
+        if not cargo: raise RuntimeError(f"pinned Rust 1.85.0 installation did not provide Cargo under {cargo_home}")
     _run_checked([sys.executable, "-m", "pip", "install", "-r", str(repo / "requirements-kaggle.txt")], log, repo, 900)
     _run_checked([sys.executable, "-m", "maturin", "build", "--release", "--manifest-path", str(repo / "step1" / "crates" / "world-py" / "Cargo.toml")], log, repo / "step1", 1800)
     wheels = sorted((repo / "step1" / "target" / "wheels").glob("world_py-*.whl"))

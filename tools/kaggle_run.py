@@ -34,8 +34,10 @@ COMMIT_MARKER = "__FINAL_COMMIT_SHA__"
 CONFIG_MARKER = "__CONFIG_REL__"
 TERMINAL_STATUSES = ("COMPLETE", "ERROR", "CANCEL")
 # Collected artifacts are compact evidence only; checkpoints stay on Kaggle.
-ANALYSIS_PATTERN = r"(latest-summary\.json|.*-analysis\.tar\.gz|.*-analysis\.sha256)"
-LOG_PATTERN = r".*\.log"
+# Kaggle reports output paths relative to /kaggle/working, so the pattern must
+# tolerate the run's own subdirectory.  Requiring `-analysis` keeps the recovery
+# payload (`<run-id>.tar.gz`) out of every local download.
+ANALYSIS_PATTERN = r".*(latest-summary\.json|-analysis\.tar\.gz|-analysis\.sha256)$"
 
 
 def utc_now() -> str:
@@ -155,7 +157,10 @@ def stage(commit: str, experiment: Experiment, directory: Path) -> Path:
     notebook.write_text(render_launcher(commit, experiment), encoding="utf-8")
     metadata = {
         "id": experiment.kernel(commit),
-        "title": experiment.title[:50],
+        # Kaggle derives the notebook's URL slug by slugifying the *title*, not
+        # the id, so the title is the slug itself.  A prose title here silently
+        # publishes the run under a different, commit-independent slug.
+        "title": slug,
         "code_file": notebook.name,
         "language": "python",
         "kernel_type": "notebook",
@@ -192,12 +197,22 @@ def submit(commit: str, experiment: Experiment) -> dict:
     version = re.search(r"version\s+(\d+)", output)
     if not version:
         raise SystemExit(f"could not read the pushed version from Kaggle output:\n{output.strip()}")
+    # Kaggle's own response is authoritative for the slug; the intended kernel is
+    # only a request.  A mismatch means the run would be published under a
+    # different, possibly mutable, slug and must not be recorded as immutable.
+    returned = re.search(r"kaggle\.com/(?:code/)?([\w.-]+/[\w.-]+)", output)
+    published = returned.group(1) if returned else kernel
+    if published != kernel:
+        raise SystemExit(
+            f"Kaggle published this submission as {published}, not the requested {kernel}. "
+            "The slug must stay commit-pinned; fix the staged metadata before retrying."
+        )
     reference = {
         "experiment": experiment.name,
-        "kernel": kernel,
+        "kernel": published,
         "version": int(version.group(1)),
-        "exact_version": f"{kernel}/{version.group(1)}",
-        "url": f"https://www.kaggle.com/code/{kernel}",
+        "exact_version": f"{published}/{version.group(1)}",
+        "url": f"https://www.kaggle.com/code/{published}",
         "git_sha": commit,
         "config": experiment.config,
         "accelerator_requested": experiment.accelerator,
@@ -222,8 +237,8 @@ def wait(kernel: str, poll_seconds: int = 60, timeout_seconds: int = 12 * 3600) 
 
 def _verify_sidecar(directory: Path) -> dict:
     """Check the analysis payload against the checksum the run itself wrote."""
-    sidecars = sorted(directory.glob("*-analysis.sha256"))
-    archives = sorted(directory.glob("*-analysis.tar.gz"))
+    sidecars = sorted(directory.rglob("*-analysis.sha256"))
+    archives = sorted(directory.rglob("*-analysis.tar.gz"))
     if len(sidecars) != 1 or len(archives) != 1:
         raise SystemExit(f"expected exactly one analysis payload and sidecar in {directory}")
     expected = sidecars[0].read_text().split()[0]
@@ -245,7 +260,8 @@ def collect(reference: dict, keep_payload: Path | None = None) -> dict:
     with tempfile.TemporaryDirectory(prefix="step1-collect-") as directory:
         download = Path(directory)
         kaggle("kernels", "output", exact, "-p", str(download), "--file-pattern", ANALYSIS_PATTERN, "-o", "-q")
-        summary_path = download / "latest-summary.json"
+        summaries = sorted(download.rglob("latest-summary.json"))
+        summary_path = summaries[0] if summaries else download / "latest-summary.json"
         if not summary_path.is_file():
             raise SystemExit(f"{exact} produced no latest-summary.json; use `logs` to inspect the failure")
         summary = json.loads(summary_path.read_text())
@@ -299,16 +315,11 @@ def collect(reference: dict, keep_payload: Path | None = None) -> dict:
 
 
 def show_logs(kernel_or_version: str, lines: int) -> None:
-    with tempfile.TemporaryDirectory(prefix="step1-logs-") as directory:
-        download = Path(directory)
-        kaggle("kernels", "output", kernel_or_version, "-p", str(download), "--file-pattern", LOG_PATTERN, "-o", "-q")
-        logs = sorted(download.rglob("*.log"))
-        if not logs:
-            print(f"no execution log available for {kernel_or_version}")
-            return
-        for log in logs:
-            print(f"===== {log.name} (last {lines} lines) =====")
-            print("\n".join(log.read_text(encoding="utf-8", errors="replace").splitlines()[-lines:]))
+    """Kaggle serves the execution log directly; no output download is needed."""
+    output = kaggle("kernels", "logs", kernel_or_version, check=False)
+    tail = output.splitlines()[-lines:]
+    print(f"===== {kernel_or_version} (last {len(tail)} log lines) =====")
+    print("\n".join(tail))
 
 
 def _reference_path(experiment: Experiment, commit: str) -> Path:

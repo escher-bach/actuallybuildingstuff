@@ -70,6 +70,25 @@ class ExperimentRegistry(unittest.TestCase):
         self.assertEqual(config_source["git_sha"], source["git_sha"])
         self.assertEqual(config_source["model_state_sha256"], source["model_state_sha256"])
 
+    def test_collection_pattern_matches_nested_evidence_and_excludes_weights(self) -> None:
+        import re
+
+        pattern = re.compile(self.tool.ANALYSIS_PATTERN)
+        run = "t4x2-rlvr-warmstart-seed0-5b5e5cf5fe55-ca566773c8ef"
+        # Kaggle reports paths relative to /kaggle/working, not bare filenames.
+        for collected in (
+            "step1-results/latest-summary.json",
+            f"step1-results/{run}-analysis.tar.gz",
+            f"step1-results/{run}-analysis.sha256",
+        ):
+            self.assertTrue(pattern.fullmatch(collected), collected)
+        for excluded in (
+            f"step1-results/{run}.tar.gz",
+            f"step1-results/{run}.sha256",
+            f"step1-results/{run}/checkpoints/checkpoint-191/model.safetensors",
+        ):
+            self.assertIsNone(pattern.fullmatch(excluded), excluded)
+
     def test_staged_metadata_is_generated_not_checked_in(self) -> None:
         experiment = self.tool.resolve_experiment("rlvr-warmstart-seed0", self.registry)
         commit = "c" * 40
