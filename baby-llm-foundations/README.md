@@ -272,7 +272,12 @@ primary learning path, outcome-only RLVR as a baseline, and a high-throughput
 Rust executor with a batched Python boundary.
 
 Stage results are reported separately from the specifications that produced
-them. Two stages have run: representation transfer, in
+them. Three stages have run. The attribution control, in
+[TARGET-SHUFFLED-CONTROL-REPORT.md](TARGET-SHUFFLED-CONTROL-REPORT.md),
+establishes that the dense arm's capability requires reading the state:
+destroying the state-to-action correspondence in otherwise identical data drops
+held-out success from 41.1% to the 16.1% chance floor. The other two are
+representation transfer, in
 [RENDERING-B-TERMINAL-TRANSFER-REPORT.md](RENDERING-B-TERMINAL-TRANSFER-REPORT.md),
 and the outcome-only verified-learning baseline, in
 [RLVR-STAGE-REPORT.md](RLVR-STAGE-REPORT.md). How runs are launched, collected,

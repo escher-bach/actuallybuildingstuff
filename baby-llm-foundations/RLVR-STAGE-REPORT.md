@@ -177,7 +177,10 @@ only and takes about a minute.)
 Note also that probing at random does not beat committing at random: the ~17%
 floor is chance commitment among six hypotheses, and everything above it is
 genuine use of evidence. The dense model's 41.1% is therefore real process
-competence, not surface fluency.
+competence, not surface fluency — since confirmed directly by the
+target-shuffled control, which scores 16.1% on the same data stream with the
+state-to-action correspondence destroyed
+([TARGET-SHUFFLED-CONTROL-REPORT.md](TARGET-SHUFFLED-CONTROL-REPORT.md)).
 
 ---
 

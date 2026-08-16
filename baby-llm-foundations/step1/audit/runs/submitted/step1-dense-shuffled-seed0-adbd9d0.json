@@ -1,0 +1,13 @@
+{
+  "accelerator_requested": "NvidiaTeslaT4",
+  "config": "step1/configs/kaggle/t4x2_dense_shuffled_seed0.toml",
+  "exact_version": "aniruddhavarma/step1-dense-shuffled-seed0-adbd9d0/1",
+  "experiment": "dense-shuffled-seed0",
+  "git_sha": "adbd9d0814dcdc78de9196221029824359eb8328",
+  "kernel": "aniruddhavarma/step1-dense-shuffled-seed0-adbd9d0",
+  "kernel_sources": [],
+  "submitted_at": "2026-08-16T19:55:01.786897+00:00",
+  "upstream_identity": {},
+  "url": "https://www.kaggle.com/code/aniruddhavarma/step1-dense-shuffled-seed0-adbd9d0",
+  "version": 1
+}
