@@ -21,6 +21,7 @@ from step1_experiments.rlvr import (
     load_rlvr_config,
     parse_episode_key,
     rlvr_plan,
+    verified_legal_termination,
     verified_protocol_failure,
     verified_spend,
     verified_success,
@@ -34,6 +35,7 @@ CONFIGS = {
     "warmstart": PROJECT_ROOT / "step1/configs/kaggle/t4x2_rlvr_warmstart_seed0.toml",
     "klanchor": PROJECT_ROOT / "step1/configs/kaggle/t4x2_rlvr_klanchor_seed0.toml",
     "bigstep": PROJECT_ROOT / "step1/configs/kaggle/t4x2_rlvr_bigstep_seed0.toml",
+    "bestshot": PROJECT_ROOT / "step1/configs/kaggle/t4x2_rlvr_bestshot_seed0.toml",
 }
 LAUNCHER = PROJECT_ROOT / "step1/kaggle/step1_t4x2_launcher.ipynb"
 DENSE_CONFIG = PROJECT_ROOT / "step1/configs/kaggle/t4x2_dense_seed0.toml"
@@ -90,7 +92,7 @@ def _report(config: dict, plan) -> dict:
             "trainer": "trl.GRPOTrainer",
             "signal": "outcome_only_privileged_verifier",
             "reward_functions": list(REWARD_FUNCTION_NAMES),
-            "reward_weights": [1.0, 0.0, 0.0],
+            "reward_weights": [1.0, 0.0, 0.0, 0.25],
         },
         "plan": plan.report(),
         "initialization": {"root_seed": plan.root_seed},
@@ -194,11 +196,16 @@ class RlvrRewardContracts(unittest.TestCase):
         self.assertEqual(verified_success(**rollout), [1.0, 0.0, 0.0, 0.0])
         self.assertEqual(verified_spend(**rollout), [-4.0, -2.0, -0.0, -7.0])
         self.assertEqual(verified_protocol_failure(**rollout), [0.0, 1.0, 1.0, 0.0])
+        # Credit for reaching a verdict: correct, and legal-but-wrong, but not a
+        # trajectory killed by an illegal or unparseable action.
+        rollout["outcome_terminated"] = [True, False, False, True]
+        self.assertEqual(verified_legal_termination(**rollout), [1.0, 0.0, 0.0, 1.0])
 
     def test_reward_function_names_are_the_logged_contract(self) -> None:
         self.assertEqual(
             REWARD_FUNCTION_NAMES,
-            (verified_success.__name__, verified_spend.__name__, verified_protocol_failure.__name__),
+            (verified_success.__name__, verified_spend.__name__,
+             verified_protocol_failure.__name__, verified_legal_termination.__name__),
         )
 
 
@@ -280,7 +287,8 @@ class RlvrReportContracts(unittest.TestCase):
             lambda report: report["milestones"][1].pop("teacher_forced_action_nll"),
             lambda report: report["milestones"].pop(),
             lambda report: report["algorithm"].update(signal="teacher_preferred_actions"),
-            lambda report: report["algorithm"].update(reward_weights=[0.0, 1.0, 0.0]),
+            lambda report: report["algorithm"].update(reward_weights=[0.0, 1.0, 0.0, 0.0]),
+            lambda report: report["algorithm"].update(reward_weights=[1.0, 0.0, 0.0, 1.5]),
             lambda report: report.update(contract="something_else"),
         ):
             report = _report(self.config, self.plan)

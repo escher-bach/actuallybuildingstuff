@@ -1,0 +1,83 @@
+[run]
+name = "t4x2-rlvr-bestshot-seed0"
+root_seed = 20260811
+mode = "rlvr"
+# The best configuration the three previous arms justify. This is deliberately
+# NOT a single-knob pair: four settings change together, each aimed at something
+# those arms measured. If it works, the ablation is worth running; if it does not,
+# the null stops being about any one knob.
+arm = "outcome_only_from_dense"
+
+[source]
+run_name = "t4x2-dense-seed0"
+git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+config_hash = "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14"
+model_state_sha256 = "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e"
+
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+rendering = "a"
+context_length = 2048
+train_episodes = 32768
+validation_episodes = 1024
+structural_episodes = 1024
+transfer_episodes = 1024
+
+[rollout]
+train_seed_offset = 4000000
+max_turns = 12
+max_action_tokens = 96
+max_prompt_tokens = 256
+max_completion_tokens = 1536
+generation_rows = 32
+temperature = 1.0
+top_p = 1.0
+top_k = 0
+
+[grpo]
+# 2. Group size. 40-51% of eight-sample groups were degenerate, contributing no
+#    advantage at all. Sixteen samples per world halves that waste; the doubled
+#    generation batch keeps eight distinct worlds per update as before.
+num_generations = 16
+per_device_sequences = 4
+steps_per_generation = 16
+# 1. Budget. 382 updates x 128 rollouts = 48,896 episodes, matching the dense
+#    arm's 48,832 packed sequences on the episode axis for the first time.
+max_steps = 382
+# 3. Step size, bracketed by measurement rather than guessed: 3e-6 moved the
+#    policy 7% of NLL and nothing else; 1e-4 moved it 74% and cost nine points
+#    of held-out success. 2e-5 sits between, and cosine decay addresses the late
+#    instability that appeared in the final sixth of the 1e-4 run.
+learning_rate = 0.00002
+warmup_fraction = 0.03
+weight_decay = 0.0
+lr_scheduler_type = "cosine"
+# The one changed knob. Declared, not tuned. If the anchor were paralysing, the
+# protocol-failure trend that the unanchored arm halved would stay flat; the
+# logged KL series and that trend together separate a working anchor from a
+# suffocating one.
+beta = 0.02
+epsilon = 0.2
+loss_type = "dapo"
+scale_rewards = "group"
+num_iterations = 1
+mask_truncated_completions = false
+spend_reward_weight = 0.0
+# 4. Reward shape, still outcome-only. A binary reward gives a group of eight
+#    failures no advantage even when some played legally and others died on an
+#    illegal move. Credit for reaching a verdict separates those, at a weight far
+#    below success: committing blind is worth 0.25 + 0.17 expected, correct play
+#    is worth 1.25, so correctness still dominates by a wide margin.
+legal_termination_reward_weight = 0.25
+milestones_updates = [48, 95, 191, 382]
+
+[evaluation]
+milestone_episodes = 512

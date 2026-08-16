@@ -39,7 +39,7 @@ ARMS = ("outcome_only_from_initialization", "outcome_only_from_dense")
 EPISODE_KEY = re.compile(r"^step1-world/(\d+)$")
 # The learner is scored by the verifier only.  These names appear in the TRL
 # reward log; only the first carries a nonzero weight by default.
-REWARD_FUNCTION_NAMES = ("verified_success", "verified_spend", "verified_protocol_failure")
+REWARD_FUNCTION_NAMES = ("verified_success", "verified_spend", "verified_protocol_failure", "verified_legal_termination")
 
 
 def episode_key(world_seed: int) -> str:
@@ -393,6 +393,32 @@ def verified_protocol_failure(*, rollout_malformed: list[int], rollout_invalid: 
     return [1.0 if bad or worse else 0.0 for bad, worse in zip(rollout_malformed, rollout_invalid)]
 
 
+def verified_legal_termination(*, outcome_terminated: list[bool], rollout_malformed: list[int],
+                               rollout_invalid: list[int], **_kwargs) -> list[float]:
+    """Credit for reaching a verdict at all, right or wrong.
+
+    Still outcome-only: `terminated` is a field of the privileged verifier's
+    terminal report, not an intermediate teacher label.  Its purpose is the
+    degenerate-group problem — under a purely binary reward, a group in which
+    every rollout fails carries no advantage even when some of those rollouts
+    played legally and others died on an illegal move.  Weighted well below
+    success, it separates those cases without competing with correctness.
+    """
+    return [
+        1.0 if terminated and not bad and not worse else 0.0
+        for terminated, bad, worse in zip(outcome_terminated, rollout_malformed, rollout_invalid)
+    ]
+
+
+def _reward_weights(grpo: dict) -> list[float]:
+    """Verified success always carries the primary weight; the rest are declared.
+
+    `legal_termination_reward_weight` defaults to zero so every earlier arm
+    keeps its exact objective.
+    """
+    return [1.0, grpo["spend_reward_weight"], 0.0, grpo.get("legal_termination_reward_weight", 0.0)]
+
+
 def _grpo_config(config: dict, plan: RlvrPlan, workspace: Path):
     from trl import GRPOConfig
 
@@ -418,7 +444,7 @@ def _grpo_config(config: dict, plan: RlvrPlan, workspace: Path):
         scale_rewards=grpo["scale_rewards"],
         num_iterations=grpo["num_iterations"],
         mask_truncated_completions=grpo["mask_truncated_completions"],
-        reward_weights=[1.0, grpo["spend_reward_weight"], 0.0],
+        reward_weights=_reward_weights(grpo),
         temperature=config["rollout"]["temperature"],
         top_p=config["rollout"]["top_p"],
         top_k=config["rollout"]["top_k"],
@@ -449,7 +475,7 @@ def _trainer(model, config: dict, plan: RlvrPlan, workspace: Path, rollout: Worl
 
     return GRPOTrainer(
         model=model,
-        reward_funcs=[verified_success, verified_spend, verified_protocol_failure],
+        reward_funcs=[verified_success, verified_spend, verified_protocol_failure, verified_legal_termination],
         args=_grpo_config(config, plan, workspace),
         train_dataset=episode_dataset(plan),
         processing_class=load_tokenizer(),
@@ -637,8 +663,9 @@ def assert_rlvr_report_contract(report: dict, config: dict, plan: RlvrPlan) -> N
         raise AssertionError("RLVR algorithm identity mismatch")
     if tuple(algorithm.get("reward_functions", ())) != REWARD_FUNCTION_NAMES:
         raise AssertionError("RLVR reward function set mismatch")
-    if algorithm.get("reward_weights", [None])[0] != 1.0:
-        raise AssertionError("verified success must carry the primary reward weight")
+    weights = algorithm.get("reward_weights", [None])
+    if weights[0] != 1.0 or any(weight >= 1.0 for weight in weights[1:]):
+        raise AssertionError("verified success must carry the strictly largest reward weight")
     if report.get("initialization", {}).get("root_seed") != plan.root_seed:
         raise AssertionError("RLVR initialization seed mismatch")
     budget = report.get("budget_accounting", {})
@@ -771,11 +798,12 @@ def run(config_path: Path, output_dir: Path, source_run: Path | None = None) -> 
             "paper": "https://huggingface.co/papers/2402.03300",
             "signal": "outcome_only_privileged_verifier",
             "reward_functions": list(REWARD_FUNCTION_NAMES),
-            "reward_weights": [1.0, grpo["spend_reward_weight"], 0.0],
+            "reward_weights": _reward_weights(grpo),
             "reward_definition": {
                 "verified_success": "1.0 iff the verifier reports a terminated, correct episode with no malformed or invalid action",
                 "verified_spend": "negated verified probe spend",
                 "verified_protocol_failure": "diagnostic only; weight 0",
+                "verified_legal_termination": "1.0 iff the verifier reports a terminated episode with no protocol failure, right or wrong",
             },
             "loss_type": grpo["loss_type"],
             "scale_rewards": grpo["scale_rewards"],
