@@ -29,7 +29,12 @@ DECODING_CONTRACT = "step1_decoding_diagnostic_v1"
 
 
 def locate_run(roots: list[Path], report_name: str, expected: dict) -> Path:
-    """Find an attached run directory by the identity its own report carries."""
+    """Find an attached run *root* by the identity its own report carries.
+
+    ``report_name`` may be nested (``production/training_report.json``), so the
+    root is found by climbing exactly as many levels as the name has parts.
+    """
+    depth = len(Path(report_name).parts)
     matches = []
     for root in roots:
         if not root.exists():
@@ -40,7 +45,7 @@ def locate_run(roots: list[Path], report_name: str, expected: dict) -> Path:
             except (OSError, json.JSONDecodeError):
                 continue
             if all(report.get(field) == value for field, value in expected.items()):
-                matches.append(path.parent.resolve())
+                matches.append(path.parents[depth - 1].resolve())
     unique = sorted(set(matches))
     if len(unique) != 1:
         raise RuntimeError(f"expected exactly one attached run matching {expected}, found {unique}")

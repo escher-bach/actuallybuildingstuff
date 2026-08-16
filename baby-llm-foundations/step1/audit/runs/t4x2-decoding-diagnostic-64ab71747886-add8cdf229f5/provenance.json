@@ -1,0 +1,211 @@
+{
+  "accelerator_inventory": [
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 0,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    },
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 1,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    }
+  ],
+  "captured_at": "2026-08-16T19:15:01.108041+00:00",
+  "config_hash": "add8cdf229f5896de1217f04dd39e5d874ad487dde64a48c0c50a0c68adfc868",
+  "git_sha": "64ab717478865eeddd93bce5e2226f3669833355",
+  "phases": {
+    "accelerator_check": {
+      "details": {
+        "devices": [
+          "Tesla T4",
+          "Tesla T4"
+        ]
+      },
+      "finished_at": "2026-08-16T19:13:05.128300+00:00",
+      "state": "complete"
+    },
+    "capture_environment": {
+      "details": {
+        "cargo": {
+          "command": [
+            "cargo",
+            "--version"
+          ],
+          "exception": "FileNotFoundError(2, 'No such file or directory')"
+        },
+        "command_line": [
+          "/tmp/step1-runtime/actuallybuildingstuff/baby-llm-foundations/step1/python/step1_experiments/runner.py",
+          "--config",
+          "/tmp/step1-runtime/actuallybuildingstuff/baby-llm-foundations/step1/configs/kaggle/t4x2_decoding_diagnostic.toml",
+          "--output-root",
+          "/kaggle/working/step1-results",
+          "--resume",
+          "auto"
+        ],
+        "compiler": {
+          "command": [
+            "cc",
+            "--version"
+          ],
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "cc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+        },
+        "cpu_count_logical": 4,
+        "disk": {
+          "free": 20940496896,
+          "total": 20957446144
+        },
+        "environment": {
+          "CUDA_HOME": "/usr/local/cuda",
+          "CUDA_VERSION": "12.8.1",
+          "KAGGLE_CONTAINER_NAME": "kaggle_gSa6glngT92DqqIfOc3hzFppB4ZJxZgUmDhyOnQpO4E-342835239-webtier",
+          "KAGGLE_DATA_PROXY_PROJECT": "kaggle-161607",
+          "KAGGLE_DATA_PROXY_URL": "https://dp.kaggle.net",
+          "KAGGLE_DOCKER_IMAGE": "gcr.io/kaggle-gpu-images/python@sha256:37c64f7dd9c54116ecd1bcc88817c5469b88387388fade02bfa8bf3fc647d461",
+          "KAGGLE_GCP_ZONE": "us-west1-a",
+          "KAGGLE_GRPC_DATA_PROXY_URL": "dp.kaggle.net:443",
+          "KAGGLE_KERNEL_INTEGRATIONS": "",
+          "KAGGLE_KERNEL_RUN_TYPE": "Batch",
+          "KAGGLE_URL_BASE": "https://api.kaggle.com",
+          "NCCL_VERSION": "2.25.1-1"
+        },
+        "git_sha": "64ab717478865eeddd93bce5e2226f3669833355",
+        "git_status_porcelain": "",
+        "nvidia_smi": {
+          "command": [
+            "nvidia-smi"
+          ],
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "Sun Aug 16 19:13:04 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 580.159.04             Driver Version: 580.159.04     CUDA Version: 13.0     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  Tesla T4                       Off |   00000000:00:04.0 Off |                    0 |\n| N/A   53C    P8             10W /   70W |       3MiB /  15360MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n|   1  Tesla T4                       Off |   00000000:00:05.0 Off |                    0 |\n| N/A   55C    P8             12W /   70W |       3MiB /  15360MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|  No running processes found                                                             |\n+-----------------------------------------------------------------------------------------+\n"
+        },
+        "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+        "python": "3.12.13 (main, Mar  4 2026, 09:23:07) [GCC 11.4.0]",
+        "resolved_config": {
+          "_meta": {
+            "config_path": "/tmp/step1-runtime/actuallybuildingstuff/baby-llm-foundations/step1/configs/kaggle/t4x2_decoding_diagnostic.toml",
+            "hash": "add8cdf229f5896de1217f04dd39e5d874ad487dde64a48c0c50a0c68adfc868",
+            "source_git_sha": "64ab717478865eeddd93bce5e2226f3669833355",
+            "tokenizer_hash": "7ff210fae4c0cd4cff12d7d1028350142abc4b6a9380fa26bc1be93d8168bd92"
+          },
+          "decoding": [
+            {
+              "name": "greedy",
+              "repeats": 1,
+              "temperature": 0.0
+            },
+            {
+              "name": "sampled_t1.0",
+              "repeats": 2,
+              "temperature": 1.0
+            }
+          ],
+          "evaluation": {
+            "episodes": 1024
+          },
+          "models": [
+            {
+              "config_hash": "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14",
+              "git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0",
+              "kind": "dense",
+              "model_state_sha256": "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e",
+              "name": "dense_seed0"
+            },
+            {
+              "checkpoint_updates": 382,
+              "config_hash": "32d72e790525be80c953c20c389969a385a874a8ad83504df5dbb0785799862d",
+              "kind": "rlvr",
+              "model_state_sha256": "de0ba9ad5e2d12f3d6b24f9ff8e5deaa6086acc0eb080118683e119bbbe66a87",
+              "name": "rlvr_bestshot_382"
+            }
+          ],
+          "run": {
+            "mode": "decoding_diagnostic",
+            "name": "t4x2-decoding-diagnostic",
+            "root_seed": 20260811
+          },
+          "world": {
+            "budget_slack": 1,
+            "context_length": 2048,
+            "cost_hi": 3,
+            "cost_lo": 1,
+            "min_depth": 2,
+            "n_evidence": 2,
+            "n_hyp": 6,
+            "n_probe": 5,
+            "rendering": "a",
+            "step_slack": 2,
+            "structural_episodes": 1024,
+            "train_episodes": 32768,
+            "transfer_episodes": 1024,
+            "validation_episodes": 1024,
+            "variant": "irreversible"
+          }
+        },
+        "torch": {
+          "cuda": "12.8",
+          "cudnn": 91002,
+          "devices": [
+            {
+              "capability": [
+                7,
+                5
+              ],
+              "index": 0,
+              "name": "Tesla T4",
+              "vram_bytes": 15636037632
+            },
+            {
+              "capability": [
+                7,
+                5
+              ],
+              "index": 1,
+              "name": "Tesla T4",
+              "vram_bytes": 15636037632
+            }
+          ],
+          "version": "2.10.0+cu128"
+        }
+      },
+      "finished_at": "2026-08-16T19:13:05.121643+00:00",
+      "state": "complete"
+    },
+    "correctness_tests": {
+      "details": {},
+      "finished_at": "2026-08-16T19:14:56.969501+00:00",
+      "state": "complete"
+    },
+    "evaluate": {
+      "exception_class": "RuntimeError",
+      "finished_at": "2026-08-16T19:14:59.323065+00:00",
+      "message": "resolved artifact is not a model directory: /kaggle/input/notebooks/aniruddhavarma/step1-t4x2-dense-seed0-84f2938/step1-results/t4x2-dense-seed0-84f29385ed62-b91eedc26552/production/production/model",
+      "started_at": "2026-08-16T19:14:56.974443+00:00",
+      "state": "failed"
+    },
+    "install_and_build": {
+      "details": {},
+      "finished_at": "2026-08-16T19:14:01.232706+00:00",
+      "state": "complete"
+    },
+    "package_results": {
+      "details": {
+        "success": false
+      },
+      "finished_at": "2026-08-16T19:15:01.101265+00:00",
+      "state": "complete"
+    }
+  },
+  "run_id": "t4x2-decoding-diagnostic-64ab71747886-add8cdf229f5",
+  "success": false
+}

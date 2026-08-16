@@ -328,3 +328,51 @@ class LauncherContracts(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DecodingDiagnosticContracts(unittest.TestCase):
+    """The locator must find run roots, not the directory a report happens to sit in."""
+
+    def _tree(self, root: Path) -> None:
+        dense = root / "notebooks/owner/dense/step1-results/t4x2-dense-seed0-aaaa"
+        (dense / "production" / "model").mkdir(parents=True)
+        (dense / "production" / "model" / "config.json").write_text("{}")
+        (dense / "production" / "training_report.json").write_text(json.dumps({
+            "contract": "step1_dense_training_v1", "source_git_sha": "a" * 40, "config_hash": "b" * 64,
+        }))
+        rl = root / "notebooks/owner/rl/step1-results/t4x2-rlvr-bestshot-bbbb"
+        (rl / "outcome_only_from_dense" / "checkpoints" / "checkpoint-382").mkdir(parents=True)
+        (rl / "outcome_only_from_dense" / "checkpoints" / "checkpoint-382" / "config.json").write_text("{}")
+        (rl / "rlvr_report.json").write_text(json.dumps({
+            "contract": "step1_rlvr_grpo_v1", "experiment_config_sha256": "c" * 64,
+            "plan": {"arm": "outcome_only_from_dense"},
+        }))
+
+    def test_resolves_nested_and_flat_reports_to_model_directories(self) -> None:
+        from step1_experiments.decoding_diagnostic import resolve_checkpoints
+
+        config = {"models": [
+            {"name": "dense", "kind": "dense", "git_sha": "a" * 40, "config_hash": "b" * 64},
+            {"name": "rl", "kind": "rlvr", "config_hash": "c" * 64, "checkpoint_updates": 382},
+        ]}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._tree(root)
+            resolved = resolve_checkpoints(config, [root])
+            # Checked inside the temporary tree: resolve_checkpoints itself
+            # requires a real model directory, which is what caught the doubled
+            # `production/production/model` path on Kaggle.
+            for entry in resolved:
+                self.assertTrue((Path(entry["artifact"]) / "config.json").is_file(), entry["artifact"])
+        self.assertTrue(resolved[0]["artifact"].endswith(str(Path("production/model"))))
+        self.assertTrue(resolved[1]["artifact"].endswith(str(Path("checkpoints/checkpoint-382"))))
+
+    def test_unmatched_identity_is_rejected(self) -> None:
+        from step1_experiments.decoding_diagnostic import resolve_checkpoints
+
+        config = {"models": [{"name": "dense", "kind": "dense", "git_sha": "z" * 40, "config_hash": "b" * 64}]}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._tree(root)
+            with self.assertRaises(RuntimeError):
+                resolve_checkpoints(config, [root])
