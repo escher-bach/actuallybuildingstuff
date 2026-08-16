@@ -85,22 +85,35 @@ class ExperimentRegistry(unittest.TestCase):
                     for field in ("git_sha", "config_hash", "model_state_sha256"):
                         self.assertEqual(source[field], identity[field], field)
 
-    def test_paired_arms_differ_only_in_the_declared_knob(self) -> None:
+    def _config(self, name: str) -> dict:
         import tomllib
 
-        configs = {}
-        for name in ("rlvr-warmstart-seed0", "rlvr-klanchor-seed0"):
-            with (PROJECT_ROOT / self.tool.resolve_experiment(name, self.registry).config).open("rb") as handle:
-                configs[name] = tomllib.load(handle)
-        base, anchored = configs["rlvr-warmstart-seed0"], configs["rlvr-klanchor-seed0"]
-        self.assertEqual(base["world"], anchored["world"])
-        self.assertEqual(base["rollout"], anchored["rollout"])
-        self.assertEqual(base["run"]["root_seed"], anchored["run"]["root_seed"])
-        self.assertEqual(base["run"]["arm"], anchored["run"]["arm"])
-        differing = {key for key in base["grpo"] if base["grpo"][key] != anchored["grpo"].get(key)}
-        self.assertEqual(differing, {"beta"})
+        with (PROJECT_ROOT / self.tool.resolve_experiment(name, self.registry).config).open("rb") as handle:
+            return tomllib.load(handle)
+
+    def _assert_paired(self, left: str, right: str, expected_difference: set[str]) -> tuple[dict, dict]:
+        """Each successive arm must isolate exactly one knob from its pair."""
+        a, b = self._config(left), self._config(right)
+        self.assertEqual(a["world"], b["world"])
+        self.assertEqual(a["rollout"], b["rollout"])
+        self.assertEqual(a["run"]["root_seed"], b["run"]["root_seed"])
+        self.assertEqual(a["run"]["arm"], b["run"]["arm"])
+        self.assertEqual({key for key in a["grpo"] if a["grpo"][key] != b["grpo"].get(key)}, expected_difference)
+        return a, b
+
+    def test_kl_arm_isolates_the_anchor(self) -> None:
+        base, anchored = self._assert_paired("rlvr-warmstart-seed0", "rlvr-klanchor-seed0", {"beta"})
         self.assertEqual(base["grpo"]["beta"], 0.0)
         self.assertGreater(anchored["grpo"]["beta"], 0.0)
+
+    def test_step_size_arm_isolates_the_learning_rate(self) -> None:
+        anchored, bigger = self._assert_paired("rlvr-klanchor-seed0", "rlvr-bigstep-seed0", {"learning_rate"})
+        self.assertGreater(bigger["grpo"]["learning_rate"], anchored["grpo"]["learning_rate"])
+        # Still below the rate the dense arm used to train this same model.
+        import tomllib
+
+        with (PROJECT_ROOT / "step1/configs/kaggle/t4x2_dense_seed0.toml").open("rb") as handle:
+            self.assertLess(bigger["grpo"]["learning_rate"], tomllib.load(handle)["training"]["learning_rate"])
 
     def test_collection_pattern_matches_nested_evidence_and_excludes_weights(self) -> None:
         import re

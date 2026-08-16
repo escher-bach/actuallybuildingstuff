@@ -33,6 +33,7 @@ CONFIGS = {
     "smoke": PROJECT_ROOT / "step1/configs/kaggle/t4x2_rlvr_smoke.toml",
     "warmstart": PROJECT_ROOT / "step1/configs/kaggle/t4x2_rlvr_warmstart_seed0.toml",
     "klanchor": PROJECT_ROOT / "step1/configs/kaggle/t4x2_rlvr_klanchor_seed0.toml",
+    "bigstep": PROJECT_ROOT / "step1/configs/kaggle/t4x2_rlvr_bigstep_seed0.toml",
 }
 LAUNCHER = PROJECT_ROOT / "step1/kaggle/step1_t4x2_launcher.ipynb"
 DENSE_CONFIG = PROJECT_ROOT / "step1/configs/kaggle/t4x2_dense_seed0.toml"
