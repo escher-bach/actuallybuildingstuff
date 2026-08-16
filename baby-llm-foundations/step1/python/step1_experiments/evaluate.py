@@ -41,8 +41,13 @@ def _decode_generated_action(generated: list[int]) -> str | None:
 
 
 @torch.no_grad()
-def _decode_actions_batched(model, prefixes: list[list[int]], device: torch.device, batch_size: int = GENERATION_BATCH_SIZE) -> list[str | None]:
-    """Use standard batched ``generate`` while retaining row-local decoding."""
+def _decode_actions_batched(model, prefixes: list[list[int]], device: torch.device, batch_size: int = GENERATION_BATCH_SIZE, temperature: float = 0.0) -> list[str | None]:
+    """Use standard batched ``generate`` while retaining row-local decoding.
+
+    ``temperature = 0.0`` is the frozen greedy rule every retained evaluation
+    uses.  A positive temperature samples instead, which exists only for the
+    decoding diagnostic: it must never silently change a reported metric.
+    """
     if batch_size < 1:
         raise ValueError("generation batch_size must be positive")
     decoded: list[str | None] = [None] * len(prefixes)
@@ -66,14 +71,15 @@ def _decode_actions_batched(model, prefixes: list[list[int]], device: torch.devi
             for row, prefix in enumerate(values):
                 input_ids[row, width - len(prefix):] = torch.tensor(prefix, dtype=torch.long, device=device)
                 attention_mask[row, width - len(prefix):] = True
+            sampling = {"do_sample": True, "temperature": temperature, "top_p": 1.0, "top_k": 0} if temperature > 0 else {"do_sample": False}
             generated = model.generate(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
                 max_new_tokens=limit,
-                do_sample=False,
                 eos_token_id=END_TURN,
                 pad_token_id=model.config.pad_token_id,
                 use_cache=True,
+                **sampling,
             )
             for index, row in zip(indices, generated):
                 decoded[index] = _decode_generated_action(row[width:].tolist())
@@ -138,7 +144,7 @@ def _matched_sets(config: dict) -> dict[str, tuple[dict, int, int, str, dict]]:
 
 
 @torch.no_grad()
-def _execute_batched(model, params: dict, seed: int, count: int, rendering: str, device: torch.device) -> list[dict]:
+def _execute_batched(model, params: dict, seed: int, count: int, rendering: str, device: torch.device, temperature: float = 0.0) -> list[dict]:
     """Execute independent worlds with batched generation and row-local stops."""
     from world_py import Batch
 
@@ -154,7 +160,7 @@ def _execute_batched(model, params: dict, seed: int, count: int, rendering: str,
             prefix = prefixes[index]
             prefix += [OBS] + encode_bytes(worlds[index].observations(rendering)[0]) + [ACTION]
             decode_prefixes.append(prefix)
-        texts = _decode_actions_batched(model, decode_prefixes, device)
+        texts = _decode_actions_batched(model, decode_prefixes, device, temperature=temperature)
         for index, text in zip(live, texts):
             if text is None:
                 malformed[index] += 1

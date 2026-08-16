@@ -1,0 +1,62 @@
+[run]
+name = "t4x2-decoding-diagnostic"
+root_seed = 20260811
+mode = "decoding_diagnostic"
+
+# Re-scores two existing checkpoints under both decoding rules. It trains
+# nothing. Its purpose is to establish which policy the stage has been
+# measuring: every retained metric decodes greedily, while every RLVR rollout
+# sampled at temperature 1.0, and those two quantities moved independently
+# across the outcome-only arms.
+
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+rendering = "a"
+context_length = 2048
+train_episodes = 32768
+validation_episodes = 1024
+structural_episodes = 1024
+transfer_episodes = 1024
+
+[evaluation]
+# The held-out validation worlds every arm in the stage was scored on.
+episodes = 1024
+
+# Greedy is the frozen evaluator, reproduced here so both rules are measured in
+# one session on identical worlds. Sampling repeats twice under different
+# sampling seeds so a difference can be told from sampling noise.
+[[decoding]]
+name = "greedy"
+temperature = 0.0
+repeats = 1
+
+[[decoding]]
+name = "sampled_t1.0"
+temperature = 1.0
+repeats = 2
+
+# The post-SFT starting policy.
+[[models]]
+name = "dense_seed0"
+kind = "dense"
+git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+config_hash = "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14"
+model_state_sha256 = "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e"
+
+# The representative RL checkpoint: the tuned arm's terminal model, the
+# healthiest run of the stage and the one whose sampled reward rose to meet its
+# unchanged greedy score.
+[[models]]
+name = "rlvr_bestshot_382"
+kind = "rlvr"
+config_hash = "32d72e790525be80c953c20c389969a385a874a8ad83504df5dbb0785799862d"
+checkpoint_updates = 382
+model_state_sha256 = "de0ba9ad5e2d12f3d6b24f9ff8e5deaa6086acc0eb080118683e119bbbe66a87"

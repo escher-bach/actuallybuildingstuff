@@ -131,6 +131,15 @@ def _accelerator_check() -> dict:
     return {"devices": [torch.cuda.get_device_name(index) for index in range(torch.cuda.device_count())]}
 
 
+def _decoding_diagnostic(config: dict, artifacts: RunArtifacts) -> dict:
+    """Re-score attached checkpoints under every declared decoding rule."""
+    from .decoding_diagnostic import run as run_diagnostic
+
+    path = run_diagnostic(_save_resolved(config, artifacts), artifacts.run_dir)
+    report = json.loads(path.read_text())
+    return {"report": str(path), "greedy_reference": report["greedy_reference"]}
+
+
 def _rlvr(config: dict, artifacts: RunArtifacts) -> dict:
     """Launch the outcome-only stage; it owns its own evaluation."""
     resolved = _save_resolved(config, artifacts)
@@ -187,12 +196,17 @@ def run(config_path: Path, output_root: Path, resume: str) -> None:
                 artifacts.phase_failed(name, error); raise
             artifacts.finish(name, details if isinstance(details, dict) else {})
         phase("capture_environment", lambda: capture(artifacts.run_dir / "environment" / "environment.json", repo, config, sys.argv))
-        if config["run"]["mode"] == "rlvr":
+        if config["run"]["mode"] in ("rlvr", "decoding_diagnostic"):
             # The requested accelerator is not evidence.  Fail in seconds on a
             # mis-provisioned session rather than after the Rust build.
             phase("accelerator_check", _accelerator_check)
         phase("install_and_build", lambda: _build(repo, artifacts))
         phase("correctness_tests", lambda: _correctness(repo, artifacts))
+        if config["run"]["mode"] == "decoding_diagnostic":
+            # Scores existing checkpoints; there is nothing to train or shard.
+            phase("evaluate", lambda: _decoding_diagnostic(config, artifacts))
+            success = True
+            return
         if config["run"]["mode"] == "rlvr":
             # Outcome-only training generates its own worlds interactively: no
             # teacher shards, no shard DataLoader, and therefore none of the
