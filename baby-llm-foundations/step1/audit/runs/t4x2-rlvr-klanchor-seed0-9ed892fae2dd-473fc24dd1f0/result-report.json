@@ -1,0 +1,278 @@
+{
+  "algorithm": {
+    "beta_kl": 0.02,
+    "epsilon": 0.2,
+    "library": "trl",
+    "library_version": "0.29.1",
+    "logged_reward_field": "TRL's `reward` log entry is the unweighted sum over reward functions; the trained objective is the weighted sum, so read `rewards/verified_success/mean`",
+    "loss_type": "dapo",
+    "num_generations": 8,
+    "num_iterations": 1,
+    "paper": "https://huggingface.co/papers/2402.03300",
+    "privileged_intermediate_labels": false,
+    "reward_definition": {
+      "verified_protocol_failure": "diagnostic only; weight 0",
+      "verified_spend": "negated verified probe spend",
+      "verified_success": "1.0 iff the verifier reports a terminated, correct episode with no malformed or invalid action"
+    },
+    "reward_functions": [
+      "verified_success",
+      "verified_spend",
+      "verified_protocol_failure"
+    ],
+    "reward_weights": [
+      1.0,
+      0.0,
+      0.0
+    ],
+    "scale_rewards": "group",
+    "signal": "outcome_only_privileged_verifier",
+    "trainer": "trl.GRPOTrainer"
+  },
+  "budget_accounting": {
+    "episodes": 12224,
+    "exhausted_episodes": 0,
+    "generated_action_tokens": 597744,
+    "invalid_episodes": 1179,
+    "malformed_episodes": 67,
+    "note": "episodes and transitions are measured; no single axis makes RLVR and dense supervision equivalent",
+    "observation_tokens": 5348525,
+    "optimizer_updates": 191,
+    "prompt_tokens": 2774904,
+    "ranks_finished": [
+      0,
+      1
+    ],
+    "rollout_episodes": 12224,
+    "successful_episodes": 4511,
+    "terminated_episodes": 10978,
+    "turns": 35765,
+    "wall_clock_seconds": 1003.2770137910001,
+    "world_transitions": 34519
+  },
+  "contract": "step1_rlvr_grpo_v1",
+  "experiment_config_sha256": "473fc24dd1f04dcdfc13cb69524ee39f2172fe857d541588e45b98879f5d4f52",
+  "initialization": {
+    "model_state_sha256": "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e",
+    "parameter_count": 19183616,
+    "policy": "dense_A_checkpoint",
+    "prior_dense_cost": {
+      "checkpoint_interval_nominal_global_input_tokens": 917504,
+      "checkpoint_interval_updates": 28,
+      "checkpoint_total_limit": 6,
+      "context_length": 2048,
+      "gradient_accumulation_steps": 2,
+      "max_steps": 3052,
+      "nominal_global_input_tokens_per_microstep": 16384,
+      "nominal_global_input_tokens_per_update": 32768,
+      "per_device_sequences": 4,
+      "supervised_token_unit": "action-label tokens after the causal shift; variable and reported separately",
+      "token_budget": 100007936,
+      "token_unit": "nominal global input tokens (world_size * per_device_sequences * context_length)",
+      "world_size": 2
+    },
+    "root_seed": 20260811,
+    "source_config_hash": "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14",
+    "source_git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0",
+    "source_run": "/kaggle/input/notebooks/aniruddhavarma/step1-t4x2-dense-seed0-84f2938/step1-results/t4x2-dense-seed0-84f29385ed62-b91eedc26552"
+  },
+  "milestones": [
+    {
+      "artifact": "/kaggle/working/step1-results/t4x2-rlvr-klanchor-seed0-9ed892fae2dd-473fc24dd1f0/outcome_only_from_dense/checkpoints/checkpoint-48",
+      "budget_updates": 48,
+      "evaluation": {
+        "validation": {
+          "comparison": {
+            "label": "held_out_in_distribution",
+            "seed_policy": "held_out_seed"
+          },
+          "metrics": {
+            "failure_rate": 0.560546875,
+            "invalid_action_rate": 0.017578125,
+            "malformed_action_rate": 0.0,
+            "mean_spent": 3.875,
+            "mean_steps": 2.96484375,
+            "mean_success_excess_cost": 0.4,
+            "success_rate": 0.439453125
+          }
+        }
+      },
+      "rollout_episodes": 3072,
+      "serialization": {
+        "actual_state_sha256": "9c04b465fcd54cd021dc6eb7af4d9257e74d1414b053fd387dc08701d6362ad5",
+        "exact": true,
+        "expected_state_sha256": "9c04b465fcd54cd021dc6eb7af4d9257e74d1414b053fd387dc08701d6362ad5",
+        "missing_keys": [],
+        "unequal_keys": [],
+        "unexpected_keys": []
+      },
+      "teacher_forced_action_nll": 0.08619195455971464
+    },
+    {
+      "artifact": "/kaggle/working/step1-results/t4x2-rlvr-klanchor-seed0-9ed892fae2dd-473fc24dd1f0/outcome_only_from_dense/checkpoints/checkpoint-95",
+      "budget_updates": 95,
+      "evaluation": {
+        "validation": {
+          "comparison": {
+            "label": "held_out_in_distribution",
+            "seed_policy": "held_out_seed"
+          },
+          "metrics": {
+            "failure_rate": 0.572265625,
+            "invalid_action_rate": 0.017578125,
+            "malformed_action_rate": 0.0,
+            "mean_spent": 3.875,
+            "mean_steps": 2.96484375,
+            "mean_success_excess_cost": 0.3926940639269406,
+            "success_rate": 0.427734375
+          }
+        }
+      },
+      "rollout_episodes": 6080,
+      "serialization": {
+        "actual_state_sha256": "037b71a727bda665d1f4d544f75ef7f11a06855328f503bf670add3f1f49c047",
+        "exact": true,
+        "expected_state_sha256": "037b71a727bda665d1f4d544f75ef7f11a06855328f503bf670add3f1f49c047",
+        "missing_keys": [],
+        "unequal_keys": [],
+        "unexpected_keys": []
+      },
+      "teacher_forced_action_nll": 0.08812332253652143
+    },
+    {
+      "artifact": "/kaggle/working/step1-results/t4x2-rlvr-klanchor-seed0-9ed892fae2dd-473fc24dd1f0/outcome_only_from_dense/checkpoints/checkpoint-191",
+      "budget_updates": 191,
+      "evaluation": {
+        "rendering_b": {
+          "comparison": {
+            "label": "zero_shot_rendering_transfer",
+            "seed_policy": "matched_to_validation_seed; no_rendering_b_calibration"
+          },
+          "metrics": {
+            "failure_rate": 1.0,
+            "invalid_action_rate": 0.0,
+            "malformed_action_rate": 1.0,
+            "mean_spent": 0.0,
+            "mean_steps": 0.0,
+            "mean_success_excess_cost": null,
+            "success_rate": 0.0
+          }
+        },
+        "reversible_control": {
+          "comparison": {
+            "label": "matched_seed_variant_control",
+            "seed_policy": "matched_to_validation_seed"
+          },
+          "metrics": {
+            "failure_rate": 0.8037109375,
+            "invalid_action_rate": 0.0673828125,
+            "malformed_action_rate": 0.0,
+            "mean_spent": 3.9287109375,
+            "mean_steps": 4.958984375,
+            "mean_success_excess_cost": 0.5373134328358209,
+            "success_rate": 0.1962890625
+          }
+        },
+        "structural": {
+          "comparison": {
+            "label": "structural_generalization",
+            "seed_policy": "held_out_structural_seed_not_a_paired_contrast"
+          },
+          "metrics": {
+            "failure_rate": 0.9892578125,
+            "invalid_action_rate": 0.1484375,
+            "malformed_action_rate": 0.7041015625,
+            "mean_spent": 2.7607421875,
+            "mean_steps": 1.5224609375,
+            "mean_success_excess_cost": 0.5454545454545454,
+            "success_rate": 0.0107421875
+          }
+        },
+        "validation": {
+          "comparison": {
+            "label": "held_out_in_distribution",
+            "seed_policy": "held_out_seed"
+          },
+          "metrics": {
+            "failure_rate": 0.587890625,
+            "invalid_action_rate": 0.0185546875,
+            "malformed_action_rate": 0.0,
+            "mean_spent": 3.9228515625,
+            "mean_steps": 2.9609375,
+            "mean_success_excess_cost": 0.48578199052132703,
+            "success_rate": 0.412109375
+          }
+        }
+      },
+      "rollout_episodes": 12224,
+      "serialization": {
+        "actual_state_sha256": "79643495b1f95f2a7df3143fd71d207402e34272218f0ba0f45e4e81ad2c7351",
+        "exact": true,
+        "expected_state_sha256": "79643495b1f95f2a7df3143fd71d207402e34272218f0ba0f45e4e81ad2c7351",
+        "missing_keys": [],
+        "unequal_keys": [],
+        "unexpected_keys": []
+      },
+      "teacher_forced_action_nll": 0.09114924890578852
+    }
+  ],
+  "plan": {
+    "arm": "outcome_only_from_dense",
+    "budget_policy": "matched to the dense arm on world episodes consumed; token, transition, FLOP, and wall-clock budgets are measured and reported separately",
+    "budget_unit": "rollout episodes (generation_batch_size * optimizer updates)",
+    "context_length": 2048,
+    "distinct_train_worlds": 1528,
+    "generation_batch_size": 64,
+    "max_action_tokens": 96,
+    "max_completion_tokens": 1536,
+    "max_steps": 191,
+    "max_turns": 12,
+    "milestone_evaluation_episodes": 512,
+    "milestones_updates": [
+      48,
+      95,
+      191
+    ],
+    "num_generations": 8,
+    "per_device_sequences": 4,
+    "rollout_episode_budget": 12224,
+    "root_seed": 20260811,
+    "steps_per_generation": 8,
+    "train_seed_base": 24260811,
+    "world_size": 2,
+    "worlds_per_update": 8
+  },
+  "scientific_acceptance_policy": "measurement only; no capability threshold gates this run",
+  "training_signal": {
+    "frac_reward_zero_std_final": 0.5,
+    "frac_reward_zero_std_mean": 0.39790575916230364,
+    "interpretation": "no group reward variance implies no GRPO gradient signal, whatever the budget",
+    "kl_to_reference_final": 0.004553251899778843,
+    "kl_to_reference_mean": 0.0029257907445229847,
+    "logged_updates": 191,
+    "protocol_failure_rate_final": 0.046875,
+    "updates_with_any_reward_variance": 191,
+    "verified_success_reward_final_decile_mean": 0.31167763157894735,
+    "verified_success_reward_first": 0.453125,
+    "verified_success_reward_max": 0.734375
+  },
+  "world": {
+    "budget_slack": 1,
+    "context_length": 2048,
+    "cost_hi": 3,
+    "cost_lo": 1,
+    "distinct_train_worlds": 1528,
+    "min_depth": 2,
+    "n_evidence": 2,
+    "n_hyp": 6,
+    "n_probe": 5,
+    "rendering": "a",
+    "step_slack": 2,
+    "structural_episodes": 1024,
+    "train_episodes": 32768,
+    "train_seed_base": 24260811,
+    "transfer_episodes": 1024,
+    "validation_episodes": 1024,
+    "variant": "irreversible"
+  }
+}

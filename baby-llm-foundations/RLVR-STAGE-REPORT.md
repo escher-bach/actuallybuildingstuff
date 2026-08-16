@@ -6,14 +6,14 @@
 
 This reports the first runs of the outcome-only condition specified in
 [RLVR-STAGE-PLAN.md](RLVR-STAGE-PLAN.md) and required by
-[STEP-1.md](STEP-1.md) §6. Two arms were executed on the frozen apparatus: a
-cold start from the dense arm's initialization policy, and the optional hybrid
-row — outcome-only optimization applied to the completed dense seed-0
-checkpoint.
+[STEP-1.md](STEP-1.md) §6. Three arms were executed on the frozen apparatus: a
+cold start from the dense arm's initialization policy, and two warm starts that
+treat the dense checkpoint as the post-SFT model of an ordinary post-training
+pipeline — outcome-only RL on top of it, without and with a KL trust region.
 
-Both results are single-seed and, for the warm start, single-budget. The
-strongest alternative explanation for the central null is stated in §5 and is
-not yet excluded.
+All results are single-seed and single-budget. §5 tests the obvious objection
+that the central null is an artefact of untuned RL: the trust-region form of it
+is now excluded, and step size is the remaining live explanation.
 
 ---
 
@@ -40,9 +40,20 @@ not yet excluded.
    combinations success fell 4.8% → 1.5%, with malformed and invalid action
    rates both rising.
 
-5. Taken together the two arms say the same thing from opposite ends: in this
-   world family, verified outcomes have purchase on the surface layer and
-   little on the decision layer. §5 gives the competing explanation.
+5. **A KL trust region changed nothing.** The anchored arm matches the
+   unanchored one to within noise on every metric, and its KL plateaued at
+   0.005 against a 0.02 penalty — the anchor never engaged. Unconstrained drift
+   is not what suppressed process learning.
+
+6. **The policy barely moved at all.** Teacher-forced NLL went 0.0853 → 0.0911
+   over 191 updates, about 7% relative. Cheap protocol fixes live inside that
+   radius; a change of decision policy plausibly does not. The declared
+   learning rate of 3e-6 — against the 6e-4 the dense arm used on this same
+   model — is now the leading explanation for the null, and is untested.
+
+7. Taken together the arms say the same thing from opposite ends: in this world
+   family, verified outcomes have purchase on the surface layer and little on
+   the decision layer, at the step size tried.
 
 ---
 
@@ -59,8 +70,10 @@ distributed optimization. The reward is one scalar per finished trajectory from
 the privileged verifier, using exactly the evaluator's success rule. Verified
 spend and protocol failure are computed and logged at weight zero. No teacher
 target, preferred-action set, or other intermediate label crosses into
-training. There is no KL anchor (`beta = 0`), so no reference model can
-reintroduce teacher information.
+training. The unanchored arm sets `beta = 0`, so no reference model exists at
+all; the anchored arm sets `beta = 0.02` against the SFT policy it starts from,
+which constrains drift without adding supervision the arm did not already
+have.
 
 ---
 
@@ -117,6 +130,8 @@ competence, not surface fluency.
 
 ## 3. Dense warm start: the interface moves, the process does not
 
+The unanchored arm is reported first; §3.3 adds its KL-anchored pair.
+
 Configuration `t4x2_rlvr_warmstart_seed0.toml`, starting from the verified
 dense seed-0 checkpoint (state SHA-256 `cef0ac5a41…`), attached from its own
 Kaggle output and identity-checked before use.
@@ -166,6 +181,58 @@ Cost per successful episode also did not improve: mean spend on the validation
 set went 3.884 → 3.924, and excess cost over the teacher on successful episodes
 went 0.439 → 0.485.
 
+### 3.3 The KL-anchored arm: the anchor is not the explanation
+
+Configuration `t4x2_rlvr_klanchor_seed0.toml` is identical to the arm above in
+every field except `beta` (0.0 → 0.02), so the pair isolates the trust region at
+matched budget, world stream, seeds, and evaluator. Under the post-training
+reading — the dense checkpoint is the post-SFT model — this is the ordinary
+recipe, and the anchor adds no supervision the arm did not already start with.
+
+It changed almost nothing:
+
+| set | dense | β = 0 | β = 0.02 |
+|---|---:|---:|---:|
+| validation | 41.1% | 41.3% | 41.2% |
+| structural | 4.8% | 1.5% | 1.1% |
+| rendering B | 0.0% | 0.0% | 0.0% |
+| reversible control | 15.1% | 19.7% | 19.6% |
+
+The two runs are nearly identical trajectory for trajectory: 4,511 successful
+rollout episodes against 4,512, and 34,519 world transitions against 34,602.
+Their training curves coincide:
+
+| sixth | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---:|---:|---:|---:|---:|---:|
+| protocol failure, β = 0 | 0.147 | 0.129 | 0.089 | 0.093 | 0.070 | 0.066 |
+| protocol failure, β = 0.02 | 0.147 | 0.130 | 0.094 | 0.092 | 0.082 | 0.075 |
+| success reward, β = 0 | 0.357 | 0.328 | 0.381 | 0.384 | 0.415 | 0.353 |
+| success reward, β = 0.02 | 0.357 | 0.328 | 0.376 | 0.394 | 0.409 | 0.356 |
+
+The anchor never bound. KL to the reference rose to 0.005 and plateaued
+(mean 0.0029, final 0.0046), far below where a 0.02 penalty would meaningfully
+push back, and the clipping-region statistic was 0.000 for the whole run. The
+policy was not straining against the trust region; it was barely moving.
+
+### 3.4 How far the policy moved at all
+
+Teacher-forced action NLL on the evaluator's own validation seeds, against the
+dense arm's 0.0853:
+
+| budget | NLL | validation success |
+|---:|---:|---:|
+| dense (0 updates) | 0.0853 | 41.1% |
+| 48 | 0.0862 | 43.9% |
+| 95 | 0.0881 | 42.8% |
+| 191 | 0.0911 | 41.2% |
+
+The policy does move, monotonically away from the teacher distribution, but by
+about 7% relative over the whole run. That small distributional move bought a
+real behavioural change on the protocol axis — illegal-move trajectories
+roughly halved — and nothing on the decision axis. (The 48- and 95-update
+success figures are on 512 episodes, the 191 figure on 1,024; read the column
+as flat.)
+
 ---
 
 ## 4. Interpretation
@@ -191,44 +258,51 @@ diagnostic.
 
 ---
 
-## 5. The strongest alternative explanation
+## 5. Is this just RL being fussy?
 
 The central null — outcome-only optimization did not improve the decision
-process — may be a fact about *this* configuration of RL rather than about
-outcome-only learning in this world. The run was deliberately untuned, and
-several ordinary knobs could each produce a flat curve:
+process — could be a fact about *this* configuration of RL rather than about
+outcome-only learning in this world. The runs were deliberately untuned, so the
+question is live and was tested rather than argued.
 
-- **Budget.** 191 updates is a quarter of the cold-start arm's declared budget
-  and a small fraction of the dense arm's exposure. Policy-gradient methods
-  routinely need far more.
-- **No KL anchor.** `beta = 0` was chosen so the objective stays outcome-only,
-  but it also leaves drift unconstrained. The structural degradation is exactly
-  what an unanchored policy drifting toward its training distribution looks
-  like.
-- **Learning rate.** 3e-6 constant-with-warmup was declared, never tuned. A
-  flat reward curve is equally consistent with too small a step.
-- **Group and batch shape.** Eight samples per world with 42% of groups
-  degenerate means a large share of each batch contributes nothing; larger
-  groups or difficulty filtering would raise the effective signal.
+**Excluded: the missing trust region.** The KL-anchored arm (§3.3) reproduces
+the unanchored arm to within noise on every metric, including the structural
+degradation that looked like unconstrained drift. The anchor was not merely
+unhelpful, it was never engaged: KL plateaued at 0.005 against a 0.02 penalty
+and the clipping region stayed at 0.000. Drift is not what suppressed process
+learning, because there was very little drift to suppress.
+
+**Now the leading explanation: step size × budget.** The two arms agree because
+both take very small steps. Over 191 updates the policy moved 0.005 nats of KL
+and +0.006 teacher-forced NLL — about 7% relative — while its protocol
+behaviour changed substantially. Cheap surface fixes are reachable inside that
+distributional radius; a change of decision policy plausibly is not. The
+declared learning rate, 3e-6, was taken from RLHF practice for models three
+orders of magnitude larger; the dense arm trained this same 19.2M model at
+6e-4. That gap, not the budget, is the most suspicious single number in the
+configuration.
+
+Still open, and untested:
+
+- **Learning rate.** The cheapest discriminating experiment is not more
+  updates but larger steps: the same 191 updates at 3e-5 or 1e-4, watching KL
+  and NLL to confirm the policy actually moves further.
+- **Budget.** 191 updates is a quarter of the cold-start arm's declared budget.
+  Worth running after the step size is calibrated, not before — 4× of a step
+  that is 100× too small is still too small.
+- **Group and batch shape.** Eight samples per world with ~40% of groups
+  degenerate means much of each batch contributes nothing; larger groups or
+  difficulty filtering would raise effective signal per update.
 - **Reward shape.** Binary terminal success gives no credit for getting closer,
   and `scale_rewards = "group"` amplifies single-success groups.
 - **Sampling temperature.** Rollouts at temperature 1.0 from a policy evaluated
   greedily means the optimized distribution is not the evaluated one.
 
-Nothing here is evidence that these explain the null — only that they are not
-excluded. The discriminating experiments, cheapest first:
-
-1. a KL-anchored arm at the same budget, to separate "RL cannot move the
-   process" from "unanchored RL drifts before it can";
-2. one arm at 4× budget, to test the budget explanation directly;
-3. a post-RL teacher-forced NLL against the dense arm's 0.0853, which would
-   show whether the policy moved at all in distributional terms;
-4. a larger group size or difficulty filter, to raise effective signal per
-   update.
-
-Until at least (1) and (2) are run, §4's conclusion should be read as
-"outcome-only optimization did not move the process *at this budget, without an
-anchor, at this learning rate*", not as a general claim about RLVR.
+Until the learning rate is calibrated, §4's second half should be read as
+"outcome-only optimization did not move the process *at this step size and
+budget*", not as a general claim about RLVR. The first half — that it cannot
+bootstrap from a weight-naive start — does not depend on any of these knobs,
+because a zero advantage is zero at any step size.
 
 ---
 
@@ -244,12 +318,17 @@ Established:
   carry a gradient.
 - Applied to a competent policy, outcome-only optimization measurably improves
   action-protocol validity and measurably degrades structural generalization,
-  with no in-distribution success gain, at the budget run.
+  with no in-distribution success gain, at the budget and step size run.
+- A KL trust region does not change that outcome and never engages: the
+  anchored and unanchored arms coincide, so unconstrained drift is not the
+  mechanism.
 
 Not established:
 
 - That outcome-only learning cannot improve the decision process in this family
-  under a better-chosen RL configuration (§5).
+  under a better-chosen RL configuration. §5 excludes the trust-region
+  explanation but leaves step size untested, and the measured 7% distributional
+  movement makes it the leading candidate.
 - Anything about seeds beyond seed 0, or budgets beyond those run.
 - The dense-versus-RLVR comparison at matched budget from a common start, which
   the cold-start null makes unrunnable as specified: an arm that never updates
@@ -288,6 +367,20 @@ Dense warm start:
 - Report contract `step1_rlvr_grpo_v1`; receipt and result report under
   `step1/audit/runs/t4x2-rlvr-warmstart-seed0-58afc551cddf-ca566773c8ef/`
 
+KL-anchored warm start:
+
+- Config `step1/configs/kaggle/t4x2_rlvr_klanchor_seed0.toml`, identical to the
+  unanchored arm except `beta = 0.02`, enforced by a contract test
+- Source commit `9ed892f`, run ID
+  `t4x2-rlvr-klanchor-seed0-9ed892fae2dd-473fc24dd1f0`
+- Kaggle version `aniruddhavarma/step1-rlvr-klanchor-seed0-9ed892f/1`
+- Same upstream dense checkpoint, verified inside the run
+- 191 updates, 12,224 rollout episodes, 34,519 world transitions, 1,003 s
+- KL to reference: mean 0.0029, final 0.0046; clipping region 0.000 throughout
+- Teacher-forced action NLL at 48 / 95 / 191 updates: 0.0862 / 0.0881 / 0.0911,
+  against the dense arm's 0.0853, measured on a deterministic shard of the
+  evaluator's validation seeds
+
 Reward-density control: `python -m step1_experiments.reward_density --config
 step1/configs/kaggle/t4x2_rlvr_seed0.toml`, 3,000 episodes per policy, 400
 groups of 8, CPU only.
@@ -299,7 +392,13 @@ groups of 8, CPU only.
 The stage distinguishes one of STEP-1 §14's admissible conclusions in a
 qualified form: **on this world family and byte surface, outcome-only verified
 learning cannot bootstrap from a weight-naive start at all, and applied to a
-dense-trained policy at the budget run it improves the action interface without
-improving the decision process.** Whether the second half survives a
-KL-anchored, longer, better-tuned RL configuration is the open question this
-stage hands forward, and §5 lists the experiments that would settle it.
+dense-trained policy it improves the action interface without improving the
+decision process.**
+
+The first half is unconditional: a zero advantage is zero at any step size or
+budget. The second half survived the first serious attempt to explain it away —
+a KL trust region reproduced it exactly — but remains conditional on step size,
+and the measured movement of the policy (0.005 nats of KL, 7% NLL) says the
+steps were small. The next experiment is a learning rate calibrated to this
+model rather than borrowed from RLHF practice for models a thousand times
+larger; only after that does a larger budget mean anything.
