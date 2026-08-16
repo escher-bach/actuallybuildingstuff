@@ -622,19 +622,43 @@ def assert_rlvr_report_contract(report: dict, config: dict, plan: RlvrPlan) -> N
         raise AssertionError("RLVR training log carries no reward history")
 
 
+def load_config(path: Path) -> dict:
+    """Accept the runner's resolved JSON or a checked-in TOML unchanged."""
+    if path.suffix == ".json":
+        return json.loads(path.read_text())
+    return load_rlvr_config(path)
+
+
+def resolve_source_run(config: dict, plan: RlvrPlan, source_run: Path | None) -> Path | None:
+    """Locate an attached upstream Kaggle output by its exact identity.
+
+    Cloud-to-cloud dependencies arrive under `/kaggle/input`; a directory name
+    is never sufficient evidence, so discovery goes through the same identity
+    check the transfer stage uses.
+    """
+    if plan.arm != "outcome_only_from_dense":
+        return None
+    if source_run is not None:
+        return source_run
+    from .transfer import locate_dense_source
+
+    return locate_dense_source([Path("/kaggle/input")], config["source"])
+
+
 def run(config_path: Path, output_dir: Path, source_run: Path | None = None) -> Path:
     from accelerate import PartialState
 
     import trl
 
-    config = load_rlvr_config(config_path)
+    config = load_config(config_path)
     state = PartialState()
     plan = rlvr_plan(config, world_size=state.num_processes)
     if state.num_processes != 2:
         raise AssertionError(f"Step 1 RLVR requires exactly two Trainer/Accelerate ranks, got {state.num_processes}")
+    source_run = resolve_source_run(config, plan, source_run)
     if state.is_main_process:
         output_dir.mkdir(parents=True, exist_ok=True)
-        atomic_json(output_dir / "rlvr_plan.json", plan.report())
+        atomic_json(output_dir / "analysis" / "rlvr_plan.json", plan.report())
     state.wait_for_everyone()
 
     workspace = output_dir / plan.arm
@@ -729,17 +753,26 @@ def run(config_path: Path, output_dir: Path, source_run: Path | None = None) -> 
     }
     assert_rlvr_report_contract(report, config, plan)
     atomic_json(report_path, report)
-    atomic_json(output_dir / "training_log_history.json", log_history)
+    atomic_json(output_dir / "logs" / "training_log_history.json", log_history)
+    atomic_json(output_dir / "evaluation" / "metrics.json", {
+        "contract": RLVR_CONTRACT,
+        "milestones": [
+            {"budget_updates": point["budget_updates"], "rollout_episodes": point["rollout_episodes"],
+             "evaluation": point["evaluation"]}
+            for point in milestones
+        ],
+        "training_signal": report["training_signal"],
+    })
     return report_path
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=Path, required=True)
-    parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--resolved-config", type=Path, required=True)
+    parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--source-run", type=Path)
     args = parser.parse_args()
-    print(run(args.config, args.output_dir, args.source_run))
+    print(run(args.resolved_config, args.run_dir, args.source_run))
 
 
 if __name__ == "__main__":

@@ -112,6 +112,38 @@ def _prepare(config: dict, artifacts: RunArtifacts) -> dict:
     return result
 
 
+def _accelerator_check() -> dict:
+    """Record the actual allocation; the requested accelerator is not evidence."""
+    import torch
+
+    assert_two_t4s()
+    return {"devices": [torch.cuda.get_device_name(index) for index in range(torch.cuda.device_count())]}
+
+
+def _rlvr(config: dict, artifacts: RunArtifacts) -> dict:
+    """Launch the outcome-only stage; it owns its own evaluation."""
+    resolved = _save_resolved(config, artifacts)
+    args = ["torchrun", "--standalone", "--nproc_per_node=2", "-m", "step1_experiments.rlvr",
+            "--resolved-config", str(resolved), "--run-dir", str(artifacts.run_dir)]
+    _run_checked(args, artifacts.run_dir / "logs" / "rlvr.log", _repo_root() / "step1" / "python", 24 * 3600)
+    return {"log": str(artifacts.run_dir / "logs" / "rlvr.log")}
+
+
+def _rlvr_report(artifacts: RunArtifacts) -> dict:
+    """Promote the stage report into the collected analysis payload."""
+    path = artifacts.run_dir / "rlvr_report.json"
+    if not path.is_file():
+        raise RuntimeError("RLVR stage finished without rlvr_report.json")
+    report = json.loads(path.read_text())
+    shutil.copyfile(path, artifacts.run_dir / "analysis" / "result-report.json")
+    return {
+        "report": str(path),
+        "contract": report["contract"],
+        "rollout_episodes": report["budget_accounting"]["rollout_episodes"],
+        "updates_with_any_reward_variance": report["training_signal"]["updates_with_any_reward_variance"],
+    }
+
+
 def _torchrun(config_path: Path, artifacts: RunArtifacts, preflight: bool, resume: bool = False) -> None:
     args = ["torchrun", "--standalone", "--nproc_per_node=2", "-m", "step1_experiments.train", "--resolved-config", str(config_path), "--run-dir", str(artifacts.run_dir)]
     if preflight: args.append("--preflight-only")
@@ -144,8 +176,20 @@ def run(config_path: Path, output_root: Path, resume: str) -> None:
                 artifacts.phase_failed(name, error); raise
             artifacts.finish(name, details if isinstance(details, dict) else {})
         phase("capture_environment", lambda: capture(artifacts.run_dir / "environment" / "environment.json", repo, config, sys.argv))
+        if config["run"]["mode"] == "rlvr":
+            # The requested accelerator is not evidence.  Fail in seconds on a
+            # mis-provisioned session rather than after the Rust build.
+            phase("accelerator_check", _accelerator_check)
         phase("install_and_build", lambda: _build(repo, artifacts))
         phase("correctness_tests", lambda: _correctness(repo, artifacts))
+        if config["run"]["mode"] == "rlvr":
+            # Outcome-only training generates its own worlds interactively: no
+            # teacher shards, no shard DataLoader, and therefore none of the
+            # offline data phases below.
+            phase("train", lambda: _rlvr(config, artifacts))
+            phase("evaluate", lambda: _rlvr_report(artifacts))
+            success = True
+            return
         def cpu_gate():
             result = cpu_benchmark(config, artifacts.run_dir / "benchmarks")
             # Offline Rust shards are the actual training source. Retain this

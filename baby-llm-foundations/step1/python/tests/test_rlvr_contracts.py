@@ -33,12 +33,7 @@ CONFIGS = {
     "smoke": PROJECT_ROOT / "step1/configs/kaggle/t4x2_rlvr_smoke.toml",
     "warmstart": PROJECT_ROOT / "step1/configs/kaggle/t4x2_rlvr_warmstart_seed0.toml",
 }
-NOTEBOOKS = (
-    PROJECT_ROOT / "step1/kaggle/step1_rlvr_smoke.ipynb",
-    PROJECT_ROOT / "step1/kaggle/step1_rlvr_seed0.ipynb",
-    PROJECT_ROOT / "step1/kaggle/step1_rlvr_warmstart_seed0.ipynb",
-)
-RENDERER = PROJECT_ROOT / "step1/kaggle/render_preflight_notebook.py"
+LAUNCHER = PROJECT_ROOT / "step1/kaggle/step1_t4x2_launcher.ipynb"
 DENSE_CONFIG = PROJECT_ROOT / "step1/configs/kaggle/t4x2_dense_seed0.toml"
 HAS_WORLD = importlib.util.find_spec("world_py") is not None
 
@@ -290,38 +285,33 @@ class RlvrReportContracts(unittest.TestCase):
                 assert_rlvr_report_contract(report, self.config, self.plan)
 
 
-class RlvrNotebookContracts(unittest.TestCase):
-    def _render(self, notebook: Path) -> str:
-        spec = importlib.util.spec_from_file_location("renderer", RENDERER)
-        module = importlib.util.module_from_spec(spec)
-        assert spec and spec.loader
-        spec.loader.exec_module(module)
-        with tempfile.TemporaryDirectory() as directory:
-            output = Path(directory) / "rendered.ipynb"
-            module.render_template(notebook.read_text(encoding="utf-8"), "e" * 40, output)
-            document = json.loads(output.read_text(encoding="utf-8"))
-        return "\n".join("".join(cell.get("source", [])) for cell in document["cells"])
+class LauncherContracts(unittest.TestCase):
+    """The launcher is a launcher: no experiment logic, no published debris."""
 
-    def test_notebooks_are_sha_pinned_and_launch_the_repository_runner(self) -> None:
-        for notebook in NOTEBOOKS:
-            with self.subTest(notebook=notebook.name):
-                text = self._render(notebook)
-                self.assertIn("e" * 40, text)
-                self.assertIn("step1_experiments.rlvr", text)
-                self.assertIn("--nproc_per_node=2", text)
-                self.assertIn("step1_rlvr_grpo_v1", text)
-                self.assertIn("frac_reward_zero_std", text)
-                self.assertNotIn("success_rate >=", text)
+    def setUp(self) -> None:
+        document = json.loads(LAUNCHER.read_text(encoding="utf-8"))
+        self.cells = document["cells"]
+        self.text = "\n".join("".join(cell.get("source", [])) for cell in self.cells)
 
-    def test_each_notebook_pins_its_own_configuration(self) -> None:
-        for notebook, config in zip(NOTEBOOKS, ("t4x2_rlvr_smoke", "t4x2_rlvr_seed0", "t4x2_rlvr_warmstart_seed0")):
-            with self.subTest(notebook=notebook.name):
-                self.assertIn(f"step1/configs/kaggle/{config}.toml", self._render(notebook))
+    def test_shape_is_one_markdown_and_three_code_cells(self) -> None:
+        self.assertEqual([cell["cell_type"] for cell in self.cells], ["markdown", "code", "code", "code"])
 
-    def test_warmstart_notebook_locates_its_exact_dense_source(self) -> None:
-        text = self._render(NOTEBOOKS[2])
-        self.assertIn("locate_dense_source", text)
-        self.assertIn("--source-run", text)
+    def test_exactly_one_commit_and_config_placeholder(self) -> None:
+        self.assertEqual(self.text.count("__FINAL_COMMIT_SHA__"), 1)
+        self.assertEqual(self.text.count("__CONFIG_REL__"), 1)
+
+    def test_ephemeral_source_and_output_only_working_tree(self) -> None:
+        self.assertIn('RUNTIME = Path("/tmp/step1-runtime")', self.text)
+        self.assertIn("SOURCE = RUNTIME /", self.text)
+        self.assertIn("CARGO_TARGET_DIR", self.text)
+        # Nothing may clone or build beneath the published output tree.
+        self.assertNotIn('SOURCE = WORKING', self.text)
+        self.assertIn('OUTPUT = WORKING / "step1-results"', self.text)
+
+    def test_invokes_only_the_repository_runner(self) -> None:
+        self.assertIn("step1_experiments.runner", self.text)
+        for forbidden in ("torchrun", "locate_dense_source", "maturin", "assert report", "success_rate"):
+            self.assertNotIn(forbidden, self.text)
 
 
 if __name__ == "__main__":
