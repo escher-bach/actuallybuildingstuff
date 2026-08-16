@@ -11,7 +11,8 @@ use std::path::{Path, PathBuf};
 use crate::generate::{sample, FamilyParams};
 use crate::render::Rendering;
 use crate::trajectory::{
-    generate_teacher_trajectory, pack_teacher_trajectory, FragmentTokenizer, PackedTrajectory,
+    generate_trajectory_with_targets, pack_teacher_trajectory, FragmentTokenizer, PackedTrajectory,
+    TargetPolicy,
     TeacherTrajectory, TrajectoryError,
 };
 use crate::{Action, Instance, Variant};
@@ -55,6 +56,10 @@ pub struct ShardSpec {
     /// next complete trajectory would exceed this capacity.
     pub max_sequence_tokens: usize,
     pub tokenizer: TokenizerIdentity,
+    /// Which action the supervised span teaches; recorded in the manifest so a
+    /// shard is self-describing and a control can never be mistaken for a
+    /// teacher shard.
+    pub target_policy: TargetPolicy,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -62,11 +67,15 @@ pub struct ReplayRecord {
     pub world_family_version: String,
     pub generator_version: String,
     pub teacher_policy_version: String,
+    pub target_policy: String,
     pub root_seed: u64,
     pub instance_index: u64,
     pub params: FamilyParams,
     pub rendering: Rendering,
     pub selected_actions: Vec<Action>,
+    /// What the shard actually teaches at each step. Equal to
+    /// `selected_actions` under the teacher policy.
+    pub supervised_actions: Vec<Action>,
     pub tokenizer: TokenizerIdentity,
 }
 
@@ -92,6 +101,7 @@ pub struct DatasetManifest {
     pub world_family_version: String,
     pub generator_version: String,
     pub teacher_policy_version: String,
+    pub target_policy: String,
     pub tokenizer: TokenizerIdentity,
     pub root_seed: u64,
     pub first_instance_index: u64,
@@ -154,7 +164,8 @@ pub fn generate_dataset_shard<T: FragmentTokenizer>(
 
     while records.len() < spec.episode_count && index < stop {
         if let Ok(instance) = sample(&spec.params, spec.root_seed, index) {
-            let trajectory = generate_teacher_trajectory(&instance, spec.rendering)?;
+            let trajectory =
+                generate_trajectory_with_targets(&instance, spec.rendering, spec.target_policy)?;
             let packed = pack_teacher_trajectory(&trajectory, tokenizer);
             if packed.token_ids.len() > spec.max_sequence_tokens {
                 return Err(DatasetError::TrajectoryTooLong {
@@ -168,6 +179,7 @@ pub fn generate_dataset_shard<T: FragmentTokenizer>(
                 &instance,
                 &trajectory,
                 spec.tokenizer.clone(),
+                spec.target_policy,
             ));
             packed_examples.push(packed);
         }
@@ -187,6 +199,7 @@ pub fn generate_dataset_shard<T: FragmentTokenizer>(
         world_family_version: WORLD_FAMILY_VERSION.to_string(),
         generator_version: GENERATOR_VERSION.to_string(),
         teacher_policy_version: TEACHER_POLICY_VERSION.to_string(),
+        target_policy: spec.target_policy.name().to_string(),
         tokenizer: spec.tokenizer.clone(),
         root_seed: spec.root_seed,
         first_instance_index: spec.first_instance_index,
@@ -212,15 +225,22 @@ fn replay_record(
     instance: &Instance,
     trajectory: &TeacherTrajectory,
     tokenizer: TokenizerIdentity,
+    target_policy: TargetPolicy,
 ) -> ReplayRecord {
     ReplayRecord {
         world_family_version: WORLD_FAMILY_VERSION.to_string(),
         generator_version: GENERATOR_VERSION.to_string(),
         teacher_policy_version: TEACHER_POLICY_VERSION.to_string(),
+        target_policy: target_policy.name().to_string(),
         root_seed,
         instance_index: instance.index,
         params: *params,
         rendering: trajectory.rendering,
+        supervised_actions: trajectory
+            .steps
+            .iter()
+            .map(|step| step.supervised_action)
+            .collect(),
         selected_actions: trajectory
             .steps
             .iter()
@@ -283,12 +303,21 @@ pub fn replay_record_matches(record: &ReplayRecord) -> Result<bool, DatasetError
                 instance_index: record.instance_index,
             }
         })?;
-    let trajectory = generate_teacher_trajectory(&instance, record.rendering)?;
+    let policy = match TargetPolicy::parse(&record.target_policy) {
+        Some(policy) => policy,
+        None => return Ok(false),
+    };
+    let trajectory = generate_trajectory_with_targets(&instance, record.rendering, policy)?;
     Ok(trajectory
         .steps
         .iter()
         .map(|s| s.selected_action)
-        .eq(record.selected_actions.iter().copied()))
+        .eq(record.selected_actions.iter().copied())
+        && trajectory
+            .steps
+            .iter()
+            .map(|s| s.supervised_action)
+            .eq(record.supervised_actions.iter().copied()))
 }
 
 /// Writes three deterministic files: `<stem>.bin`, `<stem>.manifest`, and
@@ -337,9 +366,10 @@ pub fn encode_shard_binary(sequences: &[PackedSequence]) -> Vec<u8> {
 pub fn encode_manifest(manifest: &DatasetManifest) -> String {
     let p = &manifest.params;
     format!(
-        "format_version={}\nworld_family_version={}\ngenerator_version={}\nteacher_policy_version={}\ntokenizer_name={}\ntokenizer_revision={}\ntokenizer_vocabulary_hash={}\nroot_seed={}\nfirst_instance_index={}\nlast_examined_instance_index={}\nrendering={}\nvariant={}\nn_hyp={}\nn_probe={}\nn_evidence={}\ncost_lo={}\ncost_hi={}\nbudget_slack={}\nmin_depth={}\nstep_slack={}\nepisode_count={}\nsequence_count={}\ntoken_count={}\ndata_sha256={}\nreplay_sha256={}\n",
+        "format_version={}\nworld_family_version={}\ngenerator_version={}\nteacher_policy_version={}\ntarget_policy={}\ntokenizer_name={}\ntokenizer_revision={}\ntokenizer_vocabulary_hash={}\nroot_seed={}\nfirst_instance_index={}\nlast_examined_instance_index={}\nrendering={}\nvariant={}\nn_hyp={}\nn_probe={}\nn_evidence={}\ncost_lo={}\ncost_hi={}\nbudget_slack={}\nmin_depth={}\nstep_slack={}\nepisode_count={}\nsequence_count={}\ntoken_count={}\ndata_sha256={}\nreplay_sha256={}\n",
         manifest.format_version, manifest.world_family_version, manifest.generator_version,
-        manifest.teacher_policy_version, manifest.tokenizer.name, manifest.tokenizer.revision,
+        manifest.teacher_policy_version, manifest.target_policy, manifest.tokenizer.name,
+        manifest.tokenizer.revision,
         manifest.tokenizer.vocabulary_hash, manifest.root_seed, manifest.first_instance_index,
         manifest.last_examined_instance_index, rendering_name(manifest.rendering), variant_name(p.variant),
         p.n_hyp, p.n_probe, p.n_evidence, p.cost_lo, p.cost_hi, p.budget_slack, p.min_depth,
@@ -349,7 +379,7 @@ pub fn encode_manifest(manifest: &DatasetManifest) -> String {
 }
 
 pub fn encode_replay_records(records: &[ReplayRecord]) -> String {
-    let mut output = String::from("world_family_version\tgenerator_version\tteacher_policy_version\troot_seed\tinstance_index\trendering\tvariant\tn_hyp\tn_probe\tn_evidence\tcost_lo\tcost_hi\tbudget_slack\tmin_depth\tstep_slack\ttokenizer_name\ttokenizer_revision\ttokenizer_vocabulary_hash\tactions\n");
+    let mut output = String::from("world_family_version\tgenerator_version\tteacher_policy_version\ttarget_policy\troot_seed\tinstance_index\trendering\tvariant\tn_hyp\tn_probe\tn_evidence\tcost_lo\tcost_hi\tbudget_slack\tmin_depth\tstep_slack\ttokenizer_name\ttokenizer_revision\ttokenizer_vocabulary_hash\tactions\tsupervised_actions\n");
     for record in records {
         let p = &record.params;
         let actions = record
@@ -358,11 +388,18 @@ pub fn encode_replay_records(records: &[ReplayRecord]) -> String {
             .map(action_name)
             .collect::<Vec<_>>()
             .join(",");
+        let supervised = record
+            .supervised_actions
+            .iter()
+            .map(action_name)
+            .collect::<Vec<_>>()
+            .join(",");
         output.push_str(&format!(
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
             record.world_family_version,
             record.generator_version,
             record.teacher_policy_version,
+            record.target_policy,
             record.root_seed,
             record.instance_index,
             rendering_name(record.rendering),
@@ -379,6 +416,7 @@ pub fn encode_replay_records(records: &[ReplayRecord]) -> String {
             record.tokenizer.revision,
             record.tokenizer.vocabulary_hash,
             actions,
+            supervised,
         ));
     }
     output
@@ -506,6 +544,7 @@ mod tests {
                 step_slack: 2,
                 variant: Variant::Reversible,
             },
+            target_policy: TargetPolicy::TeacherPreferred,
             root_seed: 20260811,
             first_instance_index: 0,
             episode_count: 8,
@@ -605,5 +644,82 @@ mod tests {
         assert!(fs::read_to_string(manifest)
             .unwrap()
             .contains("format_version=1"));
+    }
+}
+
+#[cfg(test)]
+mod target_shuffle_tests {
+    use super::*;
+    use crate::generate::sample;
+    use crate::trajectory::{generate_trajectory_with_targets, TargetPolicy};
+    use crate::valid_actions;
+    use crate::{reset, step};
+
+    fn params() -> FamilyParams {
+        FamilyParams {
+            n_hyp: 6,
+            n_probe: 5,
+            n_evidence: 2,
+            cost_lo: 1,
+            cost_hi: 3,
+            budget_slack: 1,
+            min_depth: 2,
+            step_slack: 2,
+            variant: Variant::Irreversible,
+        }
+    }
+
+    #[test]
+    fn shuffled_targets_preserve_the_teacher_trajectory_and_stay_legal() {
+        let mut differing = 0usize;
+        let mut total = 0usize;
+        for index in 0..64u64 {
+            let instance = match sample(&params(), 20260811, index) {
+                Ok(instance) => instance,
+                Err(_) => continue,
+            };
+            let teacher =
+                generate_trajectory_with_targets(&instance, Rendering::A, TargetPolicy::TeacherPreferred)
+                    .expect("teacher trajectory");
+            let control =
+                generate_trajectory_with_targets(&instance, Rendering::A, TargetPolicy::RandomValid)
+                    .expect("control trajectory");
+
+            // The executed rollout is identical: same states, same observations,
+            // same length. Only the supervised label may differ.
+            assert_eq!(teacher.steps.len(), control.steps.len());
+            let mut state = reset(&instance);
+            for (a, b) in teacher.steps.iter().zip(control.steps.iter()) {
+                assert_eq!(a.observation, b.observation);
+                assert_eq!(a.selected_action, b.selected_action);
+                assert!(valid_actions(&instance, &state).contains(&b.supervised_action));
+                assert_eq!(a.supervised_action, a.selected_action);
+                differing += usize::from(b.supervised_action != b.selected_action);
+                total += 1;
+                step(&instance, &mut state, b.selected_action).expect("teacher action");
+            }
+            assert_eq!(teacher.final_state.status, control.final_state.status);
+        }
+        assert!(total > 0);
+        // Uniform-over-legal coincides with the teacher sometimes; a control
+        // that almost never differs would not be a control.
+        let differing_fraction = differing as f64 / total as f64;
+        assert!(
+            differing_fraction > 0.5,
+            "only {differing_fraction} of labels differ from the teacher"
+        );
+    }
+
+    #[test]
+    fn shuffled_targets_are_deterministic() {
+        // Not every index yields an identifiable instance; take the first that does.
+        let instance = (0..64u64)
+            .find_map(|index| sample(&params(), 20260811, index).ok())
+            .expect("a sampled instance");
+        let first = generate_trajectory_with_targets(&instance, Rendering::A, TargetPolicy::RandomValid)
+            .expect("first");
+        let second = generate_trajectory_with_targets(&instance, Rendering::A, TargetPolicy::RandomValid)
+            .expect("second");
+        assert_eq!(first, second);
     }
 }

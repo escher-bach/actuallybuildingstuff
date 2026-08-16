@@ -115,10 +115,15 @@ def _prepare(config: dict, artifacts: RunArtifacts) -> dict:
     partitions = [("train", world, seed, world["train_episodes"], world["rendering"]), ("validation", world, seed + 1_000_000, world["validation_episodes"], world["rendering"])]
     structural = {**world, "n_hyp": world["n_hyp"] + 1}; transfer = {**world, "rendering": "b"}
     partitions.extend([("structural", structural, seed + 2_000_000, world["structural_episodes"], world["rendering"]), ("transfer", transfer, seed + 3_000_000, world["transfer_episodes"], "b")])
+    # The target-shuffled control corrupts the *training* labels only. Every
+    # evaluation partition, including the shard the teacher-forced diagnostic
+    # scores against, keeps the teacher's targets.
+    train_target_policy = config.get("training", {}).get("train_target_policy", "teacher_preferred")
     result = {}
     for name, params, part_seed, count, rendering in partitions:
-        binary, manifest, replay = generate_rust_shard(params, part_seed, count, world["context_length"], rendering, root, name)
-        result[name] = {"path": str(binary), "manifest": str(manifest), "replay": str(replay), "content_hash": hashlib.sha256(binary.read_bytes()).hexdigest()}
+        policy = train_target_policy if name == "train" else "teacher_preferred"
+        binary, manifest, replay = generate_rust_shard(params, part_seed, count, world["context_length"], rendering, root, name, policy)
+        result[name] = {"path": str(binary), "manifest": str(manifest), "replay": str(replay), "target_policy": policy, "content_hash": hashlib.sha256(binary.read_bytes()).hexdigest()}
     if result["train"]["content_hash"] in {result["validation"]["content_hash"], result["structural"]["content_hash"], result["transfer"]["content_hash"]}: raise RuntimeError("dataset partition collision")
     return result
 

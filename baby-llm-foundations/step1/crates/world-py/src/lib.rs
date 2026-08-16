@@ -12,7 +12,7 @@ use world::data::{generate_dataset_shard, write_dataset_shard, ShardSpec, Tokeni
 use world::generate::{sample, FamilyParams};
 use world::render::{parse_action as parse_rendered_action, render_action as render_rendered_action, render_observation, Rendering};
 use world::teacher::{outcome, teach};
-use world::trajectory::ByteTokenizer;
+use world::trajectory::{ByteTokenizer, TargetPolicy};
 use world::{reset, step, valid_actions, Action, Instance, State, StepError, Variant};
 
 const WORLD_FAMILY_VERSION: &str = "world-0.1.0";
@@ -429,7 +429,7 @@ fn parse_action(text: &str, n_probe: u16, n_hyp: u16, rendering: &str) -> PyResu
 /// Produces the existing Rust binary shard format so the measured DataLoader
 /// and the training loop consume identical mmap-able payloads.
 #[pyfunction]
-#[pyo3(signature = (params, seed, episode_count, rendering, max_sequence_tokens, directory, stem))]
+#[pyo3(signature = (params, seed, episode_count, rendering, max_sequence_tokens, directory, stem, target_policy = "teacher_preferred"))]
 fn generate_teacher_shard(
     params: &PyFamilyParams,
     seed: u64,
@@ -438,8 +438,14 @@ fn generate_teacher_shard(
     max_sequence_tokens: usize,
     directory: &str,
     stem: &str,
+    target_policy: &str,
 ) -> PyResult<(String, String, String)> {
     let rendering = parse_rendering(rendering)?;
+    // The control is opt-in and named; a shard can never become a control by
+    // accident, and its manifest and replay records record which it is.
+    let target_policy = TargetPolicy::parse(target_policy).ok_or_else(|| {
+        PyValueError::new_err("target_policy must be 'teacher_preferred' or 'random_valid_target_shuffled'")
+    })?;
     let spec = ShardSpec {
         params: params.inner,
         root_seed: seed,
@@ -448,6 +454,7 @@ fn generate_teacher_shard(
         rendering,
         max_sequence_tokens,
         tokenizer: TokenizerIdentity::byte_utf8(),
+        target_policy,
     };
     let shard = generate_dataset_shard(&spec, &ByteTokenizer)
         .map_err(|error| PyValueError::new_err(format!("shard generation failed: {error:?}")))?;

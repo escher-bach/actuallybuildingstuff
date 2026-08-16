@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import struct
 import sys
 import tempfile
@@ -171,3 +172,61 @@ class DataContracts(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TargetShuffledControl(unittest.TestCase):
+    """The control must differ from the dense arm in exactly one declared field."""
+
+    def _config(self, name: str) -> dict:
+        import tomllib
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[3]
+        with (root / "step1/configs/kaggle" / name).open("rb") as handle:
+            return tomllib.load(handle)
+
+    def test_control_is_the_dense_recipe_with_one_field_added(self) -> None:
+        dense = self._config("t4x2_dense_seed0.toml")
+        control = self._config("t4x2_dense_shuffled_seed0.toml")
+        self.assertEqual(dense["world"], control["world"])
+        self.assertEqual(dense["preflight"], control["preflight"])
+        self.assertEqual(dense["run"]["root_seed"], control["run"]["root_seed"])
+        self.assertEqual(dense["run"]["mode"], control["run"]["mode"])
+        differing = {key for key in set(dense["training"]) | set(control["training"])
+                     if dense["training"].get(key) != control["training"].get(key)}
+        self.assertEqual(differing, {"train_target_policy"})
+        self.assertEqual(control["training"]["train_target_policy"], "random_valid_target_shuffled")
+        self.assertNotIn("train_target_policy", dense["training"])
+
+    @unittest.skipUnless(importlib.util.find_spec("world_py"), "world_py is built by the runner")
+    def test_control_shards_preserve_observations_and_corrupt_only_labels(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        from step1_experiments.data import BinaryShard, decode_bytes, generate_rust_shard
+
+        world = self._config("t4x2_dense_shuffled_seed0.toml")["world"]
+        with tempfile.TemporaryDirectory() as directory:
+            packed = {}
+            for policy in ("teacher_preferred", "random_valid_target_shuffled"):
+                binary, manifest, _replay = generate_rust_shard(
+                    world, 20260811, 32, world["context_length"], "a", Path(directory), policy[:9], policy,
+                )
+                shard = BinaryShard(binary)
+                try:
+                    sequence = shard[0]
+                finally:
+                    shard.close()
+                fields = dict(line.split("=", 1) for line in Path(manifest).read_text().splitlines() if "=" in line)
+                packed[policy] = {
+                    "labels": decode_bytes([t for t, m in zip(sequence.tokens, sequence.loss) if m and t < 256]),
+                    "context": decode_bytes([t for t, m in zip(sequence.tokens, sequence.loss) if not m and t < 256]),
+                    "declared": fields["target_policy"],
+                }
+        teacher, control = packed["teacher_preferred"], packed["random_valid_target_shuffled"]
+        # Same states and observations; only what is taught differs.
+        self.assertEqual(teacher["context"], control["context"])
+        self.assertNotEqual(teacher["labels"], control["labels"])
+        # The shard declares which it is.
+        self.assertEqual(teacher["declared"], "teacher_preferred")
+        self.assertEqual(control["declared"], "random_valid_target_shuffled")

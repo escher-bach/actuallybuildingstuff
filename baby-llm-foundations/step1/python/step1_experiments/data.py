@@ -197,8 +197,14 @@ def make_dataloader(dataset: Dataset[Sequence], context: int, batch_size: int, w
                       persistent_workers=workers > 0, prefetch_factor=2 if workers else None)
 
 
-def generate_rust_shard(params: dict, seed: int, episodes: int, context: int, rendering: str, directory: Path, stem: str) -> tuple[Path, Path, Path]:
-    """Delegate generation/packing to Rust; Python only reads the stable binary."""
+def generate_rust_shard(params: dict, seed: int, episodes: int, context: int, rendering: str, directory: Path, stem: str,
+                        target_policy: str = "teacher_preferred") -> tuple[Path, Path, Path]:
+    """Delegate generation/packing to Rust; Python only reads the stable binary.
+
+    ``target_policy`` selects which action the supervised span teaches. The
+    control value is opt-in and is recorded in the shard's own manifest and
+    replay records, so a control shard can never be mistaken for a teacher one.
+    """
     from world_py import generate_teacher_shard
-    paths = generate_teacher_shard(_family(params), seed, episodes, rendering, context, str(directory), stem)
+    paths = generate_teacher_shard(_family(params), seed, episodes, rendering, context, str(directory), stem, target_policy)
     return tuple(Path(path) for path in paths)

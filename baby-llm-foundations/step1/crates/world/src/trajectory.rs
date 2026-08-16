@@ -5,7 +5,7 @@
 
 use crate::render::{render_action, render_observation, Rendering};
 use crate::teacher::teach;
-use crate::{reset, step, Action, Instance, State, Status};
+use crate::{reset, step, valid_actions, Action, Instance, State, Status};
 
 /// Fragment-level encoder used by Rust packing. Production tokenizers should
 /// implement this trait; the reference implementation below is lossless.
@@ -93,8 +93,42 @@ impl TargetChannel {
 pub struct TrajectoryStep {
     pub observation: String,
     pub preferred_actions: Vec<Action>,
+    /// The action the world executes, always the teacher's.
     pub selected_action: Action,
+    /// The action that receives the loss. Equal to `selected_action` under the
+    /// teacher policy; under `TargetPolicy::RandomValid` it is a different
+    /// legal action, which is what makes the target-shuffled control a control.
+    pub supervised_action: Action,
     pub licenses_commitment: bool,
+}
+
+/// Which action the supervised span teaches. The executed action is the
+/// teacher's in both cases, so the state distribution, observation sequence,
+/// trajectory length, and supervision density are held constant and only the
+/// state-to-action correspondence changes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TargetPolicy {
+    TeacherPreferred,
+    /// Uniform over the actions legal in the state, which is exactly the
+    /// unguided policy whose closed-loop success is measured independently.
+    RandomValid,
+}
+
+impl TargetPolicy {
+    pub fn name(self) -> &'static str {
+        match self {
+            TargetPolicy::TeacherPreferred => "teacher_preferred",
+            TargetPolicy::RandomValid => "random_valid_target_shuffled",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "teacher_preferred" => Some(TargetPolicy::TeacherPreferred),
+            "random_valid_target_shuffled" => Some(TargetPolicy::RandomValid),
+            _ => None,
+        }
+    }
 }
 
 /// A complete offline rollout produced without consulting learner weights.
@@ -119,6 +153,15 @@ pub fn generate_teacher_trajectory(
     inst: &Instance,
     rendering: Rendering,
 ) -> Result<TeacherTrajectory, TrajectoryError> {
+    generate_trajectory_with_targets(inst, rendering, TargetPolicy::TeacherPreferred)
+}
+
+/// The teacher rollout, with the supervised label chosen by `policy`.
+pub fn generate_trajectory_with_targets(
+    inst: &Instance,
+    rendering: Rendering,
+    policy: TargetPolicy,
+) -> Result<TeacherTrajectory, TrajectoryError> {
     let mut state = reset(inst);
     let mut steps = Vec::new();
     let max_steps = inst.step_limit;
@@ -134,10 +177,19 @@ pub fn generate_teacher_trajectory(
         let selected_index =
             representative_index(inst, state.step, targets.preferred_actions.len());
         let selected_action = targets.preferred_actions[selected_index];
+        let supervised_action = match policy {
+            TargetPolicy::TeacherPreferred => selected_action,
+            TargetPolicy::RandomValid => {
+                let legal = valid_actions(inst, &state);
+                debug_assert!(!legal.is_empty());
+                legal[shuffled_index(inst, state.step, legal.len())]
+            }
+        };
         let item = TrajectoryStep {
             observation: render_observation(inst, &state, rendering),
             preferred_actions: targets.preferred_actions,
             selected_action,
+            supervised_action,
             licenses_commitment: targets.licenses_commitment,
         };
         step(inst, &mut state, selected_action)
@@ -150,6 +202,22 @@ pub fn generate_teacher_trajectory(
         steps,
         final_state: state,
     })
+}
+
+/// Deterministic, replayable, and salted apart from tie-breaking so the
+/// corrupted label cannot correlate with the teacher's own selection rule.
+fn shuffled_index(inst: &Instance, step_index: u16, len: usize) -> usize {
+    debug_assert!(len > 0);
+    let mut value = inst.seed.rotate_left(23)
+        ^ inst.index.rotate_left(5)
+        ^ (step_index as u64).wrapping_mul(0x9e37_79b9_7f4a_7c15)
+        ^ 0x5851_f42d_4c95_7f2d;
+    value ^= value >> 33;
+    value = value.wrapping_mul(0xff51_afd7_ed55_8ccd);
+    value ^= value >> 33;
+    value = value.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
+    value ^= value >> 33;
+    (value as usize) % len
 }
 
 fn representative_index(inst: &Instance, step_index: u16, len: usize) -> usize {
@@ -261,7 +329,7 @@ pub fn pack_teacher_trajectory<T: FragmentTokenizer>(
         append_special(&mut packed, OBS_ID, TargetChannel::None);
         append_fragment(&mut packed, tokenizer, &item.observation, TargetChannel::None);
         append_special(&mut packed, ACTION_ID, TargetChannel::None);
-        let action = render_action(item.selected_action, trajectory.rendering);
+        let action = render_action(item.supervised_action, trajectory.rendering);
         append_fragment(
             &mut packed,
             tokenizer,

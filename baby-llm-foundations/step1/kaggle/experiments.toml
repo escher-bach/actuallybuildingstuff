@@ -83,3 +83,9 @@ kernel_sources = [
     "aniruddhavarma/step1-t4x2-dense-seed0-84f2938",
     "aniruddhavarma/step1-rlvr-bestshot-seed0-4975e04",
 ]
+
+[experiments.dense-shuffled-seed0]
+title = "Step 1 dense target-shuffled control"
+slug_prefix = "step1-dense-shuffled-seed0"
+config = "step1/configs/kaggle/t4x2_dense_shuffled_seed0.toml"
+purpose = "STEP-1 section 11 control: dense recipe with the state-to-action correspondence destroyed"
