@@ -4,6 +4,12 @@
 
 ### Status and scope
 
+> **Results are in [RLVR-STAGE-REPORT.md](RLVR-STAGE-REPORT.md).** The
+> cold-start arm produced no gradient at all and the dense warm-start arm moved
+> the action interface without moving the decision process. This plan remains
+> the apparatus and protocol of record; the report qualifies what its budget
+> and RL configuration can and cannot conclude.
+
 This document specifies the outcome-only RLVR condition named in
 [STEP-1.md](STEP-1.md) §6 and row 2 of its first experimental matrix. It fixes
 the algorithm, the reward, the rollout protocol, the budget policy, and the

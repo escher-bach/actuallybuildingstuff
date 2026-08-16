@@ -1,0 +1,68 @@
+{
+  "accelerator_inventory": [
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 0,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    },
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 1,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    }
+  ],
+  "analysis_artifacts": [
+    {
+      "bytes": 64895,
+      "name": "t4x2-rlvr-warmstart-seed0-58afc551cddf-ca566773c8ef-analysis.tar.gz",
+      "sha256": "02afb4abcc7f6d1b8f07b112afc7bc8b0c4c39133a47bf55990fc87c2e4794b1"
+    }
+  ],
+  "collected_at": "2026-08-16T14:14:09.155511+00:00",
+  "config": {
+    "path": "step1/configs/kaggle/t4x2_rlvr_warmstart_seed0.toml",
+    "sha256": "ca566773c8ef38fb8269e9691da1ab2ec5e5cbdb41a7d204bbeab9c8d02f81b4"
+  },
+  "experiment": "rlvr-warmstart-seed0",
+  "git": {
+    "remote_url": "https://github.com/escher-bach/actuallybuildingstuff.git",
+    "sha": "58afc551cddf21875390797fb0df907a97fab261"
+  },
+  "kaggle": {
+    "accelerator_requested": "NvidiaTeslaT4",
+    "completed_at": "2026-08-16T14:13:57.984336+00:00",
+    "exact_version": "aniruddhavarma/step1-rlvr-warmstart-seed0-58afc55/1",
+    "kernel": "aniruddhavarma/step1-rlvr-warmstart-seed0-58afc55",
+    "terminal_status": "COMPLETE",
+    "url": "https://www.kaggle.com/code/aniruddhavarma/step1-rlvr-warmstart-seed0-58afc55"
+  },
+  "recovery_artifact": {
+    "archive": "t4x2-rlvr-warmstart-seed0-58afc551cddf-ca566773c8ef.tar.gz",
+    "bytes": 635357924,
+    "location": "kaggle output of aniruddhavarma/step1-rlvr-warmstart-seed0-58afc55/1",
+    "sha256": "15661ea95facd7a47c6ce4e91ff4e431a73d345840f4c80eab1472bfdc49cc83"
+  },
+  "result_report": "result-report.json",
+  "root_seed": null,
+  "run_id": "t4x2-rlvr-warmstart-seed0-58afc551cddf-ca566773c8ef",
+  "run_success": true,
+  "schema_version": 1,
+  "upstream": [
+    {
+      "expected_identity": {
+        "config_hash": "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14",
+        "git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0",
+        "model_state_sha256": "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e"
+      },
+      "kernel": "aniruddhavarma/step1-t4x2-dense-seed0-84f2938"
+    }
+  ]
+}

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -102,7 +103,11 @@ def kaggle(*args: str, check: bool = True, timeout: int = 900) -> str:
     executable = shutil.which("kaggle")
     if not executable:
         raise SystemExit("the official Kaggle CLI is not on PATH")
-    result = subprocess.run([executable, *args], text=True, capture_output=True, timeout=timeout, check=False)
+    # Kaggle echoes notebook logs containing non-ASCII progress bars; without
+    # this the CLI dies on a Windows console codepage before returning.
+    environment = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
+    result = subprocess.run([executable, *args], text=True, capture_output=True, timeout=timeout,
+                            check=False, encoding="utf-8", errors="replace", env=environment)
     output = (result.stdout or "") + (result.stderr or "")
     if check and result.returncode:
         raise SystemExit(f"kaggle {' '.join(args)} failed ({result.returncode}):\n{output.strip()}")

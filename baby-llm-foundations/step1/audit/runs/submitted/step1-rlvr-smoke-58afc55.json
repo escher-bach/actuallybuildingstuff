@@ -1,0 +1,13 @@
+{
+  "accelerator_requested": "NvidiaTeslaT4",
+  "config": "step1/configs/kaggle/t4x2_rlvr_smoke.toml",
+  "exact_version": "aniruddhavarma/step1-rlvr-smoke-58afc55/1",
+  "experiment": "rlvr-smoke",
+  "git_sha": "58afc551cddf21875390797fb0df907a97fab261",
+  "kernel": "aniruddhavarma/step1-rlvr-smoke-58afc55",
+  "kernel_sources": [],
+  "submitted_at": "2026-08-16T13:38:48.944748+00:00",
+  "upstream_identity": {},
+  "url": "https://www.kaggle.com/code/aniruddhavarma/step1-rlvr-smoke-58afc55",
+  "version": 1
+}
