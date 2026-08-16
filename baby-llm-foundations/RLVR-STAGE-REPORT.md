@@ -11,12 +11,12 @@ cold start from the dense arm's initialization policy, and two warm starts that
 treat the dense checkpoint as the post-SFT model of an ordinary post-training
 pipeline — outcome-only RL on top of it, without and with a KL trust region.
 
-All results are single-seed. §6 tests the objection that the central null is an
+All results are single-seed. §7 tests the objection that the central null is an
 artefact of untuned RL by running the knobs that objection names, ending with a
-deliberate best-effort configuration. None rescues it: a trust region changes
-nothing, a 33× step costs nine points of held-out capability, and the tuned
-configuration removes every side effect while still not improving the decision
-process.
+deliberate best-effort configuration. None rescues it. §5 then re-scores the
+checkpoints under the decoding rule the reward was actually computed with,
+which changes what the null is a null *about*: outcome-only RL does deliver a
+real ~6-point gain to the sampled policy, and none at all to the decisions.
 
 ---
 
@@ -67,11 +67,19 @@ process.
    dense arm's 4.8%), and the sampled objective improved for the first time
    (0.359 → 0.413). Held-out success finished at 41.2% against 41.1%.
 
-10. The pattern across four configurations spanning 33× in learning rate, two
+10. **Under the decoding rule the reward was computed with, the tuned arm is
+    worth about +6 points.** Re-scoring both checkpoints at temperature 1.0 —
+    the rule every rollout used — gives 42.1% for the RL model against 35.9%
+    for the dense policy it started from, where greedy decoding reads 41.2%
+    against 41.1%. Sampling costs the dense model 5.2 points through
+    illegal actions; RL removes that cost entirely and nothing else. Mean
+    spend, mean steps, and greedy success are unchanged.
+
+11. The pattern across four configurations spanning 33× in learning rate, two
     group sizes, two reward shapes, two budgets, and with and without an
     anchor: outcome-only optimization reliably improves the action interface
     and the agreement between sampling and decoding, and has not once moved
-    held-out decision capability in this world family.
+    the decisions themselves in this world family.
 
 ---
 
@@ -377,7 +385,42 @@ same decisions.
 
 ---
 
-## 5. Interpretation
+## 5. Which policy was being measured
+
+Every arm optimized a policy sampled at temperature 1.0 and was scored by an
+evaluator that decodes greedily. Two arms showed those quantities moving
+independently, so both checkpoints were re-scored under both rules on the same
+1,024 held-out worlds, sampling twice under different seeds.
+
+| model | greedy | sampled #0 | sampled #1 | invalid, greedy → sampled |
+|---|---:|---:|---:|---|
+| dense seed 0 | 41.1% | 36.9% | 34.8% | 0.028 → 0.155 / 0.170 |
+| best shot, 382 updates | 41.2% | **42.2%** | **42.0%** | 0.017 → 0.028 / 0.032 |
+
+The stage had been scoring the policy it was not training.
+
+Sampling costs the dense model 5.2 points relative to its own greedy decoding
+(41.1% → 35.9% averaged), and the invalid-action rate explains all of it: at
+temperature 1.0 the dense policy emits illegal actions five to six times more
+often than its argmax does. The best-shot model loses nothing to sampling — its
+sampled invalid rate, 0.028–0.032, is essentially its greedy 0.017, and its
+sampled success is if anything a shade above greedy.
+
+So under the decoding rule the reward was actually computed with, outcome-only
+RL is worth about **+6 points** over the policy it started from — 42.1% against
+35.9%, roughly 4σ at this sample size — while under greedy decoding the same
+comparison reads +0.1 points. Both numbers are correct; they are answers to
+different questions.
+
+What RL removed is sampling-induced protocol failure. Everything about the
+decision itself is unchanged: mean spend 3.88 against 3.92, mean steps 2.94
+against 2.96, and identical greedy success. The tuned arm did not teach the
+model to decide better; it taught the model's sampling distribution to stop
+throwing away what its argmax already knew.
+
+---
+
+## 6. Interpretation
 
 The two arms bracket the same conclusion. At the cold start, outcome-only
 reward could not reach the decision process because it could not clear the
@@ -400,7 +443,7 @@ diagnostic.
 
 ---
 
-## 6. Is this just RL being fussy?
+## 7. Is this just RL being fussy?
 
 The central null — outcome-only optimization did not improve the decision
 process — could be a fact about *this* configuration of RL rather than about
@@ -428,20 +471,17 @@ terms — degenerate groups fell to ~30%, the budget quadrupled to the dense
 arm's episode count, and the graded reward lifted legal termination to 96%. The
 sampled objective improved. Held-out capability did not.
 
-**What the arms did reveal** is a mismatch worth naming: the quantity being
-optimized and the quantity being reported are not the same. At 1e-4 sampled
-reward held while greedy capability fell nine points; in the best-shot arm
-sampled reward rose to meet greedy capability without lifting it. Outcome-only
-RL is optimizing the sampling distribution, and in this family that appears to
-be a different object from the decoded policy the evaluator scores.
+**Answered, and it matters: the stage was scoring a policy it was not
+training.** §5 measures both checkpoints under both decoding rules. Outcome-only
+RL is worth +6 points to the sampled policy and +0.1 to the greedy one, because
+sampling costs the dense model 5.2 points in illegal actions and RL removes
+exactly that cost. This does not rescue the process null — spend, steps, and
+greedy success are unchanged — but it does mean "RL achieved nothing" was the
+wrong summary. It achieved something real and narrow, in a place greedy metrics
+cannot see.
 
 Still open, and untested:
 
-- **Sampling versus evaluation.** Rollouts at temperature 1.0, evaluation
-  greedy. Two arms now show these moving independently. Evaluating at the
-  sampling temperature, or rolling out nearer to greedy, would say whether the
-  stage has been measuring the wrong policy all along. This is now the single
-  most informative untried experiment.
 - **Seeds.** Every arm is seed 0. The dense stage's own transfer results were
   strongly seed-dependent in magnitude.
 - **A cold start with a grounded interface.** The comparison STEP-1 actually
@@ -460,13 +500,13 @@ It is answered in that tuning it well produces a healthy, stable, well-behaved
 run whose held-out capability is indistinguishable from where it started.
 "Fussy" turned out to describe the side effects, not the result.
 
-The first half of §5, that outcome-only learning cannot bootstrap from a
+The first half of §6, that outcome-only learning cannot bootstrap from a
 weight-naive start, depends on none of this: a zero advantage is zero at any
 step size.
 
 ---
 
-## 7. What this stage establishes, and what it does not
+## 8. What this stage establishes, and what it does not
 
 Established:
 
@@ -489,12 +529,17 @@ Established:
 - A tuned configuration — bracketed step size with decay, groups of 16, 4×
   budget, and outcome-only credit for reaching a verdict — removes the
   structural degradation entirely and improves the sampled objective, and still
-  finishes at 41.2% held-out against 41.1%.
+  finishes at 41.2% held-out greedy against 41.1%.
+- Under the decoding rule the reward was computed with, that same arm is worth
+  about +6 points over its starting policy (42.1% against 35.9%), entirely by
+  removing sampling-induced illegal actions. Decision quality — spend, steps,
+  greedy success — is unchanged, so this is a gain in reliability of expression,
+  not in what the model decides.
 
 Not established:
 
 - That outcome-only learning cannot improve the decision process in this family
-  under a better-chosen RL configuration. §6 now excludes the two knobs the
+  under a better-chosen RL configuration. §7 now excludes the two knobs the
   objection named, but a step size between 3e-6 and 1e-4, a different sampling
   temperature, or a different group composition remain untried.
 - That the large-step decline is a capability loss rather than a decoding
@@ -509,7 +554,7 @@ Not established:
 
 ---
 
-## 8. Reproducibility record
+## 9. Reproducibility record
 
 Both runs were submitted through `tools/kaggle_run.py` against pinned commits,
 and their compact evidence is tracked under `step1/audit/runs/`.
@@ -578,13 +623,26 @@ Best-shot arm:
 - Teacher-forced action NLL at 48 / 95 / 191 / 382: 0.1057 / 0.1046 / 0.1048 /
   0.1070; milestone state hashes all distinct
 
+Decoding diagnostic:
+
+- Config `step1/configs/kaggle/t4x2_decoding_diagnostic.toml`; scores existing
+  checkpoints and trains nothing
+- Source commit `ee3d3bd`, run ID
+  `t4x2-decoding-diagnostic-ee3d3bd9b639-add8cdf229f5`
+- Kaggle version `aniruddhavarma/step1-decoding-diagnostic-ee3d3bd/1`, with both
+  checkpoints attached as Kaggle sources and identity-checked by state hash
+- 1,024 held-out validation worlds (seed 21260811), greedy once and temperature
+  1.0 twice under different sampling seeds
+- The evaluator's `temperature` argument defaults to 0.0, the frozen greedy
+  path, so no retained metric elsewhere in the stage is affected
+
 Reward-density control: `python -m step1_experiments.reward_density --config
 step1/configs/kaggle/t4x2_rlvr_seed0.toml`, 3,000 episodes per policy, 400
 groups of 8, CPU only.
 
 ---
 
-## 9. Stage conclusion
+## 10. Stage conclusion
 
 The stage distinguishes one of STEP-1 §14's admissible conclusions in a
 qualified form: **on this world family and byte surface, outcome-only verified
@@ -605,9 +663,17 @@ setting. The best-tuned of them is the most informative: it fixed every side
 effect, improved the objective it was given, and finished exactly where it
 started on held-out capability.
 
-What remains genuinely untried is the one thing all four arms share: rollouts
-are sampled at temperature 1.0 and evaluation decodes greedily. Two arms show
-those quantities moving independently, and the best-shot arm's sampled reward
-rose precisely to meet its unchanged greedy score. Before concluding anything
-further about what verified outcomes can teach, the stage should establish
-which policy it has been measuring.
+That question — which policy the stage was measuring — is now answered, and it
+sharpens the conclusion rather than overturning it. Outcome-only RL delivered a
+real and reproducible +6 points to the sampled policy by eliminating
+sampling-induced illegal actions, and nothing at all to the decisions
+underneath: identical greedy success, identical spend, identical step counts.
+Both facts belong in any summary of what verified outcomes bought here.
+
+The honest formulation is that outcome-only reward in this world family is a
+reliability instrument, not a reasoning one. It makes a policy express what it
+already knows more dependably, which is worth having and is cheap to obtain. It
+did not, under any of the five configurations tried, teach the policy anything
+about which probe to run or when to commit — and that capability came from the
+dense teacher, which remains the only mechanism in this project shown to
+install it.

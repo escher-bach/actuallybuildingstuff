@@ -1,0 +1,16 @@
+{
+  "accelerator_requested": "NvidiaTeslaT4",
+  "config": "step1/configs/kaggle/t4x2_decoding_diagnostic.toml",
+  "exact_version": "aniruddhavarma/step1-decoding-diagnostic-ee3d3bd/1",
+  "experiment": "decoding-diagnostic",
+  "git_sha": "ee3d3bd9b639d71caceb7b06a09a3722700a0826",
+  "kernel": "aniruddhavarma/step1-decoding-diagnostic-ee3d3bd",
+  "kernel_sources": [
+    "aniruddhavarma/step1-t4x2-dense-seed0-84f2938",
+    "aniruddhavarma/step1-rlvr-bestshot-seed0-4975e04"
+  ],
+  "submitted_at": "2026-08-16T19:20:11.646839+00:00",
+  "upstream_identity": {},
+  "url": "https://www.kaggle.com/code/aniruddhavarma/step1-decoding-diagnostic-ee3d3bd",
+  "version": 1
+}

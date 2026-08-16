@@ -1,0 +1,68 @@
+{
+  "accelerator_inventory": [
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 0,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    },
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 1,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    }
+  ],
+  "analysis_artifacts": [
+    {
+      "bytes": 15561,
+      "name": "t4x2-decoding-diagnostic-ee3d3bd9b639-add8cdf229f5-analysis.tar.gz",
+      "sha256": "cd2aab17db4381f3cea00052f2a6835912a76cea1ec942a255426e57304fe1a8"
+    }
+  ],
+  "collected_at": "2026-08-16T19:31:03.378342+00:00",
+  "config": {
+    "path": "step1/configs/kaggle/t4x2_decoding_diagnostic.toml",
+    "sha256": "add8cdf229f5896de1217f04dd39e5d874ad487dde64a48c0c50a0c68adfc868"
+  },
+  "experiment": "decoding-diagnostic",
+  "git": {
+    "remote_url": "https://github.com/escher-bach/actuallybuildingstuff.git",
+    "sha": "ee3d3bd9b639d71caceb7b06a09a3722700a0826"
+  },
+  "kaggle": {
+    "accelerator_requested": "NvidiaTeslaT4",
+    "completed_at": "2026-08-16T19:30:56.698465+00:00",
+    "exact_version": "aniruddhavarma/step1-decoding-diagnostic-ee3d3bd/1",
+    "kernel": "aniruddhavarma/step1-decoding-diagnostic-ee3d3bd",
+    "terminal_status": "COMPLETE",
+    "url": "https://www.kaggle.com/code/aniruddhavarma/step1-decoding-diagnostic-ee3d3bd"
+  },
+  "recovery_artifact": {
+    "archive": "t4x2-decoding-diagnostic-ee3d3bd9b639-add8cdf229f5.tar.gz",
+    "bytes": 15967,
+    "location": "kaggle output of aniruddhavarma/step1-decoding-diagnostic-ee3d3bd/1",
+    "sha256": "9c85d0c83ae7d39fd7cdf06301557ff3df8e798b547da6c390ae9d41508ce158"
+  },
+  "result_report": "result-report.json",
+  "root_seed": null,
+  "run_id": "t4x2-decoding-diagnostic-ee3d3bd9b639-add8cdf229f5",
+  "run_success": true,
+  "schema_version": 1,
+  "upstream": [
+    {
+      "expected_identity": {},
+      "kernel": "aniruddhavarma/step1-t4x2-dense-seed0-84f2938"
+    },
+    {
+      "expected_identity": {},
+      "kernel": "aniruddhavarma/step1-rlvr-bestshot-seed0-4975e04"
+    }
+  ]
+}

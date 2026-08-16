@@ -1,0 +1,136 @@
+{
+  "contract": "step1_decoding_diagnostic_v1",
+  "experiment_config_sha256": "add8cdf229f5896de1217f04dd39e5d874ad487dde64a48c0c50a0c68adfc868",
+  "greedy_reference": {
+    "dense_seed0": 0.4111328125,
+    "rlvr_bestshot_382": 0.412109375
+  },
+  "models": [
+    {
+      "artifact": "/kaggle/input/notebooks/aniruddhavarma/step1-t4x2-dense-seed0-84f2938/step1-results/t4x2-dense-seed0-84f29385ed62-b91eedc26552/production/model",
+      "config_hash": "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14",
+      "evaluation_set": {
+        "comparison": {
+          "label": "held_out_in_distribution",
+          "seed_policy": "held_out_seed"
+        },
+        "episodes": 1024,
+        "rendering": "a",
+        "seed": 21260811
+      },
+      "git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0",
+      "kind": "dense",
+      "model_state_sha256": "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e",
+      "name": "dense_seed0",
+      "results": [
+        {
+          "decoding": "greedy",
+          "metrics": {
+            "failure_rate": 0.5888671875,
+            "invalid_action_rate": 0.0283203125,
+            "malformed_action_rate": 0.0,
+            "mean_spent": 3.8837890625,
+            "mean_steps": 2.943359375,
+            "mean_success_excess_cost": 0.43942992874109266,
+            "success_rate": 0.4111328125
+          },
+          "sampling_seed_offset": 0,
+          "temperature": 0.0
+        },
+        {
+          "decoding": "sampled_t1.0",
+          "metrics": {
+            "failure_rate": 0.630859375,
+            "invalid_action_rate": 0.1552734375,
+            "malformed_action_rate": 0.0087890625,
+            "mean_spent": 3.8017578125,
+            "mean_steps": 2.7373046875,
+            "mean_success_excess_cost": 0.5582010582010583,
+            "success_rate": 0.369140625
+          },
+          "sampling_seed_offset": 0,
+          "temperature": 1.0
+        },
+        {
+          "decoding": "sampled_t1.0",
+          "metrics": {
+            "failure_rate": 0.65234375,
+            "invalid_action_rate": 0.169921875,
+            "malformed_action_rate": 0.0048828125,
+            "mean_spent": 3.787109375,
+            "mean_steps": 2.7177734375,
+            "mean_success_excess_cost": 0.5308988764044944,
+            "success_rate": 0.34765625
+          },
+          "sampling_seed_offset": 1,
+          "temperature": 1.0
+        }
+      ],
+      "run": "/kaggle/input/notebooks/aniruddhavarma/step1-t4x2-dense-seed0-84f2938/step1-results/t4x2-dense-seed0-84f29385ed62-b91eedc26552"
+    },
+    {
+      "artifact": "/kaggle/input/notebooks/aniruddhavarma/step1-rlvr-bestshot-seed0-4975e04/step1-results/t4x2-rlvr-bestshot-seed0-4975e043247f-32d72e790525/outcome_only_from_dense/checkpoints/checkpoint-382",
+      "checkpoint_updates": 382,
+      "config_hash": "32d72e790525be80c953c20c389969a385a874a8ad83504df5dbb0785799862d",
+      "evaluation_set": {
+        "comparison": {
+          "label": "held_out_in_distribution",
+          "seed_policy": "held_out_seed"
+        },
+        "episodes": 1024,
+        "rendering": "a",
+        "seed": 21260811
+      },
+      "kind": "rlvr",
+      "model_state_sha256": "de0ba9ad5e2d12f3d6b24f9ff8e5deaa6086acc0eb080118683e119bbbe66a87",
+      "name": "rlvr_bestshot_382",
+      "results": [
+        {
+          "decoding": "greedy",
+          "metrics": {
+            "failure_rate": 0.587890625,
+            "invalid_action_rate": 0.0166015625,
+            "malformed_action_rate": 0.0,
+            "mean_spent": 3.9228515625,
+            "mean_steps": 2.962890625,
+            "mean_success_excess_cost": 0.48578199052132703,
+            "success_rate": 0.412109375
+          },
+          "sampling_seed_offset": 0,
+          "temperature": 0.0
+        },
+        {
+          "decoding": "sampled_t1.0",
+          "metrics": {
+            "failure_rate": 0.578125,
+            "invalid_action_rate": 0.0283203125,
+            "malformed_action_rate": 0.005859375,
+            "mean_spent": 3.90625,
+            "mean_steps": 2.927734375,
+            "mean_success_excess_cost": 0.4050925925925926,
+            "success_rate": 0.421875
+          },
+          "sampling_seed_offset": 0,
+          "temperature": 1.0
+        },
+        {
+          "decoding": "sampled_t1.0",
+          "metrics": {
+            "failure_rate": 0.580078125,
+            "invalid_action_rate": 0.0322265625,
+            "malformed_action_rate": 0.0068359375,
+            "mean_spent": 3.93359375,
+            "mean_steps": 2.9228515625,
+            "mean_success_excess_cost": 0.5116279069767442,
+            "success_rate": 0.419921875
+          },
+          "sampling_seed_offset": 1,
+          "temperature": 1.0
+        }
+      ],
+      "run": "/kaggle/input/notebooks/aniruddhavarma/step1-rlvr-bestshot-seed0-4975e04/step1-results/t4x2-rlvr-bestshot-seed0-4975e043247f-32d72e790525"
+    }
+  ],
+  "question": "does the decoding rule decide the stage's conclusion? every retained metric is greedy; every RLVR rollout sampled at temperature 1.0",
+  "scientific_acceptance_policy": "diagnostic only; it re-scores existing checkpoints and retrains nothing"
+}
