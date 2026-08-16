@@ -11,11 +11,12 @@ cold start from the dense arm's initialization policy, and two warm starts that
 treat the dense checkpoint as the post-SFT model of an ordinary post-training
 pipeline — outcome-only RL on top of it, without and with a KL trust region.
 
-All results are single-seed and single-budget. §5 tests the obvious objection
-that the central null is an artefact of untuned RL, by running the two knobs
-that objection names. Neither rescues it: a trust region changes nothing, and a
-33× larger step moves the policy ten times further and costs nine points of
-held-out capability.
+All results are single-seed. §5 tests the objection that the central null is an
+artefact of untuned RL by running the knobs that objection names, ending with a
+deliberate best-effort configuration. None rescues it: a trust region changes
+nothing, a 33× step costs nine points of held-out capability, and the tuned
+configuration removes every side effect while still not improving the decision
+process.
 
 ---
 
@@ -57,10 +58,20 @@ held-out capability.
    measures lost nine points.
 
 8. Step size is therefore not the missing ingredient. Too small and nothing
-   moves; large enough to move and capability degrades. Taken together the arms
-   say the same thing from several directions: in this world family, verified
-   outcomes have purchase on the surface layer and none yet demonstrated on the
-   decision layer.
+   moves; large enough to move and capability degrades.
+
+9. **A deliberately tuned configuration fixed everything except the result.**
+   With 2e-5 and cosine decay, groups of 16, a 4× budget, and outcome-only
+   credit for reaching a verdict, degenerate groups fell to ~30%, protocol
+   failure to 3–4%, the structural degradation disappeared (4.4% against the
+   dense arm's 4.8%), and the sampled objective improved for the first time
+   (0.359 → 0.413). Held-out success finished at 41.2% against 41.1%.
+
+10. The pattern across four configurations spanning 33× in learning rate, two
+    group sizes, two reward shapes, two budgets, and with and without an
+    anchor: outcome-only optimization reliably improves the action interface
+    and the agreement between sampling and decoding, and has not once moved
+    held-out decision capability in this world family.
 
 ---
 
@@ -283,6 +294,60 @@ evaluated under lost nine points. Optimizing sampled verified outcomes moved the
 distribution somewhere that pays about the same under sampling and considerably
 worse under the decoding the evaluator uses.
 
+### 3.6 Best shot: everything the measurements justified, at once
+
+Configuration `t4x2_rlvr_bestshot_seed0.toml` changes four things together, so
+it is a best-effort attempt rather than a controlled pair: step size 2e-5 with
+cosine decay (bracketed by the two arms above), groups of 16 instead of 8
+(40–51% of groups had been degenerate), a budget of 382 updates × 128 rollouts
+= 48,896 episodes (matching the dense arm's 48,832 packed sequences), and a
+fourth reward term — credit for reaching a verdict at all, weighted 0.25
+against success's 1.0 — to break groups in which every rollout fails but not
+all fail the same way. `terminated` is a field of the verifier's terminal
+report, so the condition remains outcome-only.
+
+Every process-health measure improved, several markedly:
+
+| by sixth | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---:|---:|---:|---:|---:|---:|
+| degenerate groups | 0.194 | 0.335 | 0.306 | 0.296 | 0.329 | 0.335 |
+| protocol failure | 0.072 | 0.042 | 0.039 | 0.034 | 0.037 | 0.040 |
+| sampled success reward | 0.376 | 0.401 | 0.387 | 0.418 | 0.443 | 0.394 |
+| legal termination | 0.928 | 0.958 | 0.961 | 0.966 | 0.963 | 0.960 |
+
+Degenerate groups fell from the 40–51% of earlier arms to about 30%; protocol
+failure reached 3–4%, the best of the stage; KL settled at 0.011–0.016, moving
+the policy without straining the anchor; and for the first time the **sampled
+objective improved**, 0.359 at the first update to 0.413 over the final decile.
+
+Held-out capability did not follow:
+
+| set | dense | best shot |
+|---|---:|---:|
+| validation | 41.1% | 41.2% |
+| structural | 4.8% | 4.4% |
+| rendering B | 0.0% | 0.0% |
+| reversible control | 15.1% | 21.2% |
+
+The milestone curve is flat throughout: 42.8% at 48, 95 and 191 updates (512
+episodes each, +1.7 pp over dense at 0.8σ), then 41.2% at 382 on the full 1,024.
+Teacher-forced NLL moves once, early — 0.0853 → 0.1057 by update 48 — and then
+sits at 0.105–0.107 for the remaining 334 updates. Milestone state hashes are
+all distinct, so the repeated 42.8% is a stable policy rather than a repeated
+checkpoint.
+
+What this arm *did* fix is the collateral damage. Structural generalization
+lands at 4.4% against the dense arm's 4.8%, inside noise, where the three
+earlier arms had driven it to 0.4–1.5%. The reversible control improves as in
+every RL arm, and its invalid-action rate falls from 0.327 to 0.017.
+
+The cleanest reading of the whole arm is **sharpening**. Sampled success rose
+from 0.359 to 0.413, and greedy held-out success sat at 0.412: outcome-only
+optimization pulled the sampling distribution up to what the argmax policy was
+already doing, without moving the argmax policy. Fewer illegal actions, fewer
+degenerate groups, better agreement between sampling and decoding — and the
+same decisions.
+
 ---
 
 ## 4. Interpretation
@@ -330,34 +395,45 @@ Any useful setting lies between them, and the space in between is where a
 sweet spot would have to hide — it is not where the evidence currently points,
 because nothing in either arm shows the decision process improving.
 
-**What the larger step did reveal** is a mismatch worth naming: at 1e-4 the
-sampled objective stayed flat while greedy held-out capability fell nine
-points. The quantity being optimized and the quantity being reported came
-apart. That is a property of the setup, not of the world, and it makes
-temperature and decoding a live suspect in a way they were not before.
+**Excluded: degenerate groups, budget, and reward shape.** The best-shot arm
+(§3.6) addressed all three at once, and each intervention worked on its own
+terms — degenerate groups fell to ~30%, the budget quadrupled to the dense
+arm's episode count, and the graded reward lifted legal termination to 96%. The
+sampled objective improved. Held-out capability did not.
+
+**What the arms did reveal** is a mismatch worth naming: the quantity being
+optimized and the quantity being reported are not the same. At 1e-4 sampled
+reward held while greedy capability fell nine points; in the best-shot arm
+sampled reward rose to meet greedy capability without lifting it. Outcome-only
+RL is optimizing the sampling distribution, and in this family that appears to
+be a different object from the decoded policy the evaluator scores.
 
 Still open, and untested:
 
-- **Budget.** 191 updates is a quarter of the cold-start arm's declared budget.
-  Now worth running, but at a step size between the two tried, not at either.
 - **Sampling versus evaluation.** Rollouts at temperature 1.0, evaluation
-  greedy. The large-step arm shows these can move in opposite directions;
-  matching them, or evaluating at the sampling temperature, would say whether
-  the reported collapse is a decoding artefact.
-- **Group and batch shape.** Eight samples per world with 40–51% of groups
-  degenerate means much of each batch contributes nothing; larger groups or
-  difficulty filtering would raise effective signal per update.
+  greedy. Two arms now show these moving independently. Evaluating at the
+  sampling temperature, or rolling out nearer to greedy, would say whether the
+  stage has been measuring the wrong policy all along. This is now the single
+  most informative untried experiment.
+- **Seeds.** Every arm is seed 0. The dense stage's own transfer results were
+  strongly seed-dependent in magnitude.
+- **A cold start with a grounded interface.** The comparison STEP-1 actually
+  asks for remains unrunnable as specified; an RLVR arm with a declared,
+  separately reported interface-calibration prefix would make it runnable.
 - **Reward shape.** Binary terminal success gives no credit for getting closer,
   and `scale_rewards = "group"` amplifies single-success groups.
 - **Sampling temperature.** Rollouts at temperature 1.0 from a policy evaluated
   greedily means the optimized distribution is not the evaluated one.
 
-The objection that this is just RL being fussy is now partly vindicated and
-partly answered. It is vindicated in that the outcome is extremely
-step-size-sensitive: a 33× change swings held-out success by nine points. It is
-answered in that neither setting produces process learning — one is inert, the
-other is destructive — so "fussy" does not yet mean "would work if tuned". The
-first half of §4, that outcome-only learning cannot bootstrap from a
+The objection that this is just RL being fussy is vindicated in one sense and
+answered in another. It is vindicated in that the outcome is extremely
+sensitive to configuration: a 33× step-size change swings held-out success by
+nine points, and tuning decides whether the policy is left intact or wrecked.
+It is answered in that tuning it well produces a healthy, stable, well-behaved
+run whose held-out capability is indistinguishable from where it started.
+"Fussy" turned out to describe the side effects, not the result.
+
+The first half of §4, that outcome-only learning cannot bootstrap from a
 weight-naive start, depends on none of this: a zero advantage is zero at any
 step size.
 
@@ -383,6 +459,10 @@ Established:
   at 33× the step the policy moves ten times further, the anchor engages, and
   held-out success falls from 41.1% to 31.8% while its own sampled reward stays
   flat.
+- A tuned configuration — bracketed step size with decay, groups of 16, 4×
+  budget, and outcome-only credit for reaching a verdict — removes the
+  structural degradation entirely and improves the sampled objective, and still
+  finishes at 41.2% held-out against 41.1%.
 
 Not established:
 
@@ -458,6 +538,19 @@ Larger-step warm start:
 - Held-out validation success at the same milestones: 44.7% and 43.0% on 512
   episodes, 31.8% on 1,024
 
+Best-shot arm:
+
+- Config `step1/configs/kaggle/t4x2_rlvr_bestshot_seed0.toml`; four declared
+  changes from the KL-anchored arm, listed in §3.6
+- Source commit `4975e04`, run ID
+  `t4x2-rlvr-bestshot-seed0-4975e043247f-32d72e790525`
+- Kaggle version `aniruddhavarma/step1-rlvr-bestshot-seed0-4975e04/1`
+- 382 updates, 48,896 rollout episodes, 142,427 world transitions, 4,070 s
+- 19,756 successful rollout episodes (40.4%), 1,921 invalid, 230 malformed
+- KL to reference: mean 0.0138, final 0.0111; degenerate groups 30.0% mean
+- Teacher-forced action NLL at 48 / 95 / 191 / 382: 0.1057 / 0.1046 / 0.1048 /
+  0.1070; milestone state hashes all distinct
+
 Reward-density control: `python -m step1_experiments.reward_density --config
 step1/configs/kaggle/t4x2_rlvr_seed0.toml`, 3,000 episodes per policy, 400
 groups of 8, CPU only.
@@ -478,10 +571,16 @@ region reproduced it exactly and never engaged. A 33× larger step did move the
 policy — ten times further by KL and NLL, with the anchor finally binding — and
 held-out capability fell nine points while the sampled objective stayed flat.
 
-Three arms now sit on the same conclusion from different directions, so the
-stage's finding is not an artefact of one arbitrary setting. What remains
-genuinely untried is the interval between the two step sizes, a decoding rule
-shared between training and evaluation, and group composition — and the first
-thing any of those should be asked to beat is the 44.7% at 48 updates, the only
-point in the entire stage that looks like a gain, and one that is not
-statistically distinguishable from the dense model it started from.
+Four configurations now sit on the same conclusion — spanning 33× in learning
+rate, two group sizes, two reward shapes, two budgets, and with and without a
+trust region — so the stage's finding is not an artefact of one arbitrary
+setting. The best-tuned of them is the most informative: it fixed every side
+effect, improved the objective it was given, and finished exactly where it
+started on held-out capability.
+
+What remains genuinely untried is the one thing all four arms share: rollouts
+are sampled at temperature 1.0 and evaluation decodes greedily. Two arms show
+those quantities moving independently, and the best-shot arm's sampled reward
+rose precisely to meet its unchanged greedy score. Before concluding anything
+further about what verified outcomes can teach, the stage should establish
+which policy it has been measuring.
