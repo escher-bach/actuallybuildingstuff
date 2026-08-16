@@ -32,6 +32,7 @@ CONFIGS = {
     "seed0": PROJECT_ROOT / "step1/configs/kaggle/t4x2_rlvr_seed0.toml",
     "smoke": PROJECT_ROOT / "step1/configs/kaggle/t4x2_rlvr_smoke.toml",
     "warmstart": PROJECT_ROOT / "step1/configs/kaggle/t4x2_rlvr_warmstart_seed0.toml",
+    "klanchor": PROJECT_ROOT / "step1/configs/kaggle/t4x2_rlvr_klanchor_seed0.toml",
 }
 LAUNCHER = PROJECT_ROOT / "step1/kaggle/step1_t4x2_launcher.ipynb"
 DENSE_CONFIG = PROJECT_ROOT / "step1/configs/kaggle/t4x2_dense_seed0.toml"
@@ -104,6 +105,7 @@ def _report(config: dict, plan) -> dict:
             {
                 "budget_updates": step,
                 "serialization": {"exact": True},
+                "teacher_forced_action_nll": 0.0853,
                 "evaluation": {
                     name: {"comparison": {}, "metrics": _metrics()}
                     for name in (sets if step == final else ("validation",))
@@ -274,6 +276,7 @@ class RlvrReportContracts(unittest.TestCase):
             lambda report: report["budget_accounting"].pop("world_transitions"),
             lambda report: report["milestones"][-1]["evaluation"].pop("rendering_b"),
             lambda report: report["milestones"][0]["serialization"].update(exact=False),
+            lambda report: report["milestones"][1].pop("teacher_forced_action_nll"),
             lambda report: report["milestones"].pop(),
             lambda report: report["algorithm"].update(signal="teacher_preferred_actions"),
             lambda report: report["algorithm"].update(reward_weights=[0.0, 1.0, 0.0]),

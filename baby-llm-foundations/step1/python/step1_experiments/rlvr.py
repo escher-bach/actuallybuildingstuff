@@ -539,8 +539,14 @@ def _training_signal(log_history: list[dict]) -> dict:
 
     rewards = series("rewards/verified_success/mean")
     zero_std = series("frac_reward_zero_std")
+    # Present only when a KL anchor is enabled; a paralysed anchor and an
+    # ineffective one are told apart by this series plus the protocol-failure
+    # trend, not by the reward curve alone.
+    kl = series("kl")
     tail = rewards[-max(1, len(rewards) // 10):] if rewards else []
     return {
+        "kl_to_reference_mean": sum(kl) / len(kl) if kl else None,
+        "kl_to_reference_final": kl[-1] if kl else None,
         "logged_updates": len(rewards),
         "verified_success_reward_first": rewards[0] if rewards else None,
         "verified_success_reward_final_decile_mean": sum(tail) / len(tail) if tail else None,
@@ -553,6 +559,48 @@ def _training_signal(log_history: list[dict]) -> dict:
         ),
         "interpretation": "no group reward variance implies no GRPO gradient signal, whatever the budget",
     }
+
+
+@torch.no_grad()
+def _teacher_forced_nll(model, config: dict, shard_path: Path, device) -> float:
+    """Distributional distance from the teacher, comparable across stages.
+
+    This is a diagnostic, never a training signal: it answers whether an
+    outcome-only update moved the policy at all, on the same quantity the dense
+    arm reports.
+    """
+    from .data import BinaryShard, collate
+
+    dataset = BinaryShard(shard_path)
+    try:
+        total, count = 0.0, 0
+        for start in range(0, len(dataset), 4):
+            batch = collate([dataset[index] for index in range(start, min(start + 4, len(dataset)))],
+                            config["world"]["context_length"])
+            batch = {key: value.to(device) for key, value in batch.items()}
+            loss = model(**batch).loss
+            labels = int((batch["labels"][:, 1:] != -100).sum())
+            if loss is None or not torch.isfinite(loss):
+                raise FloatingPointError("teacher-forced diagnostic loss is absent or non-finite")
+            total += float(loss) * labels
+            count += labels
+    finally:
+        dataset.close()
+    if count <= 0:
+        raise AssertionError("teacher-forced diagnostic received no supervised action tokens")
+    return total / count
+
+
+def _diagnostic_shard(config: dict, run_dir: Path) -> Path:
+    """One deterministic teacher shard on the evaluator's own validation seeds."""
+    from .data import generate_rust_shard
+
+    params, seed, count, rendering, _comparison = _matched_sets(config)["validation"]
+    binary, _manifest, _replay = generate_rust_shard(
+        params, seed, count, config["world"]["context_length"], rendering,
+        run_dir / "datasets", "validation",
+    )
+    return binary
 
 
 @torch.no_grad()
@@ -618,6 +666,9 @@ def assert_rlvr_report_contract(report: dict, config: dict, plan: RlvrPlan) -> N
         for name, item in point["evaluation"].items():
             if set(item.get("metrics", {})) != set(EVALUATION_METRIC_NAMES):
                 raise AssertionError(f"milestone {point['budget_updates']} {name} metric fields mismatch")
+        nll = point.get("teacher_forced_action_nll")
+        if not isinstance(nll, (int, float)) or isinstance(nll, bool) or not math.isfinite(nll):
+            raise AssertionError(f"milestone {point['budget_updates']} has no finite teacher-forced diagnostic")
     if report.get("training_signal", {}).get("logged_updates", 0) < 1:
         raise AssertionError("RLVR training log carries no reward history")
 
@@ -691,6 +742,7 @@ def run(config_path: Path, output_dir: Path, source_run: Path | None = None) -> 
         return report_path
 
     milestones = []
+    diagnostic_shard = _diagnostic_shard(config, output_dir)
     for step in plan.milestones_updates:
         checkpoint = workspace / "checkpoints" / f"checkpoint-{step}"
         point_model, serialization = _checkpoint_state_roundtrip(checkpoint)
@@ -702,6 +754,7 @@ def run(config_path: Path, output_dir: Path, source_run: Path | None = None) -> 
             "artifact": str(checkpoint.resolve()),
             "serialization": serialization,
             "evaluation": evaluation,
+            "teacher_forced_action_nll": _teacher_forced_nll(point_model, config, diagnostic_shard, device),
         })
         point_model.to("cpu")
         if torch.cuda.is_available():

@@ -70,6 +70,38 @@ class ExperimentRegistry(unittest.TestCase):
         self.assertEqual(config_source["git_sha"], source["git_sha"])
         self.assertEqual(config_source["model_state_sha256"], source["model_state_sha256"])
 
+    def test_every_upstream_identity_is_a_full_hash_matching_its_config(self) -> None:
+        """A transcribed-by-hand hash fails inside the run, after a submission."""
+        import tomllib
+
+        for name, entry in self.registry["experiments"].items():
+            for kernel, identity in entry.get("upstream_identity", {}).items():
+                with self.subTest(experiment=name, upstream=kernel):
+                    self.assertRegex(identity["git_sha"], r"^[0-9a-f]{40}$")
+                    self.assertRegex(identity["config_hash"], r"^[0-9a-f]{64}$")
+                    self.assertRegex(identity["model_state_sha256"], r"^[0-9a-f]{64}$")
+                    with (PROJECT_ROOT / entry["config"]).open("rb") as handle:
+                        source = tomllib.load(handle)["source"]
+                    for field in ("git_sha", "config_hash", "model_state_sha256"):
+                        self.assertEqual(source[field], identity[field], field)
+
+    def test_paired_arms_differ_only_in_the_declared_knob(self) -> None:
+        import tomllib
+
+        configs = {}
+        for name in ("rlvr-warmstart-seed0", "rlvr-klanchor-seed0"):
+            with (PROJECT_ROOT / self.tool.resolve_experiment(name, self.registry).config).open("rb") as handle:
+                configs[name] = tomllib.load(handle)
+        base, anchored = configs["rlvr-warmstart-seed0"], configs["rlvr-klanchor-seed0"]
+        self.assertEqual(base["world"], anchored["world"])
+        self.assertEqual(base["rollout"], anchored["rollout"])
+        self.assertEqual(base["run"]["root_seed"], anchored["run"]["root_seed"])
+        self.assertEqual(base["run"]["arm"], anchored["run"]["arm"])
+        differing = {key for key in base["grpo"] if base["grpo"][key] != anchored["grpo"].get(key)}
+        self.assertEqual(differing, {"beta"})
+        self.assertEqual(base["grpo"]["beta"], 0.0)
+        self.assertGreater(anchored["grpo"]["beta"], 0.0)
+
     def test_collection_pattern_matches_nested_evidence_and_excludes_weights(self) -> None:
         import re
 

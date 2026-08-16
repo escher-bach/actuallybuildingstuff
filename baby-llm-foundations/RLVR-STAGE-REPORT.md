@@ -118,7 +118,7 @@ competence, not surface fluency.
 ## 3. Dense warm start: the interface moves, the process does not
 
 Configuration `t4x2_rlvr_warmstart_seed0.toml`, starting from the verified
-dense seed-0 checkpoint (state SHA-256 `cef0ac41…`), attached from its own
+dense seed-0 checkpoint (state SHA-256 `cef0ac5a41…`), attached from its own
 Kaggle output and identity-checked before use.
 
 Executed budget: 191 updates, 12,224 rollout episodes, 34,602 world
@@ -280,7 +280,7 @@ Dense warm start:
 - Kaggle version `aniruddhavarma/step1-rlvr-warmstart-seed0-58afc55/1`
 - Upstream dense checkpoint `aniruddhavarma/step1-t4x2-dense-seed0-84f2938`,
   git SHA `84f29385ed623500aa2e201c45fdcf8c2257fac0`, model state
-  `cef0ac4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e`, verified
+  `cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e`, verified
   inside the run before training
 - Algorithm: TRL 0.29.1 `GRPOTrainer`, `loss_type="dapo"`,
   `scale_rewards="group"`, `beta=0.0`, `epsilon=0.2`, 8 generations per world,
