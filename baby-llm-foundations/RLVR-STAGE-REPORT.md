@@ -12,8 +12,10 @@ treat the dense checkpoint as the post-SFT model of an ordinary post-training
 pipeline — outcome-only RL on top of it, without and with a KL trust region.
 
 All results are single-seed and single-budget. §5 tests the obvious objection
-that the central null is an artefact of untuned RL: the trust-region form of it
-is now excluded, and step size is the remaining live explanation.
+that the central null is an artefact of untuned RL, by running the two knobs
+that objection names. Neither rescues it: a trust region changes nothing, and a
+33× larger step moves the policy ten times further and costs nine points of
+held-out capability.
 
 ---
 
@@ -45,15 +47,20 @@ is now excluded, and step size is the remaining live explanation.
    0.005 against a 0.02 penalty — the anchor never engaged. Unconstrained drift
    is not what suppressed process learning.
 
-6. **The policy barely moved at all.** Teacher-forced NLL went 0.0853 → 0.0911
-   over 191 updates, about 7% relative. Cheap protocol fixes live inside that
-   radius; a change of decision policy plausibly does not. The declared
-   learning rate of 3e-6 — against the 6e-4 the dense arm used on this same
-   model — is now the leading explanation for the null, and is untested.
+6. **At that step size the policy barely moved at all** — teacher-forced NLL
+   0.0853 → 0.0911, about 7% relative. Cheap protocol fixes live inside that
+   radius; a change of decision policy does not.
 
-7. Taken together the arms say the same thing from opposite ends: in this world
-   family, verified outcomes have purchase on the surface layer and little on
-   the decision layer, at the step size tried.
+7. **A 33× larger step moved it ten times further and made it worse.** NLL rose
+   74%, the anchor finally engaged, and held-out success fell 41.1% → 31.8%.
+   Its own sampled reward stayed flat while the greedy policy the evaluator
+   measures lost nine points.
+
+8. Step size is therefore not the missing ingredient. Too small and nothing
+   moves; large enough to move and capability degrades. Taken together the arms
+   say the same thing from several directions: in this world family, verified
+   outcomes have purchase on the surface layer and none yet demonstrated on the
+   decision layer.
 
 ---
 
@@ -211,8 +218,10 @@ Their training curves coincide:
 
 The anchor never bound. KL to the reference rose to 0.005 and plateaued
 (mean 0.0029, final 0.0046), far below where a 0.02 penalty would meaningfully
-push back, and the clipping-region statistic was 0.000 for the whole run. The
-policy was not straining against the trust region; it was barely moving.
+push back. The policy was not straining against the trust region; it was barely
+moving. (The clipping statistic is 0.000 throughout, but that is structural
+rather than evidence: with one iteration per batch and on-policy generation the
+importance ratio is identically 1, so clipping can never trigger in any arm.)
 
 ### 3.4 How far the policy moved at all
 
@@ -232,6 +241,47 @@ real behavioural change on the protocol axis — illegal-move trajectories
 roughly halved — and nothing on the decision axis. (The 48- and 95-update
 success figures are on 512 episodes, the 191 figure on 1,024; read the column
 as flat.)
+
+### 3.5 The larger-step arm: movement without capability
+
+Configuration `t4x2_rlvr_bigstep_seed0.toml` differs from the anchored arm in
+exactly one field: `learning_rate`, 3e-6 → 1e-4, about 33× and still 6× below
+the 6e-4 the dense arm used on this same model.
+
+The step size was indeed the constraint on *movement*:
+
+| | dense | lr 3e-6 | lr 1e-4 |
+|---|---:|---:|---:|
+| teacher-forced NLL | 0.0853 | 0.0911 | **0.1481** |
+| KL to reference (mean) | — | 0.0029 | **0.0311** |
+| validation success | 41.1% | 41.2% | **31.8%** |
+| structural | 4.8% | 1.1% | 0.4% |
+| rendering B | 0.0% | 0.0% | 0.0% |
+| reversible control | 15.1% | 19.6% | 23.0% |
+
+The policy moved roughly ten times further — 74% of relative NLL against 7% —
+and the anchor finally engaged, KL settling above the 0.02 penalty scale rather
+than an order of magnitude below it. Held-out in-distribution capability fell by
+nine points.
+
+The milestone curve locates the decline: 44.7% at 48 updates and 43.0% at 95
+(both on 512 episodes), then 31.8% at 191 (on 1,024). Teacher-forced NLL rises
+monotonically throughout — 0.0973, 0.1194, 0.1481 — so the policy is moving
+steadily away from the teacher, and capability follows it down after the
+mid-point.
+
+What makes this more than "the learning rate was too high" is that the arm's own
+sampled objective did **not** collapse with it. Success reward by sixths reads
+0.388, 0.351, 0.386, 0.381, 0.411, 0.331 — roughly flat, essentially the small-
+step arm's curve — and total successful rollout episodes were 4,533 against the
+small step's 4,511. Protocol failure was already low and stayed low (0.069 →
+0.064), with invalid episodes falling sharply (1,179 → 509) while malformed rose
+(67 → 271).
+
+So the sampled policy held its own reward while the greedy policy it is
+evaluated under lost nine points. Optimizing sampled verified outcomes moved the
+distribution somewhere that pays about the same under sampling and considerably
+worse under the decoding the evaluator uses.
 
 ---
 
@@ -272,25 +322,29 @@ unhelpful, it was never engaged: KL plateaued at 0.005 against a 0.02 penalty
 and the clipping region stayed at 0.000. Drift is not what suppressed process
 learning, because there was very little drift to suppress.
 
-**Now the leading explanation: step size × budget.** The two arms agree because
-both take very small steps. Over 191 updates the policy moved 0.005 nats of KL
-and +0.006 teacher-forced NLL — about 7% relative — while its protocol
-behaviour changed substantially. Cheap surface fixes are reachable inside that
-distributional radius; a change of decision policy plausibly is not. The
-declared learning rate, 3e-6, was taken from RLHF practice for models three
-orders of magnitude larger; the dense arm trained this same 19.2M model at
-6e-4. That gap, not the budget, is the most suspicious single number in the
-configuration.
+**Excluded: too small a step.** The two small-step arms agreed because both
+barely moved — 0.005 nats of KL, 7% of NLL. The 33× arm (§3.5) confirms the
+diagnosis and refutes the remedy: it moved ten times further by both measures,
+and held-out success fell to 31.8%. The two step sizes bracket the question.
+Any useful setting lies between them, and the space in between is where a
+sweet spot would have to hide — it is not where the evidence currently points,
+because nothing in either arm shows the decision process improving.
+
+**What the larger step did reveal** is a mismatch worth naming: at 1e-4 the
+sampled objective stayed flat while greedy held-out capability fell nine
+points. The quantity being optimized and the quantity being reported came
+apart. That is a property of the setup, not of the world, and it makes
+temperature and decoding a live suspect in a way they were not before.
 
 Still open, and untested:
 
-- **Learning rate.** The cheapest discriminating experiment is not more
-  updates but larger steps: the same 191 updates at 3e-5 or 1e-4, watching KL
-  and NLL to confirm the policy actually moves further.
 - **Budget.** 191 updates is a quarter of the cold-start arm's declared budget.
-  Worth running after the step size is calibrated, not before — 4× of a step
-  that is 100× too small is still too small.
-- **Group and batch shape.** Eight samples per world with ~40% of groups
+  Now worth running, but at a step size between the two tried, not at either.
+- **Sampling versus evaluation.** Rollouts at temperature 1.0, evaluation
+  greedy. The large-step arm shows these can move in opposite directions;
+  matching them, or evaluating at the sampling temperature, would say whether
+  the reported collapse is a decoding artefact.
+- **Group and batch shape.** Eight samples per world with 40–51% of groups
   degenerate means much of each batch contributes nothing; larger groups or
   difficulty filtering would raise effective signal per update.
 - **Reward shape.** Binary terminal success gives no credit for getting closer,
@@ -298,11 +352,14 @@ Still open, and untested:
 - **Sampling temperature.** Rollouts at temperature 1.0 from a policy evaluated
   greedily means the optimized distribution is not the evaluated one.
 
-Until the learning rate is calibrated, §4's second half should be read as
-"outcome-only optimization did not move the process *at this step size and
-budget*", not as a general claim about RLVR. The first half — that it cannot
-bootstrap from a weight-naive start — does not depend on any of these knobs,
-because a zero advantage is zero at any step size.
+The objection that this is just RL being fussy is now partly vindicated and
+partly answered. It is vindicated in that the outcome is extremely
+step-size-sensitive: a 33× change swings held-out success by nine points. It is
+answered in that neither setting produces process learning — one is inert, the
+other is destructive — so "fussy" does not yet mean "would work if tuned". The
+first half of §4, that outcome-only learning cannot bootstrap from a
+weight-naive start, depends on none of this: a zero advantage is zero at any
+step size.
 
 ---
 
@@ -322,13 +379,20 @@ Established:
 - A KL trust region does not change that outcome and never engages: the
   anchored and unanchored arms coincide, so unconstrained drift is not the
   mechanism.
+- The result is strongly step-size-sensitive, and not in a way that rescues it:
+  at 33× the step the policy moves ten times further, the anchor engages, and
+  held-out success falls from 41.1% to 31.8% while its own sampled reward stays
+  flat.
 
 Not established:
 
 - That outcome-only learning cannot improve the decision process in this family
-  under a better-chosen RL configuration. §5 excludes the trust-region
-  explanation but leaves step size untested, and the measured 7% distributional
-  movement makes it the leading candidate.
+  under a better-chosen RL configuration. §5 now excludes the two knobs the
+  objection named, but a step size between 3e-6 and 1e-4, a different sampling
+  temperature, or a different group composition remain untried.
+- That the large-step decline is a capability loss rather than a decoding
+  artefact: sampled reward held while greedy evaluation fell, and the two were
+  not measured under a common decoding rule.
 - Anything about seeds beyond seed 0, or budgets beyond those run.
 - The dense-versus-RLVR comparison at matched budget from a common start, which
   the cold-start null makes unrunnable as specified: an arm that never updates
@@ -381,6 +445,19 @@ KL-anchored warm start:
   against the dense arm's 0.0853, measured on a deterministic shard of the
   evaluator's validation seeds
 
+Larger-step warm start:
+
+- Config `step1/configs/kaggle/t4x2_rlvr_bigstep_seed0.toml`, identical to the
+  KL-anchored arm except `learning_rate = 1e-4`, enforced by a contract test
+- Source commit `3f2cf50`, run ID
+  `t4x2-rlvr-bigstep-seed0-3f2cf506d4e9-0af3f7860338`
+- Kaggle version `aniruddhavarma/step1-rlvr-bigstep-seed0-3f2cf50/1`
+- 191 updates, 12,224 rollout episodes, 35,115 world transitions, 1,013 s
+- KL to reference: mean 0.0311, final 0.0265
+- Teacher-forced action NLL at 48 / 95 / 191 updates: 0.0973 / 0.1194 / 0.1481
+- Held-out validation success at the same milestones: 44.7% and 43.0% on 512
+  episodes, 31.8% on 1,024
+
 Reward-density control: `python -m step1_experiments.reward_density --config
 step1/configs/kaggle/t4x2_rlvr_seed0.toml`, 3,000 episodes per policy, 400
 groups of 8, CPU only.
@@ -396,9 +473,15 @@ dense-trained policy it improves the action interface without improving the
 decision process.**
 
 The first half is unconditional: a zero advantage is zero at any step size or
-budget. The second half survived the first serious attempt to explain it away —
-a KL trust region reproduced it exactly — but remains conditional on step size,
-and the measured movement of the policy (0.005 nats of KL, 7% NLL) says the
-steps were small. The next experiment is a learning rate calibrated to this
-model rather than borrowed from RLHF practice for models a thousand times
-larger; only after that does a larger budget mean anything.
+budget. The second half survived both attempts to explain it away. A KL trust
+region reproduced it exactly and never engaged. A 33× larger step did move the
+policy — ten times further by KL and NLL, with the anchor finally binding — and
+held-out capability fell nine points while the sampled objective stayed flat.
+
+Three arms now sit on the same conclusion from different directions, so the
+stage's finding is not an artefact of one arbitrary setting. What remains
+genuinely untried is the interval between the two step sizes, a decoding rule
+shared between training and evaluation, and group composition — and the first
+thing any of those should be asked to beat is the 44.7% at 48 updates, the only
+point in the entire stage that looks like a gain, and one that is not
+statistically distinguishable from the dense model it started from.
