@@ -1,6 +1,6 @@
 # Outcome-Only RLVR
 
-## Stage report: the verified-outcome baseline, cold start and dense warm start
+## Stage report: the verified-outcome baseline across five configurations
 
 ### Status
 
@@ -11,7 +11,7 @@ cold start from the dense arm's initialization policy, and two warm starts that
 treat the dense checkpoint as the post-SFT model of an ordinary post-training
 pipeline — outcome-only RL on top of it, without and with a KL trust region.
 
-All results are single-seed. §5 tests the objection that the central null is an
+All results are single-seed. §6 tests the objection that the central null is an
 artefact of untuned RL by running the knobs that objection names, ending with a
 deliberate best-effort configuration. None rescues it: a trust region changes
 nothing, a 33× step costs nine points of held-out capability, and the tuned
@@ -75,7 +75,34 @@ process.
 
 ---
 
-## 1. Apparatus
+## 1. The arms at a glance
+
+Every warm-start arm begins from the same dense seed-0 checkpoint and is scored
+by the same evaluator on the same held-out seeds. Held-out success is on 1,024
+episodes per set.
+
+| arm | lr | β | group | updates | episodes | NLL | validation | structural | reversible |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| dense seed 0 (start) | — | — | — | — | — | 0.0853 | 41.1% | 4.8% | 15.1% |
+| cold start (§3) | 3e-6 | 0 | 8 | 6 | 384 | — | *no update occurred* | | |
+| warm start (§4) | 3e-6 | 0 | 8 | 191 | 12,224 | — | 41.3% | 1.5% | 19.7% |
+| KL anchored (§4.3) | 3e-6 | 0.02 | 8 | 191 | 12,224 | 0.0911 | 41.2% | 1.1% | 19.6% |
+| larger step (§4.5) | 1e-4 | 0.02 | 8 | 191 | 12,224 | 0.1481 | 31.8% | 0.4% | 23.0% |
+| best shot (§4.6) | 2e-5 cos | 0.02 | 16 | 382 | 48,896 | 0.1070 | 41.2% | 4.4% | 21.2% |
+
+Rendering B is 0.0% for every row, including the dense start: the interface is
+ungrounded and no arm changes that. The teacher-forced NLL diagnostic was added
+after the first warm start, so that row has no entry. The cold-start arm's
+parameters never changed, so its evaluation numbers describe the dense
+initialization policy rather than a trained one.
+
+Read down the validation column: one arm destroyed capability, none improved
+it. Read down the structural column: the arms that moved the policy hardest
+damaged out-of-distribution robustness most, and the tuned arm restored it.
+
+---
+
+## 2. Apparatus
 
 Unchanged from the dense and transfer stages: the same 19.2M-parameter GPT-NeoX
 model, the same 262-token byte vocabulary, the same Rust world executor and
@@ -95,7 +122,7 @@ have.
 
 ---
 
-## 2. Cold start: no gradient exists
+## 3. Cold start: no gradient exists
 
 Configuration `t4x2_rlvr_smoke.toml`, six updates, 384 rollout episodes.
 
@@ -121,7 +148,7 @@ is byte-exactly parseable *and* legal *and* correct. A randomly initialized
 byte-level policy must produce a 16-character string such as
 `inspect(probe_3)` by chance before any of that can be evaluated.
 
-### 2.1 The world is not reward-sparse
+### 3.1 The world is not reward-sparse
 
 The obvious confound is that outcome-only learning might be hopeless here
 because success itself is rare. It is not. Sampling uniformly from the world's
@@ -146,9 +173,9 @@ competence, not surface fluency.
 
 ---
 
-## 3. Dense warm start: the interface moves, the process does not
+## 4. Dense warm start: the interface moves, the process does not
 
-The unanchored arm is reported first; §3.3 adds its KL-anchored pair.
+The unanchored arm is reported first; §4.3 to §4.6 add the three that follow it.
 
 Configuration `t4x2_rlvr_warmstart_seed0.toml`, starting from the verified
 dense seed-0 checkpoint (state SHA-256 `cef0ac5a41…`), attached from its own
@@ -159,7 +186,7 @@ transitions, 597,995 model-generated action tokens, 968 s of training wall
 time. All 191 updates contained groups with reward variance, so unlike the cold
 start the gradient signal existed throughout.
 
-### 3.1 Held-out closed-loop evaluation
+### 4.1 Held-out closed-loop evaluation
 
 1,024 episodes per set, identical seeds to the dense evaluation:
 
@@ -181,7 +208,7 @@ Action-interface behaviour explains the direction of both real effects:
 | structural | 0.297 → 0.353 | 0.361 → 0.456 |
 | reversible control | 0.007 → 0.001 | 0.327 → 0.086 |
 
-### 3.2 What the training log optimized
+### 4.2 What the training log optimized
 
 By sixths of the run:
 
@@ -199,7 +226,7 @@ Cost per successful episode also did not improve: mean spend on the validation
 set went 3.884 → 3.924, and excess cost over the teacher on successful episodes
 went 0.439 → 0.485.
 
-### 3.3 The KL-anchored arm: the anchor is not the explanation
+### 4.3 The KL-anchored arm: the anchor is not the explanation
 
 Configuration `t4x2_rlvr_klanchor_seed0.toml` is identical to the arm above in
 every field except `beta` (0.0 → 0.02), so the pair isolates the trust region at
@@ -234,7 +261,7 @@ moving. (The clipping statistic is 0.000 throughout, but that is structural
 rather than evidence: with one iteration per batch and on-policy generation the
 importance ratio is identically 1, so clipping can never trigger in any arm.)
 
-### 3.4 How far the policy moved at all
+### 4.4 How far the policy moved at all
 
 Teacher-forced action NLL on the evaluator's own validation seeds, against the
 dense arm's 0.0853:
@@ -253,7 +280,7 @@ roughly halved — and nothing on the decision axis. (The 48- and 95-update
 success figures are on 512 episodes, the 191 figure on 1,024; read the column
 as flat.)
 
-### 3.5 The larger-step arm: movement without capability
+### 4.5 The larger-step arm: movement without capability
 
 Configuration `t4x2_rlvr_bigstep_seed0.toml` differs from the anchored arm in
 exactly one field: `learning_rate`, 3e-6 → 1e-4, about 33× and still 6× below
@@ -294,7 +321,7 @@ evaluated under lost nine points. Optimizing sampled verified outcomes moved the
 distribution somewhere that pays about the same under sampling and considerably
 worse under the decoding the evaluator uses.
 
-### 3.6 Best shot: everything the measurements justified, at once
+### 4.6 Best shot: everything the measurements justified, at once
 
 Configuration `t4x2_rlvr_bestshot_seed0.toml` changes four things together, so
 it is a best-effort attempt rather than a controlled pair: step size 2e-5 with
@@ -350,7 +377,7 @@ same decisions.
 
 ---
 
-## 4. Interpretation
+## 5. Interpretation
 
 The two arms bracket the same conclusion. At the cold start, outcome-only
 reward could not reach the decision process because it could not clear the
@@ -365,7 +392,7 @@ the action space reachable at all; verified outcomes then refine behaviour
 within it.
 
 It does **not** support the stronger claim that the task is learnable only
-through the teacher. §2.1 shows a well-formed random policy already collects
+through the teacher. §3.1 shows a well-formed random policy already collects
 abundant reward. What outcome-only learning lacked at the cold start was a way
 into the action space, and that is a property of the byte surface, which
 STEP-1 §11 anticipated as a confound requiring the informative-tokenizer
@@ -373,14 +400,14 @@ diagnostic.
 
 ---
 
-## 5. Is this just RL being fussy?
+## 6. Is this just RL being fussy?
 
 The central null — outcome-only optimization did not improve the decision
 process — could be a fact about *this* configuration of RL rather than about
 outcome-only learning in this world. The runs were deliberately untuned, so the
 question is live and was tested rather than argued.
 
-**Excluded: the missing trust region.** The KL-anchored arm (§3.3) reproduces
+**Excluded: the missing trust region.** The KL-anchored arm (§4.3) reproduces
 the unanchored arm to within noise on every metric, including the structural
 degradation that looked like unconstrained drift. The anchor was not merely
 unhelpful, it was never engaged: KL plateaued at 0.005 against a 0.02 penalty
@@ -388,7 +415,7 @@ and the clipping region stayed at 0.000. Drift is not what suppressed process
 learning, because there was very little drift to suppress.
 
 **Excluded: too small a step.** The two small-step arms agreed because both
-barely moved — 0.005 nats of KL, 7% of NLL. The 33× arm (§3.5) confirms the
+barely moved — 0.005 nats of KL, 7% of NLL. The 33× arm (§4.5) confirms the
 diagnosis and refutes the remedy: it moved ten times further by both measures,
 and held-out success fell to 31.8%. The two step sizes bracket the question.
 Any useful setting lies between them, and the space in between is where a
@@ -396,7 +423,7 @@ sweet spot would have to hide — it is not where the evidence currently points,
 because nothing in either arm shows the decision process improving.
 
 **Excluded: degenerate groups, budget, and reward shape.** The best-shot arm
-(§3.6) addressed all three at once, and each intervention worked on its own
+(§4.6) addressed all three at once, and each intervention worked on its own
 terms — degenerate groups fell to ~30%, the budget quadrupled to the dense
 arm's episode count, and the graded reward lifted legal termination to 96%. The
 sampled objective improved. Held-out capability did not.
@@ -433,13 +460,13 @@ It is answered in that tuning it well produces a healthy, stable, well-behaved
 run whose held-out capability is indistinguishable from where it started.
 "Fussy" turned out to describe the side effects, not the result.
 
-The first half of §4, that outcome-only learning cannot bootstrap from a
+The first half of §5, that outcome-only learning cannot bootstrap from a
 weight-naive start, depends on none of this: a zero advantage is zero at any
 step size.
 
 ---
 
-## 6. What this stage establishes, and what it does not
+## 7. What this stage establishes, and what it does not
 
 Established:
 
@@ -467,7 +494,7 @@ Established:
 Not established:
 
 - That outcome-only learning cannot improve the decision process in this family
-  under a better-chosen RL configuration. §5 now excludes the two knobs the
+  under a better-chosen RL configuration. §6 now excludes the two knobs the
   objection named, but a step size between 3e-6 and 1e-4, a different sampling
   temperature, or a different group composition remain untried.
 - That the large-step decline is a capability loss rather than a decoding
@@ -482,7 +509,7 @@ Not established:
 
 ---
 
-## 7. Reproducibility record
+## 8. Reproducibility record
 
 Both runs were submitted through `tools/kaggle_run.py` against pinned commits,
 and their compact evidence is tracked under `step1/audit/runs/`.
@@ -541,7 +568,7 @@ Larger-step warm start:
 Best-shot arm:
 
 - Config `step1/configs/kaggle/t4x2_rlvr_bestshot_seed0.toml`; four declared
-  changes from the KL-anchored arm, listed in §3.6
+  changes from the KL-anchored arm, listed in §4.6
 - Source commit `4975e04`, run ID
   `t4x2-rlvr-bestshot-seed0-4975e043247f-32d72e790525`
 - Kaggle version `aniruddhavarma/step1-rlvr-bestshot-seed0-4975e04/1`
@@ -557,7 +584,7 @@ groups of 8, CPU only.
 
 ---
 
-## 8. Stage conclusion
+## 9. Stage conclusion
 
 The stage distinguishes one of STEP-1 §14's admissible conclusions in a
 qualified form: **on this world family and byte surface, outcome-only verified

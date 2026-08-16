@@ -4,11 +4,31 @@
 
 ### Status and scope
 
-> **Results are in [RLVR-STAGE-REPORT.md](RLVR-STAGE-REPORT.md).** The
-> cold-start arm produced no gradient at all and the dense warm-start arm moved
-> the action interface without moving the decision process. This plan remains
-> the apparatus and protocol of record; the report qualifies what its budget
-> and RL configuration can and cannot conclude.
+> **Executed. Results are in [RLVR-STAGE-REPORT.md](RLVR-STAGE-REPORT.md).**
+>
+> This plan remains the record of the apparatus, the ownership boundary, the
+> rollout protocol, the reward definition, and the reasoning behind the
+> algorithm choice — all of which held. Three parts of it were overtaken by
+> what the runs found, and are marked **[superseded]** below rather than
+> rewritten, so the plan still shows what was predeclared:
+>
+> - **§7 arms and run sequence.** The planned sequence was smoke → cold start
+>   seed 0 → optional hybrid. The cold-start seed-0 run was never executed:
+>   the six-update smoke proved it would be a no-op, verified by identical
+>   model state hashes, so spending 763 updates on it would have bought
+>   nothing. The stage instead ran four warm-start configurations.
+> - **§5 reward.** A fourth outcome-only term — credit for reaching a verdict,
+>   weighted 0.25 — was added for the final arm to break degenerate groups. It
+>   defaults to zero, so the earlier arms kept the reward defined here.
+> - **§8 cold-start risk.** Written as a risk to be watched. It is now a
+>   result: the predicted failure occurred exactly as described, which is why
+>   the instrument declared there was worth declaring.
+>
+> The framing also shifted. §2 justifies `beta = 0` as keeping teacher
+> information out; under the post-training reading the project settled on —
+> the dense checkpoint is the post-SFT model — a KL anchor to that same policy
+> is a trust region rather than supervision, and three of the four arms used
+> one.
 
 This document specifies the outcome-only RLVR condition named in
 [STEP-1.md](STEP-1.md) §6 and row 2 of its first experimental matrix. It fixes
@@ -123,7 +143,7 @@ tokens, and an exhaustive-probing policy needs at most 1,061.
 
 ---
 
-## 5. Reward
+## 5. Reward [partly superseded — see the status note]
 
 One scalar per finished trajectory, computed by the same privileged verifier
 the evaluator uses:
@@ -168,7 +188,7 @@ That is a property of group-relative RL, and it is reported rather than hidden.
 
 ---
 
-## 7. Arms and run sequence
+## 7. Arms and run sequence [superseded — see the status note]
 
 1. **Smoke** (`t4x2_rlvr_smoke.toml`, 6 updates). Cargo tests, Python contract
    tests, then the full GRPO path on two T4s with milestone checkpoints and a
@@ -194,7 +214,7 @@ patched mid-flight.
 
 ---
 
-## 8. The cold-start risk, declared in advance
+## 8. The cold-start risk, declared in advance [now a result — §3 of the report]
 
 A randomly initialized 19.2M model must emit exactly parseable byte actions
 before it can ever be correct. If no trajectory in a group succeeds, every
