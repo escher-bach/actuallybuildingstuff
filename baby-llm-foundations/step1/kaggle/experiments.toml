@@ -96,3 +96,13 @@ slug_prefix = "step1-transfer-forgetting"
 config = "step1/configs/kaggle/t4x2_transfer_forgetting.toml"
 purpose = "scores the seed-0 Rendering B terminal endpoints back on Rendering A; trains nothing"
 kernel_sources = ["aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9"]
+
+[experiments.transfer-retention]
+title = "Step 1 transfer retention"
+slug_prefix = "step1-transfer-retention"
+config = "step1/configs/kaggle/t4x2_transfer_retention.toml"
+purpose = "teacher-forced A-target NLL for the B-trained endpoints; separates an overwritten surface from lost knowledge"
+kernel_sources = [
+    "aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9",
+    "aniruddhavarma/step1-t4x2-dense-seed0-84f2938",
+]

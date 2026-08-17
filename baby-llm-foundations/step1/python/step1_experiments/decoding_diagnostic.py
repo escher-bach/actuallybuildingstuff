@@ -99,8 +99,14 @@ def resolve_checkpoints(config: dict, roots: list[Path]) -> list[dict]:
 
 
 @torch.no_grad()
-def score(entry: dict, config: dict, device) -> dict:
-    """Score one checkpoint under every declared decoding rule."""
+def score(entry: dict, config: dict, device, shard: Path | None = None) -> dict:
+    """Score one checkpoint under every declared decoding rule.
+
+    Closed-loop scoring requires the model to emit parseable actions; when it
+    cannot, every arm reads 0.0% and the metric has no resolution. The optional
+    teacher-forced diagnostic is graded and needs no parseable output, so it can
+    separate "cannot speak this rendering" from "knows nothing about it".
+    """
     from transformers import AutoModelForCausalLM, set_seed
 
     model = AutoModelForCausalLM.from_pretrained(entry["artifact"], local_files_only=True).to(device).eval()
@@ -109,8 +115,13 @@ def score(entry: dict, config: dict, device) -> dict:
         raise AssertionError(f"{entry['name']} state hash mismatch: {state_sha}")
     params, seed, count, rendering, comparison = _matched_sets(config)["validation"]
     count = config["evaluation"]["episodes"]
+    nll = None
+    if shard is not None:
+        from .rlvr import _teacher_forced_nll
+
+        nll = _teacher_forced_nll(model, config, shard, device)
     results = []
-    for rule in config["decoding"]:
+    for rule in (config["decoding"] if config["evaluation"].get("closed_loop", True) else []):
         for index in range(rule.get("repeats", 1)):
             # The same worlds every time; only the decoding rule and its sampling
             # seed change, so differences cannot come from the evaluation set.
@@ -126,7 +137,7 @@ def score(entry: dict, config: dict, device) -> dict:
     model.to("cpu")
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
-    return {**entry, "model_state_sha256": state_sha, "evaluation_set": {
+    return {**entry, "model_state_sha256": state_sha, "teacher_forced_action_nll": nll, "evaluation_set": {
         "seed": seed, "episodes": count, "rendering": rendering, "comparison": comparison,
     }, "results": results}
 
@@ -136,7 +147,9 @@ def assert_diagnostic_contract(report: dict, config: dict) -> None:
         raise AssertionError("decoding diagnostic contract mismatch")
     if report.get("experiment_config_sha256") != config["_meta"]["hash"]:
         raise AssertionError("decoding diagnostic configuration hash mismatch")
-    expected_rules = [(rule["name"], index) for rule in config["decoding"] for index in range(rule.get("repeats", 1))]
+    closed_loop = config["evaluation"].get("closed_loop", True)
+    expected_rules = ([(rule["name"], index) for rule in config["decoding"] for index in range(rule.get("repeats", 1))]
+                      if closed_loop else [])
     if len(report.get("models", [])) != len(config["models"]):
         raise AssertionError("decoding diagnostic model count mismatch")
     for model in report["models"]:
@@ -145,6 +158,10 @@ def assert_diagnostic_contract(report: dict, config: dict) -> None:
         for item in model["results"]:
             if set(item["metrics"]) != set(EVALUATION_METRIC_NAMES):
                 raise AssertionError(f"{model['name']} {item['decoding']} metric fields mismatch")
+        if config["evaluation"].get("teacher_forced_nll"):
+            value = model.get("teacher_forced_action_nll")
+            if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value):
+                raise AssertionError(f"{model['name']} has no finite teacher-forced diagnostic")
         # Every model must be scored on the identical world set.
         if model["evaluation_set"]["seed"] != report["models"][0]["evaluation_set"]["seed"]:
             raise AssertionError("models were scored on different evaluation worlds")
@@ -156,8 +173,16 @@ def run(resolved_config: Path, run_dir: Path, input_roots: list[Path] | None = N
     config = load_config(resolved_config)
     roots = input_roots or [Path("/kaggle/input")]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    models = [score(entry, config, device) for entry in resolve_checkpoints(config, roots)]
-    greedy = {model["name"]: next(item for item in model["results"] if item["temperature"] == 0.0) for model in models}
+    shard = None
+    if config["evaluation"].get("teacher_forced_nll"):
+        from .rlvr import _diagnostic_shard
+
+        # One deterministic teacher shard on the evaluated rendering's own
+        # validation seeds; every model is scored against the same targets.
+        shard = _diagnostic_shard(config, run_dir)
+    models = [score(entry, config, device, shard) for entry in resolve_checkpoints(config, roots)]
+    greedy = {model["name"]: item for model in models
+              for item in model["results"] if item["temperature"] == 0.0}
     report = {
         "contract": DECODING_CONTRACT,
         "experiment_config_sha256": config["_meta"]["hash"],
@@ -167,6 +192,7 @@ def run(resolved_config: Path, run_dir: Path, input_roots: list[Path] | None = N
         ),
         "models": models,
         "greedy_reference": {name: item["metrics"]["success_rate"] for name, item in greedy.items()},
+        "teacher_forced_reference": {model["name"]: model["teacher_forced_action_nll"] for model in models},
         "scientific_acceptance_policy": "diagnostic only; it re-scores existing checkpoints and retrains nothing",
     }
     assert_diagnostic_contract(report, config)

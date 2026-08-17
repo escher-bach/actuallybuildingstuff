@@ -1,0 +1,97 @@
+[run]
+name = "t4x2-transfer-retention"
+root_seed = 20260811
+mode = "decoding_diagnostic"
+
+# Does anything about Rendering A survive underneath an overwritten surface?
+#
+# The companion run established that every B-trained endpoint is 100% malformed
+# on A, including the arm that never saw A — so closed-loop success has no
+# resolution for this question: both possibilities read 0.0%.
+#
+# Teacher-forced NLL does. It is graded, needs no parseable output, and is
+# scored against the same A teacher targets for every model. The comparison
+# that matters is the converged A-trained endpoint against the A-naive control:
+#   meaningfully lower  -> process knowledge survived the surface overwrite
+#   indistinguishable   -> nothing recoverable was retained
+# The dense model, which has not been trained on B at all, anchors the scale.
+
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+# The point of the diagnostic: evaluate on A, not on the B the models were last
+# trained on.
+rendering = "a"
+context_length = 2048
+train_episodes = 32768
+validation_episodes = 1024
+structural_episodes = 1024
+transfer_episodes = 1024
+
+[evaluation]
+episodes = 1024
+# Closed-loop scoring is skipped: the companion run already measured it at
+# 0.0% for every model here, and generation is the expensive part.
+closed_loop = false
+teacher_forced_nll = true
+
+[[decoding]]
+name = "greedy"
+temperature = 0.0
+repeats = 1
+
+# The untouched dense model anchors the scale at the top.
+[[models]]
+name = "dense_seed0_never_trained_on_b"
+kind = "dense"
+git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+config_hash = "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14"
+model_state_sha256 = "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e"
+
+# The A-trained arm across its whole B schedule. Each endpoint is an
+# independent run that restarted from the dense A checkpoint, so this is a
+# curve over B exposure, not a single trajectory.
+[[models]]
+name = "a_trained_b92"
+kind = "transfer"
+arm = "a_trained"
+budget_updates = 92
+source_git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+
+[[models]]
+name = "a_trained_b306"
+kind = "transfer"
+arm = "a_trained"
+budget_updates = 306
+source_git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+
+[[models]]
+name = "a_trained_b916"
+kind = "transfer"
+arm = "a_trained"
+budget_updates = 916
+source_git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+
+[[models]]
+name = "a_trained_b3052_converged"
+kind = "transfer"
+arm = "a_trained"
+budget_updates = 3052
+source_git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+
+# The A-naive control: identical initialization, trained only on B. Whatever it
+# scores on A is what "never learned A" looks like, and it is the floor the
+# A-trained arm would have to fall to for forgetting to be total.
+[[models]]
+name = "init_b3052_a_naive"
+kind = "transfer"
+arm = "init"
+budget_updates = 3052
+source_git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
