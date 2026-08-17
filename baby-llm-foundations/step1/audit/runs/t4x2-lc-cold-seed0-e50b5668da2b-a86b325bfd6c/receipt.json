@@ -1,0 +1,59 @@
+{
+  "accelerator_inventory": [
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 0,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    },
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 1,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    }
+  ],
+  "analysis_artifacts": [
+    {
+      "bytes": 41812,
+      "name": "t4x2-lc-cold-seed0-e50b5668da2b-a86b325bfd6c-analysis.tar.gz",
+      "sha256": "b3305c901cac6a24f31f618c8b5ea7957d7493d9f1d9be5a5bec774082f4e469"
+    }
+  ],
+  "collected_at": "2026-08-17T19:56:56.040149+00:00",
+  "config": {
+    "path": "step1/configs/kaggle/t4x2_learner_conditioned_cold_seed0.toml",
+    "sha256": "a86b325bfd6c7881e0c380392eab4805810b3af0559b7cf4899eb676a96a14bc"
+  },
+  "experiment": "lc-cold-seed0",
+  "git": {
+    "remote_url": "https://github.com/escher-bach/actuallybuildingstuff.git",
+    "sha": "e50b5668da2b4b12085473829f968e05f7b1755d"
+  },
+  "kaggle": {
+    "accelerator_requested": "NvidiaTeslaT4",
+    "completed_at": "2026-08-17T19:56:42.928631+00:00",
+    "exact_version": "aniruddhavarma/step1-lc-cold-seed0-e50b566/1",
+    "kernel": "aniruddhavarma/step1-lc-cold-seed0-e50b566",
+    "terminal_status": "COMPLETE",
+    "url": "https://www.kaggle.com/code/aniruddhavarma/step1-lc-cold-seed0-e50b566"
+  },
+  "recovery_artifact": {
+    "archive": "t4x2-lc-cold-seed0-e50b5668da2b-a86b325bfd6c.tar.gz",
+    "bytes": 426785514,
+    "location": "kaggle output of aniruddhavarma/step1-lc-cold-seed0-e50b566/1",
+    "sha256": "57e1c907600edd04140806b7bf96a198a167c0793da32aab96e7366a85b0f379"
+  },
+  "result_report": "result-report.json",
+  "root_seed": null,
+  "run_id": "t4x2-lc-cold-seed0-e50b5668da2b-a86b325bfd6c",
+  "run_success": true,
+  "schema_version": 1,
+  "upstream": []
+}

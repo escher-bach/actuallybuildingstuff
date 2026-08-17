@@ -1,0 +1,13 @@
+{
+  "accelerator_requested": "NvidiaTeslaT4",
+  "config": "step1/configs/kaggle/t4x2_learner_conditioned_cold_seed0.toml",
+  "exact_version": "aniruddhavarma/step1-lc-cold-seed0-e50b566/1",
+  "experiment": "lc-cold-seed0",
+  "git_sha": "e50b5668da2b4b12085473829f968e05f7b1755d",
+  "kernel": "aniruddhavarma/step1-lc-cold-seed0-e50b566",
+  "kernel_sources": [],
+  "submitted_at": "2026-08-17T19:27:40.101919+00:00",
+  "upstream_identity": {},
+  "url": "https://www.kaggle.com/code/aniruddhavarma/step1-lc-cold-seed0-e50b566",
+  "version": 1
+}

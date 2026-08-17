@@ -1,0 +1,59 @@
+{
+  "accelerator_inventory": [
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 0,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    },
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 1,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    }
+  ],
+  "analysis_artifacts": [
+    {
+      "bytes": 21114,
+      "name": "t4x2-lc-smoke-e50b5668da2b-3448e6a4c539-analysis.tar.gz",
+      "sha256": "e71986bbcdff52a392a506744376e90390313b453977bdfa2c122a2791049dd4"
+    }
+  ],
+  "collected_at": "2026-08-17T19:56:38.312290+00:00",
+  "config": {
+    "path": "step1/configs/kaggle/t4x2_learner_conditioned_smoke.toml",
+    "sha256": "3448e6a4c53952d38141628bb56475b9bdd6e6c1e25b5b8fd7f9d7ed62eb38d2"
+  },
+  "experiment": "lc-smoke",
+  "git": {
+    "remote_url": "https://github.com/escher-bach/actuallybuildingstuff.git",
+    "sha": "e50b5668da2b4b12085473829f968e05f7b1755d"
+  },
+  "kaggle": {
+    "accelerator_requested": "NvidiaTeslaT4",
+    "completed_at": "2026-08-17T19:56:26.386315+00:00",
+    "exact_version": "aniruddhavarma/step1-lc-smoke-e50b566/1",
+    "kernel": "aniruddhavarma/step1-lc-smoke-e50b566",
+    "terminal_status": "COMPLETE",
+    "url": "https://www.kaggle.com/code/aniruddhavarma/step1-lc-smoke-e50b566"
+  },
+  "recovery_artifact": {
+    "archive": "t4x2-lc-smoke-e50b5668da2b-3448e6a4c539.tar.gz",
+    "bytes": 284125399,
+    "location": "kaggle output of aniruddhavarma/step1-lc-smoke-e50b566/1",
+    "sha256": "0024c1dca6f8b1039e80e6ff295cc8e4a9a1e6189c6f1cb30875a5d33eb27dcf"
+  },
+  "result_report": "result-report.json",
+  "root_seed": null,
+  "run_id": "t4x2-lc-smoke-e50b5668da2b-3448e6a4c539",
+  "run_success": true,
+  "schema_version": 1,
+  "upstream": []
+}
