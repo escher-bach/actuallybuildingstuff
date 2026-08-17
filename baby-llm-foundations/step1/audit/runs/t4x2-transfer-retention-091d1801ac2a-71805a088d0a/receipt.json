@@ -1,0 +1,68 @@
+{
+  "accelerator_inventory": [
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 0,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    },
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 1,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    }
+  ],
+  "analysis_artifacts": [
+    {
+      "bytes": 15799,
+      "name": "t4x2-transfer-retention-091d1801ac2a-71805a088d0a-analysis.tar.gz",
+      "sha256": "ded5503a901f97f9bf6f8edccc0549afe9bfcaf34a639a3a2c25eb1fa52080a6"
+    }
+  ],
+  "collected_at": "2026-08-17T15:19:27.203303+00:00",
+  "config": {
+    "path": "step1/configs/kaggle/t4x2_transfer_retention.toml",
+    "sha256": "71805a088d0a9750e9ba211c5c6a35d783eda37c59b6cdfd79c46a3f38946328"
+  },
+  "experiment": "transfer-retention",
+  "git": {
+    "remote_url": "https://github.com/escher-bach/actuallybuildingstuff.git",
+    "sha": "091d1801ac2ac038473e806f99250d3fd57ac1c2"
+  },
+  "kaggle": {
+    "accelerator_requested": "NvidiaTeslaT4",
+    "completed_at": "2026-08-17T15:19:20.693175+00:00",
+    "exact_version": "aniruddhavarma/step1-transfer-retention-091d180/1",
+    "kernel": "aniruddhavarma/step1-transfer-retention-091d180",
+    "terminal_status": "COMPLETE",
+    "url": "https://www.kaggle.com/code/aniruddhavarma/step1-transfer-retention-091d180"
+  },
+  "recovery_artifact": {
+    "archive": "t4x2-transfer-retention-091d1801ac2a-71805a088d0a.tar.gz",
+    "bytes": 99360,
+    "location": "kaggle output of aniruddhavarma/step1-transfer-retention-091d180/1",
+    "sha256": "84f012ce8e824b0415a0f27d18f2a786652aa76de9fe717544790325b6077f71"
+  },
+  "result_report": "result-report.json",
+  "root_seed": null,
+  "run_id": "t4x2-transfer-retention-091d1801ac2a-71805a088d0a",
+  "run_success": true,
+  "schema_version": 1,
+  "upstream": [
+    {
+      "expected_identity": {},
+      "kernel": "aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9"
+    },
+    {
+      "expected_identity": {},
+      "kernel": "aniruddhavarma/step1-t4x2-dense-seed0-84f2938"
+    }
+  ]
+}

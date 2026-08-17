@@ -1,0 +1,142 @@
+{
+  "contract": "step1_decoding_diagnostic_v1",
+  "experiment_config_sha256": "71805a088d0a9750e9ba211c5c6a35d783eda37c59b6cdfd79c46a3f38946328",
+  "greedy_reference": {},
+  "models": [
+    {
+      "artifact": "/kaggle/input/notebooks/aniruddhavarma/step1-t4x2-dense-seed0-84f2938/step1-results/t4x2-dense-seed0-84f29385ed62-b91eedc26552/production/model",
+      "config_hash": "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14",
+      "evaluation_set": {
+        "comparison": {
+          "label": "held_out_in_distribution",
+          "seed_policy": "held_out_seed"
+        },
+        "episodes": 1024,
+        "rendering": "a",
+        "seed": 21260811
+      },
+      "git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0",
+      "kind": "dense",
+      "model_state_sha256": "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e",
+      "name": "dense_seed0_never_trained_on_b",
+      "results": [],
+      "run": "/kaggle/input/notebooks/aniruddhavarma/step1-t4x2-dense-seed0-84f2938/step1-results/t4x2-dense-seed0-84f29385ed62-b91eedc26552",
+      "teacher_forced_action_nll": 0.08533151581581937
+    },
+    {
+      "arm": "a_trained",
+      "artifact": "/kaggle/input/notebooks/aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9/rendering-b-terminal-seed0/a_trained/budget-92/checkpoints/checkpoint-92",
+      "budget_updates": 92,
+      "evaluation_set": {
+        "comparison": {
+          "label": "held_out_in_distribution",
+          "seed_policy": "held_out_seed"
+        },
+        "episodes": 1024,
+        "rendering": "a",
+        "seed": 21260811
+      },
+      "kind": "transfer",
+      "model_state_sha256": "5cabf9cce9814ca100088a2d4be53059806ddbb3c4e78d98aba987124457b57c",
+      "name": "a_trained_b92",
+      "results": [],
+      "run": "/kaggle/input/notebooks/aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9/rendering-b-terminal-seed0",
+      "source_git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0",
+      "teacher_forced_action_nll": 6.927883504078256
+    },
+    {
+      "arm": "a_trained",
+      "artifact": "/kaggle/input/notebooks/aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9/rendering-b-terminal-seed0/a_trained/budget-306/checkpoints/checkpoint-306",
+      "budget_updates": 306,
+      "evaluation_set": {
+        "comparison": {
+          "label": "held_out_in_distribution",
+          "seed_policy": "held_out_seed"
+        },
+        "episodes": 1024,
+        "rendering": "a",
+        "seed": 21260811
+      },
+      "kind": "transfer",
+      "model_state_sha256": "9f805625011c2ab2562dafa2b0e1aee08dd7692810f36df8b42c99431d7f0287",
+      "name": "a_trained_b306",
+      "results": [],
+      "run": "/kaggle/input/notebooks/aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9/rendering-b-terminal-seed0",
+      "source_git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0",
+      "teacher_forced_action_nll": 6.924108590595503
+    },
+    {
+      "arm": "a_trained",
+      "artifact": "/kaggle/input/notebooks/aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9/rendering-b-terminal-seed0/a_trained/budget-916/checkpoints/checkpoint-916",
+      "budget_updates": 916,
+      "evaluation_set": {
+        "comparison": {
+          "label": "held_out_in_distribution",
+          "seed_policy": "held_out_seed"
+        },
+        "episodes": 1024,
+        "rendering": "a",
+        "seed": 21260811
+      },
+      "kind": "transfer",
+      "model_state_sha256": "688bff9ab793f91dcaeeab8459c304dd90c5fb0263f7ad4ea37195ce87788677",
+      "name": "a_trained_b916",
+      "results": [],
+      "run": "/kaggle/input/notebooks/aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9/rendering-b-terminal-seed0",
+      "source_git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0",
+      "teacher_forced_action_nll": 7.834125523959482
+    },
+    {
+      "arm": "a_trained",
+      "artifact": "/kaggle/input/notebooks/aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9/rendering-b-terminal-seed0/a_trained/budget-3052/checkpoints/checkpoint-3052",
+      "budget_updates": 3052,
+      "evaluation_set": {
+        "comparison": {
+          "label": "held_out_in_distribution",
+          "seed_policy": "held_out_seed"
+        },
+        "episodes": 1024,
+        "rendering": "a",
+        "seed": 21260811
+      },
+      "kind": "transfer",
+      "model_state_sha256": "8eaf353861690c40020d22a32ab45d1e1f65211df989e8c52c735a28cf3e9a0d",
+      "name": "a_trained_b3052_converged",
+      "results": [],
+      "run": "/kaggle/input/notebooks/aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9/rendering-b-terminal-seed0",
+      "source_git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0",
+      "teacher_forced_action_nll": 9.524552146640755
+    },
+    {
+      "arm": "init",
+      "artifact": "/kaggle/input/notebooks/aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9/rendering-b-terminal-seed0/init/budget-3052/checkpoints/checkpoint-3052",
+      "budget_updates": 3052,
+      "evaluation_set": {
+        "comparison": {
+          "label": "held_out_in_distribution",
+          "seed_policy": "held_out_seed"
+        },
+        "episodes": 1024,
+        "rendering": "a",
+        "seed": 21260811
+      },
+      "kind": "transfer",
+      "model_state_sha256": "a15b74c151bbdab062a16333504d7f95809f36bdb809aaddd186351b24512068",
+      "name": "init_b3052_a_naive",
+      "results": [],
+      "run": "/kaggle/input/notebooks/aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9/rendering-b-terminal-seed0",
+      "source_git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0",
+      "teacher_forced_action_nll": 11.602566977524761
+    }
+  ],
+  "question": "does the decoding rule decide the stage's conclusion? every retained metric is greedy; every RLVR rollout sampled at temperature 1.0",
+  "scientific_acceptance_policy": "diagnostic only; it re-scores existing checkpoints and retrains nothing",
+  "teacher_forced_reference": {
+    "a_trained_b3052_converged": 9.524552146640755,
+    "a_trained_b306": 6.924108590595503,
+    "a_trained_b916": 7.834125523959482,
+    "a_trained_b92": 6.927883504078256,
+    "dense_seed0_never_trained_on_b": 0.08533151581581937,
+    "init_b3052_a_naive": 11.602566977524761
+  }
+}

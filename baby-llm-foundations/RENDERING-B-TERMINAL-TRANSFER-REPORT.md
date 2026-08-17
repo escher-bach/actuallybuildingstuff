@@ -426,18 +426,45 @@ process knowledge underneath is gone, and the closed-loop metric cannot: a model
 that emits no parseable action never gets to demonstrate whether it would have
 probed sensibly. Zero here means "cannot speak A", not "cannot do A".
 
-Two considerations argue against reading this as total knowledge loss. First,
-this stage's central result is that an A-trained model re-acquires B faster than
-a from-scratch model — the retained thing was never the surface, which is why
-that result was framed as an acquisition bias rather than as knowledge. Second,
-the A-naive control scores identically here, so this measurement has no
-resolution: it cannot separate "forgot everything" from "forgot only how to
-speak" because both produce 0.0%.
+The graded measurement that does separate them is teacher-forced NLL on A,
+which needs no parseable output. Scored against one shard of A teacher targets
+shared by every model:
 
-The measurement that would separate them is teacher-forced NLL on A: a graded
-quantity that does not require parseable output. If the converged A-trained
-endpoint scores meaningfully below the A-naive control on A-target NLL, process
-knowledge survived an overwritten surface. That run is not in this stage.
+| model | A-target NLL |
+|---|---:|
+| dense seed 0, never trained on B | **0.0853** |
+| A-trained → B, 92 updates | 6.9279 |
+| A-trained → B, 306 updates | 6.9241 |
+| A-trained → B, 916 updates | 7.8341 |
+| A-trained → B, 3,052 updates | **9.5246** |
+| Init → B, 3,052 updates (A-naive) | **11.6026** |
+
+**Something survives, and it is faint and shrinking.** The converged A-trained
+endpoint sits 2.08 nats below the A-naive control — 17.9% lower, a real and
+consistent gap — so prior A training remains detectable after 100M tokens of B.
+It is not nothing.
+
+But the scale matters more than the gap. Uniform prediction over the 262-token
+vocabulary is ln(262) ≈ 5.57 nats. **Every B-trained model is far above that**,
+between 6.9 and 11.6, and the converged endpoint is 112× worse than the 0.0853
+it started from. These models are not uncertain about Rendering A; they are
+confidently wrong about it, which is exactly the mirror of §5.1's finding that
+an A-trained model opens on B at loss ~11.9 against an untrained model's ~5.8.
+
+Retention also decays monotonically with B exposure — 6.93, 6.92, 7.83, 9.52 —
+heading toward the A-naive floor rather than plateauing above it.
+
+So the answer to "total, or do they still remember" is: **behaviourally total,
+distributionally not quite.** What remains is a trace, not a capability. A
+plausible reading is that the trace is what would make re-acquiring A cheap,
+the same asymmetry this stage measured in the forward direction — but that is a
+hypothesis about relearning speed, and testing it needs a relearning run, not a
+static score.
+
+One limitation on the trace itself: the NLL is computed over action-token spans,
+so a residual advantage could reflect retained decision competence expressed in
+the wrong vocabulary, or merely shared low-level byte structure. This
+measurement cannot separate those.
 
 ---
 

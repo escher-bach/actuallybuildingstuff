@@ -1,0 +1,16 @@
+{
+  "accelerator_requested": "NvidiaTeslaT4",
+  "config": "step1/configs/kaggle/t4x2_transfer_retention.toml",
+  "exact_version": "aniruddhavarma/step1-transfer-retention-091d180/1",
+  "experiment": "transfer-retention",
+  "git_sha": "091d1801ac2ac038473e806f99250d3fd57ac1c2",
+  "kernel": "aniruddhavarma/step1-transfer-retention-091d180",
+  "kernel_sources": [
+    "aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9",
+    "aniruddhavarma/step1-t4x2-dense-seed0-84f2938"
+  ],
+  "submitted_at": "2026-08-17T15:02:30.354943+00:00",
+  "upstream_identity": {},
+  "url": "https://www.kaggle.com/code/aniruddhavarma/step1-transfer-retention-091d180",
+  "version": 1
+}
