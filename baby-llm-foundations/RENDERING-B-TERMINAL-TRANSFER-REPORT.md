@@ -391,6 +391,56 @@ updates; prefix-excluded sum drops updates 1–31; terminal intercept = mean
 
 ---
 
+## 7a. Postscript: what happens to Rendering A
+
+The stage measured its endpoints on B only. Scoring the same seed-0 endpoints
+back on the 1,024 held-out **Rendering A** worlds the dense arm was scored on,
+with the same greedy evaluator:
+
+| model | A success | malformed on A |
+|---|---:|---:|
+| dense seed 0, before any B training | 41.1% | 0.000 |
+| A-trained → B, 92 updates (~3M B tokens) | **0.0%** | **1.000** |
+| A-trained → B, 306 updates | 0.0% | 1.000 |
+| A-trained → B, 916 updates | 0.0% | 1.000 |
+| A-trained → B, 3,052 updates (converged) | 0.0% | 1.000 |
+| Init → B, 3,052 updates (A-naive control) | 0.0% | 1.000 |
+
+**Surface forgetting is total, and it is immediate.** By the earliest measured
+budget — 92 updates, roughly 3M B tokens, the same point at which the A-trained
+arm first shows nonzero B capability — the model can no longer emit a single
+parseable Rendering A action. It is indistinguishable from the arm that never
+saw A. The five checkpoints are confirmed distinct by state hash; this is five
+models forgetting, not one model scored five times.
+
+This is the exact mirror of the stage's own zero-shot finding. Before
+calibration the A-trained model was 100% malformed on B; after calibration it
+is 100% malformed on A. The learner speaks one rendering at a time, and
+acquiring the second overwrites the first's action vocabulary within the first
+few million tokens.
+
+### What this does and does not show
+
+It shows the **action surface** is overwritten completely. It does not show the
+process knowledge underneath is gone, and the closed-loop metric cannot: a model
+that emits no parseable action never gets to demonstrate whether it would have
+probed sensibly. Zero here means "cannot speak A", not "cannot do A".
+
+Two considerations argue against reading this as total knowledge loss. First,
+this stage's central result is that an A-trained model re-acquires B faster than
+a from-scratch model — the retained thing was never the surface, which is why
+that result was framed as an acquisition bias rather than as knowledge. Second,
+the A-naive control scores identically here, so this measurement has no
+resolution: it cannot separate "forgot everything" from "forgot only how to
+speak" because both produce 0.0%.
+
+The measurement that would separate them is teacher-forced NLL on A: a graded
+quantity that does not require parseable output. If the converged A-trained
+endpoint scores meaningfully below the A-naive control on A-target NLL, process
+knowledge survived an overwritten surface. That run is not in this stage.
+
+---
+
 ## 8. Stage conclusion
 
 Per STEP-1.md §14, a stage is scientifically complete when its results

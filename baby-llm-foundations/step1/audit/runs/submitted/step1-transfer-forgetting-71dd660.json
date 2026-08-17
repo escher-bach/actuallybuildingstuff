@@ -1,0 +1,15 @@
+{
+  "accelerator_requested": "NvidiaTeslaT4",
+  "config": "step1/configs/kaggle/t4x2_transfer_forgetting.toml",
+  "exact_version": "aniruddhavarma/step1-transfer-forgetting-71dd660/1",
+  "experiment": "transfer-forgetting",
+  "git_sha": "71dd660b0fe073f479eb31fe2c6ca4b18e851bf0",
+  "kernel": "aniruddhavarma/step1-transfer-forgetting-71dd660",
+  "kernel_sources": [
+    "aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9"
+  ],
+  "submitted_at": "2026-08-17T14:46:56.179523+00:00",
+  "upstream_identity": {},
+  "url": "https://www.kaggle.com/code/aniruddhavarma/step1-transfer-forgetting-71dd660",
+  "version": 1
+}

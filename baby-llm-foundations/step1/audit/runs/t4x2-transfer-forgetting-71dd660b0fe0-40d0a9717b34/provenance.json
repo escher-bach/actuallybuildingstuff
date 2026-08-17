@@ -1,0 +1,234 @@
+{
+  "accelerator_inventory": [
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 0,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    },
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 1,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    }
+  ],
+  "captured_at": "2026-08-17T14:50:19.650895+00:00",
+  "config_hash": "40d0a9717b34573fa4d1f5b0f4af857fa4ceba27c4aece0d430df53833523f2a",
+  "git_sha": "71dd660b0fe073f479eb31fe2c6ca4b18e851bf0",
+  "phases": {
+    "accelerator_check": {
+      "details": {
+        "devices": [
+          "Tesla T4",
+          "Tesla T4"
+        ]
+      },
+      "finished_at": "2026-08-17T14:47:43.238410+00:00",
+      "state": "complete"
+    },
+    "capture_environment": {
+      "details": {
+        "cargo": {
+          "command": [
+            "cargo",
+            "--version"
+          ],
+          "exception": "FileNotFoundError(2, 'No such file or directory')"
+        },
+        "command_line": [
+          "/tmp/step1-runtime/actuallybuildingstuff/baby-llm-foundations/step1/python/step1_experiments/runner.py",
+          "--config",
+          "/tmp/step1-runtime/actuallybuildingstuff/baby-llm-foundations/step1/configs/kaggle/t4x2_transfer_forgetting.toml",
+          "--output-root",
+          "/kaggle/working/step1-results",
+          "--resume",
+          "auto"
+        ],
+        "compiler": {
+          "command": [
+            "cc",
+            "--version"
+          ],
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "cc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+        },
+        "cpu_count_logical": 4,
+        "disk": {
+          "free": 20940500992,
+          "total": 20957446144
+        },
+        "environment": {
+          "CUDA_HOME": "/usr/local/cuda",
+          "CUDA_VERSION": "12.8.1",
+          "KAGGLE_CONTAINER_NAME": "kaggle_k56bUNPBfVCUaXEOEN9E9Nc1hh6TgDLFpm73dOa4-343020261-webtier",
+          "KAGGLE_DATA_PROXY_PROJECT": "kaggle-161607",
+          "KAGGLE_DATA_PROXY_URL": "https://dp.kaggle.net",
+          "KAGGLE_DOCKER_IMAGE": "gcr.io/kaggle-gpu-images/python@sha256:37c64f7dd9c54116ecd1bcc88817c5469b88387388fade02bfa8bf3fc647d461",
+          "KAGGLE_GCP_ZONE": "us-central1-b",
+          "KAGGLE_GRPC_DATA_PROXY_URL": "dp.kaggle.net:443",
+          "KAGGLE_KERNEL_INTEGRATIONS": "",
+          "KAGGLE_KERNEL_RUN_TYPE": "Batch",
+          "KAGGLE_URL_BASE": "https://api.kaggle.com",
+          "NCCL_VERSION": "2.25.1-1"
+        },
+        "git_sha": "71dd660b0fe073f479eb31fe2c6ca4b18e851bf0",
+        "git_status_porcelain": "",
+        "nvidia_smi": {
+          "command": [
+            "nvidia-smi"
+          ],
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "Mon Aug 17 14:47:42 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 580.159.04             Driver Version: 580.159.04     CUDA Version: 13.0     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  Tesla T4                       Off |   00000000:00:04.0 Off |                    0 |\n| N/A   51C    P8             10W /   70W |       3MiB /  15360MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n|   1  Tesla T4                       Off |   00000000:00:05.0 Off |                    0 |\n| N/A   52C    P8             12W /   70W |       3MiB /  15360MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|  No running processes found                                                             |\n+-----------------------------------------------------------------------------------------+\n"
+        },
+        "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+        "python": "3.12.13 (main, Mar  4 2026, 09:23:07) [GCC 11.4.0]",
+        "resolved_config": {
+          "_meta": {
+            "config_path": "/tmp/step1-runtime/actuallybuildingstuff/baby-llm-foundations/step1/configs/kaggle/t4x2_transfer_forgetting.toml",
+            "hash": "40d0a9717b34573fa4d1f5b0f4af857fa4ceba27c4aece0d430df53833523f2a",
+            "source_git_sha": "71dd660b0fe073f479eb31fe2c6ca4b18e851bf0",
+            "tokenizer_hash": "7ff210fae4c0cd4cff12d7d1028350142abc4b6a9380fa26bc1be93d8168bd92"
+          },
+          "decoding": [
+            {
+              "name": "greedy",
+              "repeats": 1,
+              "temperature": 0.0
+            }
+          ],
+          "evaluation": {
+            "episodes": 1024
+          },
+          "models": [
+            {
+              "arm": "a_trained",
+              "budget_updates": 92,
+              "kind": "transfer",
+              "name": "a_trained_b92",
+              "source_git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+            },
+            {
+              "arm": "a_trained",
+              "budget_updates": 306,
+              "kind": "transfer",
+              "name": "a_trained_b306",
+              "source_git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+            },
+            {
+              "arm": "a_trained",
+              "budget_updates": 916,
+              "kind": "transfer",
+              "name": "a_trained_b916",
+              "source_git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+            },
+            {
+              "arm": "a_trained",
+              "budget_updates": 3052,
+              "kind": "transfer",
+              "name": "a_trained_b3052_converged",
+              "source_git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+            },
+            {
+              "arm": "init",
+              "budget_updates": 3052,
+              "kind": "transfer",
+              "name": "init_b3052_a_naive",
+              "source_git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+            }
+          ],
+          "run": {
+            "mode": "decoding_diagnostic",
+            "name": "t4x2-transfer-forgetting",
+            "root_seed": 20260811
+          },
+          "world": {
+            "budget_slack": 1,
+            "context_length": 2048,
+            "cost_hi": 3,
+            "cost_lo": 1,
+            "min_depth": 2,
+            "n_evidence": 2,
+            "n_hyp": 6,
+            "n_probe": 5,
+            "rendering": "a",
+            "step_slack": 2,
+            "structural_episodes": 1024,
+            "train_episodes": 32768,
+            "transfer_episodes": 1024,
+            "validation_episodes": 1024,
+            "variant": "irreversible"
+          }
+        },
+        "torch": {
+          "cuda": "12.8",
+          "cudnn": 91002,
+          "devices": [
+            {
+              "capability": [
+                7,
+                5
+              ],
+              "index": 0,
+              "name": "Tesla T4",
+              "vram_bytes": 15636037632
+            },
+            {
+              "capability": [
+                7,
+                5
+              ],
+              "index": 1,
+              "name": "Tesla T4",
+              "vram_bytes": 15636037632
+            }
+          ],
+          "version": "2.10.0+cu128"
+        }
+      },
+      "finished_at": "2026-08-17T14:47:43.231705+00:00",
+      "state": "complete"
+    },
+    "correctness_tests": {
+      "details": {},
+      "finished_at": "2026-08-17T14:49:31.151308+00:00",
+      "state": "complete"
+    },
+    "evaluate": {
+      "details": {
+        "greedy_reference": {
+          "a_trained_b3052_converged": 0.0,
+          "a_trained_b306": 0.0,
+          "a_trained_b916": 0.0,
+          "a_trained_b92": 0.0,
+          "init_b3052_a_naive": 0.0
+        },
+        "report": "/kaggle/working/step1-results/t4x2-transfer-forgetting-71dd660b0fe0-40d0a9717b34/decoding_diagnostic_report.json"
+      },
+      "finished_at": "2026-08-17T14:50:19.635479+00:00",
+      "state": "complete"
+    },
+    "install_and_build": {
+      "details": {},
+      "finished_at": "2026-08-17T14:48:38.360053+00:00",
+      "state": "complete"
+    },
+    "package_results": {
+      "details": {
+        "success": true
+      },
+      "finished_at": "2026-08-17T14:50:19.643156+00:00",
+      "state": "complete"
+    }
+  },
+  "run_id": "t4x2-transfer-forgetting-71dd660b0fe0-40d0a9717b34",
+  "success": true
+}
