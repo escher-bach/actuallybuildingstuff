@@ -1,0 +1,73 @@
+[run]
+name = "t4x2-lc-warm-lr2e5-seed0"
+root_seed = 20260811
+mode = "learner_conditioned"
+# THEORY-PHASE.md Â§8's P1, with the on-policy half of P3 measured in the same
+# run. The dense arm cloned a demonstrator whose probe *selection* is chosen
+# with `inst.truth` in hand; step1/audit/world/ measures it identifying in 2.07
+# probes where a truth-blind learner must search for a set that works. This arm
+# adds supervision at the states the learner itself reaches, which is where a
+# recovery from a badly spent budget could be demonstrated at all.
+#
+# What each outcome means, declared before launch:
+#   - premature commitment falls and legal-conditioned success rises -> P1 holds
+#     and teacher/learner state mismatch is a real part of the band;
+#   - probe distribution and legal-conditioned success both unmoved -> P1 fails
+#     as stated, and the mismatch is not the main explanation;
+#   - protocol failure falls while decisions do not -> the same interface-only
+#     movement the outcome-only arms produced, reached supervised.
+# Teacher-forced NLL is not expected to improve and is not evidence either way.
+arm = "learner_conditioned_from_dense"
+
+# Cloud-to-cloud: the dense checkpoint is attached from its own Kaggle output
+# and never routed through the operator's device. Re-verified inside the run.
+[source]
+run_name = "t4x2-dense-seed0"
+git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+config_hash = "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14"
+model_state_sha256 = "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e"
+
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+rendering = "a"
+context_length = 2048
+train_episodes = 32768
+validation_episodes = 1024
+structural_episodes = 1024
+transfer_episodes = 1024
+
+[collection]
+train_seed_offset = 5000000
+rounds = 4
+episodes_per_round = 2048
+max_turns = 8
+max_action_tokens = 96
+max_consecutive_failures = 4
+temperature = 0.0
+recovery_probe_episodes = 256
+
+[training]
+per_device_sequences = 4
+gradient_accumulation_steps = 2
+updates_per_round = 128
+# 2e-5, corrected after the 1e-4 run. RLVR-STAGE-REPORT.md §4.5 had already
+# established 1e-4 as destructive on this exact checkpoint -- NLL 0.0853 ->
+# 0.1481, success 41.1% -> 31.8% -- and the first learner-conditioned attempt
+# reproduced that displacement almost exactly (0.0853 -> 0.1445 after one round)
+# before any conclusion about state distribution could be read. 2e-5 is the
+# largest step this project has evidence for as non-destructive here.
+learning_rate = 0.00002
+warmup_fraction = 0.02
+weight_decay = 0.1
+lr_scheduler_type = "constant_with_warmup"
+
+[evaluation]
+milestone_episodes = 512

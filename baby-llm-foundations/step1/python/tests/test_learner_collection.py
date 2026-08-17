@@ -185,6 +185,45 @@ class TransitionCases(unittest.TestCase):
             )
 
 
+class TeacherConditionedControl(unittest.TestCase):
+    """The control must exercise the same pipeline and reach teacher states.
+
+    Its whole value is that it differs from the arm in one thing only. If it
+    quietly took a different code path, a null from it would prove nothing.
+    """
+
+    def _collect(self, policy: str, model):
+        return collect_tranche(model, _world(), [SEED, SEED + 1, SEED + 2], "a",
+                               _settings(max_turns=12, max_consecutive_failures=2, policy=policy),
+                               torch.device("cpu"))
+
+    def test_the_teacher_policy_plays_legally_and_terminates(self) -> None:
+        # A stub that would fail every attempt: under the teacher policy it must
+        # never be consulted, so the episodes still finish cleanly.
+        _examples, traces, counters = self._collect("teacher", StubPolicy([MALFORMED_ATTEMPT]))
+        self.assertEqual(counters.malformed_attempts, 0)
+        self.assertEqual(counters.invalid_attempts, 0)
+        self.assertEqual(counters.episodes_terminated, 3)
+        self.assertTrue(all(trace.end_reason == "terminated" for trace in traces))
+
+    def test_the_teacher_never_triggers_the_unlicensed_commit_refusal(self) -> None:
+        """It only commits from states where the history pins the answer down."""
+        _examples, _traces, counters = self._collect("teacher", StubPolicy([MALFORMED_ATTEMPT]))
+        self.assertEqual(counters.states_refused_unlicensed_commit, 0)
+
+    def test_it_produces_the_same_shape_of_example_as_the_arm(self) -> None:
+        examples, _traces, counters = self._collect("teacher", StubPolicy([MALFORMED_ATTEMPT]))
+        assert_collection_contract(examples, counters)
+
+    def test_an_unknown_policy_is_rejected_rather_than_silently_defaulting(self) -> None:
+        with self.assertRaisesRegex(ValueError, "must be 'learner' or 'teacher'"):
+            CollectionSettings.from_config({
+                "world": {"context_length": 2048},
+                "collection": {"max_turns": 4, "max_action_tokens": 32,
+                               "max_consecutive_failures": 2, "policy": "oracle"},
+            })
+
+
 class DecoderAgreement(unittest.TestCase):
     """Collection must visit the states the frozen evaluator visits.
 

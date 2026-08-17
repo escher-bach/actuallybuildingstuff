@@ -92,6 +92,13 @@ class CollectionSettings:
     max_consecutive_failures: int
     context_length: int
     temperature: float = 0.0
+    # "learner" is the arm; "teacher" is its control. Under "teacher" the world
+    # advances on the teacher's own action instead of the model's, so the states
+    # visited are teacher states while the packing, the masking, the seeds, the
+    # optimizer, and the step size stay bit-identical. It is the only way to tell
+    # a result about the state distribution apart from an artefact of this
+    # pipeline, and it must never be the default.
+    policy: str = "learner"
 
     @staticmethod
     def from_config(config: dict) -> "CollectionSettings":
@@ -102,7 +109,10 @@ class CollectionSettings:
             max_consecutive_failures=collection["max_consecutive_failures"],
             context_length=config["world"]["context_length"],
             temperature=collection.get("temperature", 0.0),
+            policy=collection.get("policy", "learner"),
         )
+        if settings.policy not in ("learner", "teacher"):
+            raise ValueError(f"collection.policy must be 'learner' or 'teacher', got {settings.policy!r}")
         if settings.max_turns < 1 or settings.max_action_tokens < 1:
             raise ValueError("collection needs at least one turn and one action token")
         if settings.max_consecutive_failures < 1:
@@ -206,10 +216,13 @@ def _supervised_example(context: list[int], correction: str) -> Sequence:
 @torch.no_grad()
 def collect_tranche(model, params: dict, seeds: list[int], rendering: str,
                     settings: CollectionSettings, device) -> tuple[list[Sequence], list[EpisodeTrace], CollectionCounters]:
-    """Play `seeds` under the current policy and label every state it reaches."""
+    """Play `seeds` under the declared policy and label every state it reaches."""
     from world_py import Batch, render_action
 
     from .data import _family
+
+    if settings.policy not in ("learner", "teacher"):
+        raise ValueError(f"unknown collection policy {settings.policy!r}")
 
     n_probe = params["n_probe"]
     counters = CollectionCounters()
@@ -262,7 +275,20 @@ def collect_tranche(model, params: dict, seeds: list[int], rendering: str,
             counters.supervised_correction_tokens += sum(example.loss)
             traces[index].supervised_states += 1
 
-        attempts = _decode_actions(model, contexts, settings, device)
+        if settings.policy == "teacher":
+            # The control: the world advances on the teacher's own action, so
+            # the next state is a teacher state. Everything downstream -- the
+            # packing, the mask, the counters, the contract -- is untouched.
+            attempts = []
+            for index in active:
+                action = _teacher_target(worlds[index].privileged_teacher_targets()[0], n_probe)
+                if action is None:
+                    attempts.append((encode_bytes(MALFORMED_ATTEMPT) + [END_TURN], MALFORMED_ATTEMPT))
+                    continue
+                text = render_action(action, n_probe, params["n_hyp"], rendering)
+                attempts.append((encode_bytes(text) + [END_TURN], text))
+        else:
+            attempts = _decode_actions(model, contexts, settings, device)
         still_live = []
         for index, context, (tokens, text) in zip(active, contexts, attempts):
             counters.turns += 1
