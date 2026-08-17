@@ -1,0 +1,69 @@
+[run]
+name = "t4x2-lc-cold-seed0"
+root_seed = 20260811
+mode = "learner_conditioned"
+# STEP-1 §6 row 3 from a weight-naive start. The paired question to the cold
+# RLVR null: outcome-only verification supplied exactly zero gradient because
+# every rollout was unparseable, but a dense teacher labels the state a
+# malformed attempt leaves unchanged, so this arm has a gradient from its first
+# update whatever the policy emits.
+#
+# What each outcome means, declared before launch:
+#   - interface crossed, decisions follow  -> learner-state supervision is
+#     sufficient to bootstrap from nothing, and the cold RLVR null is about the
+#     signal, not the start;
+#   - interface crossed, decisions do not  -> the same split the warm RLVR arms
+#     found, reached by a different route;
+#   - interface not crossed               -> supervision at self-generated
+#     states is not enough either, and the byte action grammar is the binding
+#     constraint at initialization.
+arm = "learner_conditioned_from_initialization"
+
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+rendering = "a"
+context_length = 2048
+train_episodes = 32768
+validation_episodes = 1024
+structural_episodes = 1024
+transfer_episodes = 1024
+
+[collection]
+# Disjoint from every seed block already in use: training shards start at the
+# root seed, validation at +1e6, structural at +2e6, transfer at +3e6, and the
+# RLVR rollout stream at +4e6.
+train_seed_offset = 5000000
+rounds = 4
+episodes_per_round = 2048
+# A policy that never emits END_TURN would otherwise generate its full
+# allowance every turn; these bounds keep an unproductive round finite.
+max_turns = 8
+max_action_tokens = 96
+max_consecutive_failures = 4
+# Greedy, so the states supervised are the states the frozen evaluator visits
+# and the whole tranche is replayable from the plan.
+temperature = 0.0
+recovery_probe_episodes = 256
+
+[training]
+# 4 x 2 x 2 = 16 sequences per update, matching the dense arm's update shape.
+per_device_sequences = 4
+gradient_accumulation_steps = 2
+updates_per_round = 128
+# The dense arm's own rate: this arm also starts from random weights, so it gets
+# the recipe that is known to move them.
+learning_rate = 0.0006
+warmup_fraction = 0.02
+weight_decay = 0.1
+lr_scheduler_type = "constant_with_warmup"
+
+[evaluation]
+milestone_episodes = 512

@@ -169,6 +169,32 @@ def _rlvr_report(artifacts: RunArtifacts) -> dict:
     }
 
 
+def _learner_conditioned(config: dict, artifacts: RunArtifacts) -> dict:
+    """Launch the learner-conditioned stage; it owns its own evaluation."""
+    resolved = _save_resolved(config, artifacts)
+    args = ["torchrun", "--standalone", "--nproc_per_node=2", "-m", "step1_experiments.learner_conditioned",
+            "--resolved-config", str(resolved), "--run-dir", str(artifacts.run_dir)]
+    _run_checked(args, artifacts.run_dir / "logs" / "learner_conditioned.log", _repo_root() / "step1" / "python", 24 * 3600)
+    return {"log": str(artifacts.run_dir / "logs" / "learner_conditioned.log")}
+
+
+def _learner_conditioned_report(artifacts: RunArtifacts) -> dict:
+    """Promote the stage report into the collected analysis payload."""
+    path = artifacts.run_dir / "learner_conditioned_report.json"
+    if not path.is_file():
+        raise RuntimeError("learner-conditioned stage finished without learner_conditioned_report.json")
+    report = json.loads(path.read_text())
+    shutil.copyfile(path, artifacts.run_dir / "analysis" / "result-report.json")
+    budget = report["budget_accounting"]
+    return {
+        "report": str(path),
+        "contract": report["contract"],
+        "collection_episodes": budget["collection_episodes"],
+        "states_supervised": budget["states_supervised"],
+        "states_refused_unlicensed_commit": budget["states_refused_unlicensed_commit"],
+    }
+
+
 def _torchrun(config_path: Path, artifacts: RunArtifacts, preflight: bool, resume: bool = False) -> None:
     args = ["torchrun", "--standalone", "--nproc_per_node=2", "-m", "step1_experiments.train", "--resolved-config", str(config_path), "--run-dir", str(artifacts.run_dir)]
     if preflight: args.append("--preflight-only")
@@ -201,7 +227,7 @@ def run(config_path: Path, output_root: Path, resume: str) -> None:
                 artifacts.phase_failed(name, error); raise
             artifacts.finish(name, details if isinstance(details, dict) else {})
         phase("capture_environment", lambda: capture(artifacts.run_dir / "environment" / "environment.json", repo, config, sys.argv))
-        if config["run"]["mode"] in ("rlvr", "decoding_diagnostic"):
+        if config["run"]["mode"] in ("rlvr", "decoding_diagnostic", "learner_conditioned"):
             # The requested accelerator is not evidence.  Fail in seconds on a
             # mis-provisioned session rather than after the Rust build.
             phase("accelerator_check", _accelerator_check)
@@ -218,6 +244,15 @@ def run(config_path: Path, output_root: Path, resume: str) -> None:
             # offline data phases below.
             phase("train", lambda: _rlvr(config, artifacts))
             phase("evaluate", lambda: _rlvr_report(artifacts))
+            success = True
+            return
+        if config["run"]["mode"] == "learner_conditioned":
+            # Same reasoning as RLVR: the supervised examples are produced by
+            # the policy inside the run, so there is no offline shard to build
+            # or benchmark.  The stage generates the one teacher shard its
+            # teacher-forced diagnostic needs.
+            phase("train", lambda: _learner_conditioned(config, artifacts))
+            phase("evaluate", lambda: _learner_conditioned_report(artifacts))
             success = True
             return
         def cpu_gate():

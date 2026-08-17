@@ -74,6 +74,30 @@ git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
 config_hash = "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14"
 model_state_sha256 = "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e"
 
+[experiments.lc-smoke]
+title = "Step 1 learner-conditioned smoke"
+slug_prefix = "step1-lc-smoke"
+config = "step1/configs/kaggle/t4x2_learner_conditioned_smoke.toml"
+purpose = "plumbing gate for the learner-conditioned stage; two ranks, two updates, not a scientific result"
+
+[experiments.lc-cold-seed0]
+title = "Step 1 learner-conditioned cold seed 0"
+slug_prefix = "step1-lc-cold-seed0"
+config = "step1/configs/kaggle/t4x2_learner_conditioned_cold_seed0.toml"
+purpose = "STEP-1 §6 row 3 from initialization; the supervised counterpart to the cold RLVR null"
+
+[experiments.lc-warm-seed0]
+title = "Step 1 learner-conditioned warm seed 0"
+slug_prefix = "step1-lc-warm-seed0"
+config = "step1/configs/kaggle/t4x2_learner_conditioned_warm_seed0.toml"
+purpose = "THEORY-PHASE §8 P1 and the on-policy half of P3, on the completed dense seed-0 policy"
+kernel_sources = ["aniruddhavarma/step1-t4x2-dense-seed0-84f2938"]
+
+[experiments.lc-warm-seed0.upstream_identity."aniruddhavarma/step1-t4x2-dense-seed0-84f2938"]
+git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+config_hash = "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14"
+model_state_sha256 = "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e"
+
 [experiments.decoding-diagnostic]
 title = "Step 1 decoding diagnostic"
 slug_prefix = "step1-decoding-diagnostic"

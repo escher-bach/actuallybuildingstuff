@@ -1,0 +1,49 @@
+[run]
+name = "t4x2-lc-smoke"
+root_seed = 20260811
+mode = "learner_conditioned"
+# Plumbing gate only, and deliberately too small to mean anything: two rounds of
+# four episodes and one update each. It exists to exercise collection, the
+# cross-rank gather, a Trainer per round, the milestone artifacts, the recovery
+# probe, and the report contract before a real arm is submitted. It is runnable
+# on two CPU ranks, which is how it is checked before it reaches Kaggle.
+arm = "learner_conditioned_from_initialization"
+
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+rendering = "a"
+context_length = 2048
+train_episodes = 32
+validation_episodes = 4
+structural_episodes = 4
+transfer_episodes = 4
+
+[collection]
+train_seed_offset = 5000000
+rounds = 2
+episodes_per_round = 4
+max_turns = 3
+max_action_tokens = 32
+max_consecutive_failures = 2
+temperature = 0.0
+recovery_probe_episodes = 2
+
+[training]
+per_device_sequences = 1
+gradient_accumulation_steps = 1
+updates_per_round = 1
+learning_rate = 0.0006
+warmup_fraction = 0.0
+weight_decay = 0.1
+lr_scheduler_type = "constant_with_warmup"
+
+[evaluation]
+milestone_episodes = 2

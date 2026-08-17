@@ -144,13 +144,23 @@ def _matched_sets(config: dict) -> dict[str, tuple[dict, int, int, str, dict]]:
 
 
 @torch.no_grad()
-def _execute_batched(model, params: dict, seed: int, count: int, rendering: str, device: torch.device, temperature: float = 0.0) -> list[dict]:
-    """Execute independent worlds with batched generation and row-local stops."""
+def _execute_batched(model, params: dict, seed: int, count: int, rendering: str, device: torch.device, temperature: float = 0.0, instrument: bool = False) -> list[dict]:
+    """Execute independent worlds with batched generation and row-local stops.
+
+    ``instrument`` adds privileged *row* fields — how many probes the episode
+    bought, and what the evidence licensed at the moment it committed.  It adds
+    no metric and changes no existing one: `_aggregate_rows` ignores the extra
+    keys, so every retained comparison is unaffected.  It is off by default
+    because it costs two extra world calls per step, and only the
+    learner-conditioned stage reads it.
+    """
     from world_py import Batch
 
     worlds = [Batch(_family(params), seed=seed + index, n_episodes=1) for index in range(count)]
     prefixes = [[BOS] for _ in worlds]
     malformed, invalid, steps = [0] * count, [0] * count, [0] * count
+    probes = [0] * count
+    commitment: list[dict | None] = [None] * count
     active = set(range(count))
     limit = params["step_slack"] + params["n_probe"] + params["n_hyp"] + 4
     while active:
@@ -166,6 +176,11 @@ def _execute_batched(model, params: dict, seed: int, count: int, rendering: str,
                 malformed[index] += 1
                 active.remove(index)
                 continue
+            # Read the privileged state *before* the action is applied: what
+            # the evidence licensed at the moment of choosing is the quantity,
+            # not what it licenses afterwards.
+            licensed = worlds[index].privileged_teacher_targets()[0]["licenses_commitment"] if instrument else None
+            live_hypotheses = worlds[index].privileged_consistent_counts()[0] if instrument else None
             record = worlds[index].step_attempts([text], rendering)[0]
             status = _attempt_status(record)
             if status == "malformed":
@@ -176,6 +191,11 @@ def _execute_batched(model, params: dict, seed: int, count: int, rendering: str,
                 invalid[index] += 1
                 active.remove(index)
                 continue
+            if instrument:
+                if record["parsed_action"] < params["n_probe"]:
+                    probes[index] += 1
+                else:
+                    commitment[index] = {"licensed": bool(licensed), "live_hypotheses": int(live_hypotheses)}
             prefixes[index] += encode_bytes(text) + [END_TURN]
             steps[index] += 1
             if worlds[index].done()[0] or steps[index] >= limit:
@@ -183,14 +203,22 @@ def _execute_batched(model, params: dict, seed: int, count: int, rendering: str,
     rows = []
     for index, world in enumerate(worlds):
         terminated, correct, spent, *_ = world.privileged_outcomes()[0]
-        rows.append({
+        row = {
             "success": bool(terminated and correct and not malformed[index] and not invalid[index]),
             "spent": int(spent),
             "malformed": malformed[index],
             "invalid": invalid[index],
             "steps": steps[index],
             "teacher_spent": _teacher_cost(params, seed + index),
-        })
+        }
+        if instrument:
+            row.update({
+                "probes": probes[index],
+                "committed": commitment[index] is not None,
+                "licensed_at_commitment": commitment[index]["licensed"] if commitment[index] else None,
+                "live_hypotheses_at_commitment": commitment[index]["live_hypotheses"] if commitment[index] else None,
+            })
+        rows.append(row)
     return rows
 
 
