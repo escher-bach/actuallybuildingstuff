@@ -28,6 +28,16 @@ from .train import _state_dict_sha256
 DECODING_CONTRACT = "step1_decoding_diagnostic_v1"
 
 
+def _lookup(report: dict, field: str):
+    """Read a possibly dotted field, so nested identity can be matched."""
+    value = report
+    for part in field.split("."):
+        if not isinstance(value, dict):
+            return None
+        value = value.get(part)
+    return value
+
+
 def locate_run(roots: list[Path], report_name: str, expected: dict) -> Path:
     """Find an attached run *root* by the identity its own report carries.
 
@@ -44,7 +54,7 @@ def locate_run(roots: list[Path], report_name: str, expected: dict) -> Path:
                 report = json.loads(path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
                 continue
-            if all(report.get(field) == value for field, value in expected.items()):
+            if all(_lookup(report, field) == value for field, value in expected.items()):
                 matches.append(path.parents[depth - 1].resolve())
     unique = sorted(set(matches))
     if len(unique) != 1:
@@ -70,6 +80,16 @@ def resolve_checkpoints(config: dict, roots: list[Path]) -> list[dict]:
             })
             report = json.loads((run / "rlvr_report.json").read_text())
             artifact = run / report["plan"]["arm"] / "checkpoints" / f"checkpoint-{entry['checkpoint_updates']}"
+        elif entry["kind"] == "transfer":
+            # A terminal-transfer endpoint: an arm trained to a declared budget
+            # on Rendering B, starting either from the dense A model or from the
+            # same random initialization.
+            run = locate_run(roots, "rendering_b_terminal_transfer_report.json", {
+                "contract": "step1_rendering_b_terminal_transfer_v1",
+                "source.git_sha": entry["source_git_sha"],
+            })
+            budget = entry["budget_updates"]
+            artifact = run / entry["arm"] / f"budget-{budget}" / "checkpoints" / f"checkpoint-{budget}"
         else:
             raise ValueError(f"unknown model kind {entry['kind']!r}")
         if not (artifact / "config.json").is_file():

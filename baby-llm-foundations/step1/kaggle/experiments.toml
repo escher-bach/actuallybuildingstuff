@@ -89,3 +89,10 @@ title = "Step 1 dense target-shuffled control"
 slug_prefix = "step1-dense-shuffled-seed0"
 config = "step1/configs/kaggle/t4x2_dense_shuffled_seed0.toml"
 purpose = "STEP-1 section 11 control: dense recipe with the state-to-action correspondence destroyed"
+
+[experiments.transfer-forgetting]
+title = "Step 1 transfer forgetting"
+slug_prefix = "step1-transfer-forgetting"
+config = "step1/configs/kaggle/t4x2_transfer_forgetting.toml"
+purpose = "scores the seed-0 Rendering B terminal endpoints back on Rendering A; trains nothing"
+kernel_sources = ["aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9"]
