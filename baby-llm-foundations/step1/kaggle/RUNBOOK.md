@@ -51,15 +51,72 @@ copied into the audit directory.
 ## 3. Adding an experiment
 
 Add a block to `experiments.toml` and a config under `step1/configs/kaggle/`.
-If the run consumes an upstream Kaggle output, declare it twice — as
-`kernel_sources` for Kaggle to mount, and as `upstream_identity` for the
-project to verify — and put the same hashes in the config's `[source]` table.
-A contract test asserts those agree and are full-length; it exists because a
-hand-transcribed hash was once two characters short and would have failed
-inside the session, after a submission.
+The config's `[run] mode` selects what the runner does:
+
+| mode | phases | writes |
+|---|---|---|
+| `preflight` | environment, build, tests, throughput, shards, two-T4 plumbing check | `diagnostic-preflight/preflight_report.json` |
+| `dense` | the above plus Trainer training and the matched evaluation | `production/training_report.json`, `evaluation/metrics.json` |
+| `rlvr` | accelerator check, build, tests, GRPO rollout training, milestone evaluation | `rlvr_report.json` |
+| `decoding_diagnostic` | accelerator check, build, tests, scoring only | `decoding_diagnostic_report.json` |
 
 Never edit a slug that has published an artifact. The slug embeds the commit,
 so a new commit gets a new slug automatically.
+
+### 3.1 Recipe: score checkpoints that already exist
+
+The cheapest and most reused shape — four of the last six runs. It trains
+nothing, needs no new data, and finishes in a fraction of a training run.
+
+Set `mode = "decoding_diagnostic"` and list `[[models]]`, each naming a
+checkpoint by the identity its own report carries rather than by path:
+
+| `kind` | located by | resolves to |
+|---|---|---|
+| `dense` | `production/training_report.json` matching `git_sha` + `config_hash` | `production/model` |
+| `rlvr` | `rlvr_report.json` matching `experiment_config_sha256` | that arm's `checkpoints/checkpoint-<N>` |
+| `transfer` | `rendering_b_terminal_transfer_report.json` matching `source.git_sha` | `<arm>/budget-<N>/checkpoints/checkpoint-<N>` |
+
+Identity fields may be dotted (`source.git_sha`). Give each model a
+`model_state_sha256` when you know it and the run will refuse a checkpoint that
+is not the one you meant.
+
+Two switches control cost. `[evaluation] closed_loop` runs the greedy or
+sampled rollout evaluation; turn it off when those numbers already exist.
+`[evaluation] teacher_forced_nll` adds a graded score against a freshly
+generated teacher shard on the evaluated rendering's own validation seeds —
+use it whenever closed-loop success might read zero for everyone, because a
+model that emits no parseable action tells you nothing about what it knows.
+
+`[[decoding]]` entries set `temperature` (0.0 is the frozen greedy evaluator)
+and `repeats`, so a sampled rule can be run under several seeds and separated
+from sampling noise.
+
+### 3.2 Recipe: a control that isolates one variable
+
+Copy the arm you are controlling against and change exactly one field, then
+add a test asserting that only that field differs. Both existing examples do
+this: `t4x2_rlvr_klanchor_seed0` differs from the unanchored arm only in
+`beta`, and `t4x2_dense_shuffled_seed0` differs from the dense arm only in
+`train_target_policy`. The tests live in `tests/test_kaggle_control_plane.py`
+and `tests/test_contracts.py`.
+
+Declare what each outcome would mean *before* launching, in the config's own
+comments. Two controls in this project landed within a point of their
+predeclared values, which is only meaningful because the prediction was
+written down first.
+
+### 3.3 Recipe: consuming an upstream run
+
+If the run needs a previous run's checkpoints, declare the source twice — as
+`kernel_sources` so Kaggle mounts it under `/kaggle/input`, and as
+`upstream_identity` so the project can verify it — and put the same hashes in
+the config's own `[source]` table. A contract test asserts those agree and are
+full-length; it exists because a hand-transcribed hash was once two characters
+short and would have failed inside the session, after a submission.
+
+Checkpoints never travel through the operator's device. The mount is
+read-only, and the run verifies the state hash before using anything.
 
 ## 4. Platform behaviours worth knowing
 
@@ -120,8 +177,15 @@ On T4 ×2, for planning a session:
 | `cargo test --workspace` plus the Python suite | ~3 min |
 | RLVR training, 12,224 rollout episodes | ~17 min |
 | RLVR training, 48,896 rollout episodes | ~68 min |
+| dense training, 3,052 updates / 100M tokens | ~10 min |
 | milestone evaluation, 512 episodes | ~2 min |
 | final matched evaluation, 4 × 1,024 episodes | ~8 min |
+| closed-loop scoring, one model on 1,024 episodes | ~2 min |
+| teacher-forced NLL, one model on 1,024 episodes | well under a minute |
+
+End to end, including the ~13 minutes of build and tests every run pays: a
+full dense run is about 25 minutes, an RLVR arm 25–90 minutes depending on
+episode budget, and a scoring-only diagnostic 15–25 minutes.
 
 ## 7. Failure triage
 
