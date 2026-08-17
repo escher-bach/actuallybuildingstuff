@@ -595,6 +595,39 @@ mod tests {
         }
     }
 
+    /// The opening state rules nothing out, so the information bound on
+    /// probe count applies to every episode rather than to some of them.
+    ///
+    /// This is load-bearing outside the crate: it is the assumption behind
+    /// reading a probe count as under- or over-probing at all. The second
+    /// half keeps the first from being vacuous -- a family whose probes
+    /// never separated anything would satisfy "all live at reset" and make
+    /// the measurement meaningless.
+    #[test]
+    fn nothing_is_ruled_out_before_the_first_probe() {
+        let mut any_probe_separated = false;
+        for inst in sample_n(&small_params(Variant::Irreversible), 23, 32) {
+            let mut st = reset(&inst);
+            assert_eq!(
+                consistent(&inst, &st).count_ones(),
+                u32::from(inst.n_hyp),
+                "the opening observation carries no evidence, so every hypothesis must be live"
+            );
+            for q in 0..inst.n_probe {
+                if inst.probe_cost[q as usize] > inst.budget - st.spent {
+                    continue;
+                }
+                let before = consistent(&inst, &st).count_ones();
+                step(&inst, &mut st, Action::Inspect(q)).unwrap();
+                any_probe_separated |= consistent(&inst, &st).count_ones() < before;
+            }
+        }
+        assert!(
+            any_probe_separated,
+            "no probe ever shrank the consistent set; the reset invariant above would be vacuous"
+        );
+    }
+
     #[test]
     fn min_remaining_cost_reaches_zero_once_licensed() {
         let inst = symmetric_instance(Variant::Irreversible);

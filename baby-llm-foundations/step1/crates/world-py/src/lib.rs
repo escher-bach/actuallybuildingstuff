@@ -11,7 +11,7 @@ use std::path::Path;
 use world::data::{generate_dataset_shard, write_dataset_shard, ShardSpec, TokenizerIdentity};
 use world::generate::{sample, FamilyParams};
 use world::render::{parse_action as parse_rendered_action, render_action as render_rendered_action, render_observation, Rendering};
-use world::teacher::{outcome, teach};
+use world::teacher::{consistent, outcome, teach};
 use world::trajectory::{ByteTokenizer, TargetPolicy};
 use world::{reset, step, valid_actions, Action, Instance, State, StepError, Variant};
 
@@ -286,6 +286,21 @@ impl PyBatch {
             result.push(item.into_any().unbind());
         }
         Ok(result)
+    }
+
+    /// PRIVILEGED count of hypotheses still consistent with each episode's
+    /// history (STEP-1 3.6's "the hypotheses consistent with the complete
+    /// history"). `licenses_commitment` is the same quantity thresholded at
+    /// one; the count separates "committed with two live" from "committed
+    /// with six live", which is the resolution the premature-commitment
+    /// measurement needs. Evaluation and audit only: it must never be
+    /// rendered, tokenized, or supervised.
+    fn privileged_consistent_counts(&self) -> Vec<u32> {
+        self.instances
+            .iter()
+            .zip(&self.states)
+            .map(|(instance, state)| consistent(instance, state).count_ones())
+            .collect()
     }
 
     /// PRIVILEGED verifier outcomes for every episode; this is the

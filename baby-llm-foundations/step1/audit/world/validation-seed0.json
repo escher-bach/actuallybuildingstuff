@@ -1,0 +1,91 @@
+{
+  "contract": "step1_world_audit_v1",
+  "evaluation_set": {
+    "episodes": 1024,
+    "note": "the validation seeds evaluate._matched_sets scores every arm on",
+    "rendering": "a",
+    "seed": 21260811
+  },
+  "identification_ceiling": {
+    "0": 0.16666666666666666,
+    "1": 0.3333333333333333,
+    "2": 0.6666666666666666,
+    "3": 1.0,
+    "4": 1.0,
+    "5": 1.0
+  },
+  "opening_liveness": {
+    "episodes": 1024,
+    "equals_n_hyp_in_every_episode": true,
+    "histogram": {
+      "6": 1024
+    },
+    "max_live_hypotheses": 6,
+    "mean_live_hypotheses": 6.0,
+    "min_live_hypotheses": 6
+  },
+  "question": "does the opening observation already narrow the field, and what does the demonstrator itself spend? (THEORY-PHASE.md \u00a79 items 1 and 2)",
+  "scientific_acceptance_policy": "measurement only; it trains nothing and gates no run",
+  "teacher_play": {
+    "committed_episodes": 1024,
+    "episodes": 1024,
+    "max_live_hypotheses_at_commitment": 1,
+    "mean_probes": 2.068359375,
+    "mean_spent": 3.515625,
+    "mean_steps": 3.068359375,
+    "never_commits_prematurely": true,
+    "probe_histogram": {
+      "2": 954,
+      "3": 70
+    },
+    "success_rate": 1.0
+  },
+  "teacher_target_leakage": {
+    "commit_proposed_at_unlicensed_state": 147,
+    "commit_was_the_only_preferred_action": 93,
+    "consequence": "a commit target at an unlicensed state is derived from inst.truth and cannot be justified by visible evidence; STEP-1 \u00a75.2 forbids supervising it",
+    "episodes": 256,
+    "leak_rate_among_unlicensed": 0.18797953964194372,
+    "probe_policy": "ascending probe id, truth-blind; a stand-in for a learner spending badly",
+    "teacher_queried_states": 1030,
+    "unlicensed_states": 782
+  },
+  "truth_blind_ceiling": {
+    "bound_direction": "upper bound: no adaptive truth-blind policy can exceed a hindsight-chosen subset",
+    "episodes": 256,
+    "identifiable_rate": 1.0,
+    "search": "exhaustive over probe subsets within budget; scored in hindsight",
+    "success_ceiling": 1.0
+  },
+  "truth_blind_identification": {
+    "bound_direction": "upper bound on probes; one fixed policy, not the truth-blind optimum",
+    "episodes": 1024,
+    "identified_rate": 0.607421875,
+    "mean_probes": 2.640625,
+    "mean_probes_when_identified": 2.5884244372990355,
+    "policy": "ascending probe id, truth-blind, until licensed or no affordable probe remains",
+    "probe_histogram": {
+      "1": 1,
+      "2": 417,
+      "3": 555,
+      "4": 51
+    }
+  },
+  "world": {
+    "budget_slack": 1,
+    "context_length": 2048,
+    "cost_hi": 3,
+    "cost_lo": 1,
+    "min_depth": 2,
+    "n_evidence": 2,
+    "n_hyp": 6,
+    "n_probe": 5,
+    "rendering": "a",
+    "step_slack": 2,
+    "structural_episodes": 1024,
+    "train_episodes": 32768,
+    "transfer_episodes": 1024,
+    "validation_episodes": 1024,
+    "variant": "irreversible"
+  }
+}
