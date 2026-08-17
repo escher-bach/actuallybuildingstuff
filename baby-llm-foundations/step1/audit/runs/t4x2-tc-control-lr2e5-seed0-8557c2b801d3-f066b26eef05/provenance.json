@@ -1,0 +1,221 @@
+{
+  "accelerator_inventory": [
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 0,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    },
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 1,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    }
+  ],
+  "captured_at": "2026-08-17T20:51:49.095453+00:00",
+  "config_hash": "f066b26eef05f118ec77319badbf2145d4ca1d90815325d47a601b38d5307f8e",
+  "git_sha": "8557c2b801d3fe69509ae0c28f1098255be02b62",
+  "phases": {
+    "accelerator_check": {
+      "details": {
+        "devices": [
+          "Tesla T4",
+          "Tesla T4"
+        ]
+      },
+      "finished_at": "2026-08-17T20:41:01.753490+00:00",
+      "state": "complete"
+    },
+    "capture_environment": {
+      "details": {
+        "cargo": {
+          "command": [
+            "cargo",
+            "--version"
+          ],
+          "exception": "FileNotFoundError(2, 'No such file or directory')"
+        },
+        "command_line": [
+          "/tmp/step1-runtime/actuallybuildingstuff/baby-llm-foundations/step1/python/step1_experiments/runner.py",
+          "--config",
+          "/tmp/step1-runtime/actuallybuildingstuff/baby-llm-foundations/step1/configs/kaggle/t4x2_teacher_conditioned_control_lr2e5_seed0.toml",
+          "--output-root",
+          "/kaggle/working/step1-results",
+          "--resume",
+          "auto"
+        ],
+        "compiler": {
+          "command": [
+            "cc",
+            "--version"
+          ],
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "cc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+        },
+        "cpu_count_logical": 4,
+        "disk": {
+          "free": 20940500992,
+          "total": 20957446144
+        },
+        "environment": {
+          "CUDA_HOME": "/usr/local/cuda",
+          "CUDA_VERSION": "12.8.1",
+          "KAGGLE_CONTAINER_NAME": "kaggle_eDaucMpP4PWEx5iR8ux3TWIfw7UFHVryEyJKUICNs-343078577-webtier",
+          "KAGGLE_DATA_PROXY_PROJECT": "kaggle-161607",
+          "KAGGLE_DATA_PROXY_URL": "https://dp.kaggle.net",
+          "KAGGLE_DOCKER_IMAGE": "gcr.io/kaggle-gpu-images/python@sha256:37c64f7dd9c54116ecd1bcc88817c5469b88387388fade02bfa8bf3fc647d461",
+          "KAGGLE_GCP_ZONE": "us-west1-b",
+          "KAGGLE_GRPC_DATA_PROXY_URL": "dp.kaggle.net:443",
+          "KAGGLE_KERNEL_INTEGRATIONS": "",
+          "KAGGLE_KERNEL_RUN_TYPE": "Batch",
+          "KAGGLE_URL_BASE": "https://api.kaggle.com",
+          "NCCL_VERSION": "2.25.1-1"
+        },
+        "git_sha": "8557c2b801d3fe69509ae0c28f1098255be02b62",
+        "git_status_porcelain": "",
+        "nvidia_smi": {
+          "command": [
+            "nvidia-smi"
+          ],
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "Mon Aug 17 20:41:01 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 580.159.04             Driver Version: 580.159.04     CUDA Version: 13.0     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  Tesla T4                       Off |   00000000:00:04.0 Off |                    0 |\n| N/A   58C    P8             11W /   70W |       3MiB /  15360MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n|   1  Tesla T4                       Off |   00000000:00:05.0 Off |                    0 |\n| N/A   57C    P8             11W /   70W |       3MiB /  15360MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|  No running processes found                                                             |\n+-----------------------------------------------------------------------------------------+\n"
+        },
+        "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+        "python": "3.12.13 (main, Mar  4 2026, 09:23:07) [GCC 11.4.0]",
+        "resolved_config": {
+          "_meta": {
+            "config_path": "/tmp/step1-runtime/actuallybuildingstuff/baby-llm-foundations/step1/configs/kaggle/t4x2_teacher_conditioned_control_lr2e5_seed0.toml",
+            "hash": "f066b26eef05f118ec77319badbf2145d4ca1d90815325d47a601b38d5307f8e",
+            "source_git_sha": "8557c2b801d3fe69509ae0c28f1098255be02b62",
+            "tokenizer_hash": "7ff210fae4c0cd4cff12d7d1028350142abc4b6a9380fa26bc1be93d8168bd92"
+          },
+          "collection": {
+            "episodes_per_round": 2048,
+            "max_action_tokens": 96,
+            "max_consecutive_failures": 4,
+            "max_turns": 8,
+            "policy": "teacher",
+            "recovery_probe_episodes": 256,
+            "rounds": 4,
+            "temperature": 0.0,
+            "train_seed_offset": 5000000
+          },
+          "evaluation": {
+            "milestone_episodes": 512
+          },
+          "run": {
+            "arm": "learner_conditioned_from_dense",
+            "mode": "learner_conditioned",
+            "name": "t4x2-tc-control-lr2e5-seed0",
+            "root_seed": 20260811
+          },
+          "source": {
+            "config_hash": "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14",
+            "git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0",
+            "model_state_sha256": "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e",
+            "run_name": "t4x2-dense-seed0"
+          },
+          "training": {
+            "gradient_accumulation_steps": 2,
+            "learning_rate": 2e-05,
+            "lr_scheduler_type": "constant_with_warmup",
+            "per_device_sequences": 4,
+            "updates_per_round": 128,
+            "warmup_fraction": 0.02,
+            "weight_decay": 0.1
+          },
+          "world": {
+            "budget_slack": 1,
+            "context_length": 2048,
+            "cost_hi": 3,
+            "cost_lo": 1,
+            "min_depth": 2,
+            "n_evidence": 2,
+            "n_hyp": 6,
+            "n_probe": 5,
+            "rendering": "a",
+            "step_slack": 2,
+            "structural_episodes": 1024,
+            "train_episodes": 32768,
+            "transfer_episodes": 1024,
+            "validation_episodes": 1024,
+            "variant": "irreversible"
+          }
+        },
+        "torch": {
+          "cuda": "12.8",
+          "cudnn": 91002,
+          "devices": [
+            {
+              "capability": [
+                7,
+                5
+              ],
+              "index": 0,
+              "name": "Tesla T4",
+              "vram_bytes": 15636037632
+            },
+            {
+              "capability": [
+                7,
+                5
+              ],
+              "index": 1,
+              "name": "Tesla T4",
+              "vram_bytes": 15636037632
+            }
+          ],
+          "version": "2.10.0+cu128"
+        }
+      },
+      "finished_at": "2026-08-17T20:41:01.746717+00:00",
+      "state": "complete"
+    },
+    "correctness_tests": {
+      "details": {},
+      "finished_at": "2026-08-17T20:42:50.260123+00:00",
+      "state": "complete"
+    },
+    "evaluate": {
+      "details": {
+        "collection_episodes": 8192,
+        "contract": "step1_learner_conditioned_dagger_v1",
+        "report": "/kaggle/working/step1-results/t4x2-tc-control-lr2e5-seed0-8557c2b801d3-f066b26eef05/learner_conditioned_report.json",
+        "states_refused_unlicensed_commit": 0,
+        "states_supervised": 25192
+      },
+      "finished_at": "2026-08-17T20:51:49.081157+00:00",
+      "state": "complete"
+    },
+    "install_and_build": {
+      "details": {},
+      "finished_at": "2026-08-17T20:41:55.723503+00:00",
+      "state": "complete"
+    },
+    "package_results": {
+      "details": {
+        "success": true
+      },
+      "finished_at": "2026-08-17T20:51:49.088713+00:00",
+      "state": "complete"
+    },
+    "train": {
+      "details": {
+        "log": "/kaggle/working/step1-results/t4x2-tc-control-lr2e5-seed0-8557c2b801d3-f066b26eef05/logs/learner_conditioned.log"
+      },
+      "finished_at": "2026-08-17T20:51:49.072515+00:00",
+      "state": "complete"
+    }
+  },
+  "run_id": "t4x2-tc-control-lr2e5-seed0-8557c2b801d3-f066b26eef05",
+  "success": true
+}

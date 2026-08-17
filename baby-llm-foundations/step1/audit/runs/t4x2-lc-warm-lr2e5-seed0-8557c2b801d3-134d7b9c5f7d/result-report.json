@@ -1,0 +1,579 @@
+{
+  "algorithm": {
+    "collection_decoding": "greedy, identical to the frozen evaluator",
+    "expert": "privileged_dense_teacher",
+    "family": "DAgger",
+    "objective": "supervised_cross_entropy_on_teacher_corrections",
+    "paper": "https://proceedings.mlr.press/v15/ross11a/ross11a.pdf",
+    "policy_gradient": false,
+    "state_distribution": "learner_conditioned",
+    "teacher_in_rollout_context": false,
+    "trainer": "transformers.Trainer",
+    "unlicensed_commit_targets": "refused; a commit the evidence does not license is truth-derived"
+  },
+  "budget_accounting": {
+    "accepted_attempts": 24464,
+    "collection_episodes": 8192,
+    "episodes": 8192,
+    "episodes_abandoned_repeated_failure": 2653,
+    "episodes_exhausted_context": 6,
+    "episodes_exhausted_turns": 11,
+    "episodes_terminated": 5528,
+    "failures_recovered": 467,
+    "failures_unrecovered": 2653,
+    "generated_action_tokens": 604615,
+    "invalid_attempts": 11410,
+    "malformed_attempts": 15,
+    "note": "episodes and updates are matched by declaration; supervised tokens are data dependent and are reported, never used to change an update",
+    "observation_tokens": 8085451,
+    "optimizer_updates": 512,
+    "states_refused_unlicensed_commit": 1835,
+    "states_supervised": 34054,
+    "supervised_correction_tokens": 572704,
+    "turns": 35889,
+    "wall_clock_seconds": 358.014486444,
+    "world_transitions": 24464
+  },
+  "contract": "step1_learner_conditioned_dagger_v1",
+  "control_status": "no matched teacher-conditioned continuation arm was run; budget-0 matches the instrument but not the training, so a change here is not attributed to the state distribution alone",
+  "experiment_config_sha256": "134d7b9c5f7d9cb7b70be5103c943b7b8819586404395d04c14951b1e876e88b",
+  "initialization": {
+    "model_state_sha256": "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e",
+    "parameter_count": 19183616,
+    "policy": "dense_A_checkpoint",
+    "prior_dense_cost": {
+      "checkpoint_interval_nominal_global_input_tokens": 917504,
+      "checkpoint_interval_updates": 28,
+      "checkpoint_total_limit": 6,
+      "context_length": 2048,
+      "gradient_accumulation_steps": 2,
+      "max_steps": 3052,
+      "nominal_global_input_tokens_per_microstep": 16384,
+      "nominal_global_input_tokens_per_update": 32768,
+      "per_device_sequences": 4,
+      "supervised_token_unit": "action-label tokens after the causal shift; variable and reported separately",
+      "token_budget": 100007936,
+      "token_unit": "nominal global input tokens (world_size * per_device_sequences * context_length)",
+      "world_size": 2
+    },
+    "root_seed": 20260811,
+    "source_config_hash": "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14",
+    "source_git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0",
+    "source_run": "/kaggle/input/notebooks/aniruddhavarma/step1-t4x2-dense-seed0-84f2938/step1-results/t4x2-dense-seed0-84f29385ed62-b91eedc26552"
+  },
+  "milestones": [
+    {
+      "artifact": "/kaggle/working/step1-results/t4x2-lc-warm-lr2e5-seed0-8557c2b801d3-134d7b9c5f7d/learner_conditioned_from_dense/budget-0/model",
+      "budget_updates": 0,
+      "collection_episodes": 0,
+      "evaluation": {
+        "validation": {
+          "comparison": {
+            "label": "held_out_in_distribution",
+            "seed_policy": "held_out_seed"
+          },
+          "extended": {
+            "commitment_rate": 0.96875,
+            "mean_live_hypotheses_at_commitment": 2.004032258064516,
+            "mean_probes": 1.96875,
+            "premature_commitment_rate": 0.7298387096774194,
+            "probe_histogram": {
+              "1": 16,
+              "2": 496
+            },
+            "protocol_failure_rate": 0.03125,
+            "success_conditioned_on_legal_play": 0.45161290322580644
+          },
+          "metrics": {
+            "failure_rate": 0.5625,
+            "invalid_action_rate": 0.03125,
+            "malformed_action_rate": 0.0,
+            "mean_spent": 3.87109375,
+            "mean_steps": 2.9375,
+            "mean_success_excess_cost": 0.4330357142857143,
+            "success_rate": 0.4375
+          }
+        }
+      },
+      "recovery_probe": {
+        "attempt_failure_rate": 0.0129366106080207,
+        "attempts": 773,
+        "episodes": 256,
+        "episodes_abandoned_repeated_failure": 2,
+        "failed_attempts": 10,
+        "failures_recovered": 2,
+        "note": "measurement only; these episodes are never trained on",
+        "recovery_rate": 0.5
+      },
+      "serialization": {
+        "actual_state_sha256": "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e",
+        "exact": true,
+        "expected_state_sha256": "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e",
+        "missing_keys": [],
+        "unequal_keys": [],
+        "unexpected_keys": []
+      },
+      "teacher_forced_action_nll": 0.08533151581581937
+    },
+    {
+      "artifact": "/kaggle/working/step1-results/t4x2-lc-warm-lr2e5-seed0-8557c2b801d3-134d7b9c5f7d/learner_conditioned_from_dense/budget-128/model",
+      "budget_updates": 128,
+      "collection_episodes": 2048,
+      "evaluation": {
+        "validation": {
+          "comparison": {
+            "label": "held_out_in_distribution",
+            "seed_policy": "held_out_seed"
+          },
+          "extended": {
+            "commitment_rate": 0.1796875,
+            "mean_live_hypotheses_at_commitment": 1.9456521739130435,
+            "mean_probes": 1.984375,
+            "premature_commitment_rate": 0.6630434782608695,
+            "probe_histogram": {
+              "1": 8,
+              "2": 504
+            },
+            "protocol_failure_rate": 0.8203125,
+            "success_conditioned_on_legal_play": 0.40217391304347827
+          },
+          "metrics": {
+            "failure_rate": 0.927734375,
+            "invalid_action_rate": 0.8203125,
+            "malformed_action_rate": 0.0,
+            "mean_spent": 3.884765625,
+            "mean_steps": 2.1640625,
+            "mean_success_excess_cost": 1.2432432432432432,
+            "success_rate": 0.072265625
+          }
+        }
+      },
+      "recovery_probe": {
+        "attempt_failure_rate": 0.5876436781609196,
+        "attempts": 1392,
+        "episodes": 256,
+        "episodes_abandoned_repeated_failure": 201,
+        "failed_attempts": 818,
+        "failures_recovered": 11,
+        "note": "measurement only; these episodes are never trained on",
+        "recovery_rate": 0.05188679245283019
+      },
+      "serialization": {
+        "actual_state_sha256": "322581d4b5452bd664c8da0f896b2279c7fddb063097e01930105f04e727bdc2",
+        "exact": true,
+        "expected_state_sha256": "322581d4b5452bd664c8da0f896b2279c7fddb063097e01930105f04e727bdc2",
+        "missing_keys": [],
+        "unequal_keys": [],
+        "unexpected_keys": []
+      },
+      "teacher_forced_action_nll": 0.11760668820906149
+    },
+    {
+      "artifact": "/kaggle/working/step1-results/t4x2-lc-warm-lr2e5-seed0-8557c2b801d3-134d7b9c5f7d/learner_conditioned_from_dense/budget-256/model",
+      "budget_updates": 256,
+      "collection_episodes": 4096,
+      "evaluation": {
+        "validation": {
+          "comparison": {
+            "label": "held_out_in_distribution",
+            "seed_policy": "held_out_seed"
+          },
+          "extended": {
+            "commitment_rate": 0.634765625,
+            "mean_live_hypotheses_at_commitment": 1.5107692307692309,
+            "mean_probes": 2.5703125,
+            "premature_commitment_rate": 0.40615384615384614,
+            "probe_histogram": {
+              "1": 15,
+              "2": 190,
+              "3": 307
+            },
+            "protocol_failure_rate": 0.365234375,
+            "success_conditioned_on_legal_play": 0.46153846153846156
+          },
+          "metrics": {
+            "failure_rate": 0.70703125,
+            "invalid_action_rate": 0.365234375,
+            "malformed_action_rate": 0.0,
+            "mean_spent": 4.986328125,
+            "mean_steps": 3.205078125,
+            "mean_success_excess_cost": 1.8533333333333333,
+            "success_rate": 0.29296875
+          }
+        }
+      },
+      "recovery_probe": {
+        "attempt_failure_rate": 0.3303498779495525,
+        "attempts": 1229,
+        "episodes": 256,
+        "episodes_abandoned_repeated_failure": 93,
+        "failed_attempts": 406,
+        "failures_recovered": 14,
+        "note": "measurement only; these episodes are never trained on",
+        "recovery_rate": 0.1308411214953271
+      },
+      "serialization": {
+        "actual_state_sha256": "0e4f460f39523b4d4e31f62fcbe1b9401ae6e2716f79c1decd6f1eec3c9a3575",
+        "exact": true,
+        "expected_state_sha256": "0e4f460f39523b4d4e31f62fcbe1b9401ae6e2716f79c1decd6f1eec3c9a3575",
+        "missing_keys": [],
+        "unequal_keys": [],
+        "unexpected_keys": []
+      },
+      "teacher_forced_action_nll": 0.11833297280403784
+    },
+    {
+      "artifact": "/kaggle/working/step1-results/t4x2-lc-warm-lr2e5-seed0-8557c2b801d3-134d7b9c5f7d/learner_conditioned_from_dense/budget-384/model",
+      "budget_updates": 384,
+      "collection_episodes": 6144,
+      "evaluation": {
+        "validation": {
+          "comparison": {
+            "label": "held_out_in_distribution",
+            "seed_policy": "held_out_seed"
+          },
+          "extended": {
+            "commitment_rate": 0.7578125,
+            "mean_live_hypotheses_at_commitment": 1.4948453608247423,
+            "mean_probes": 2.64453125,
+            "premature_commitment_rate": 0.40463917525773196,
+            "probe_histogram": {
+              "1": 8,
+              "2": 191,
+              "3": 288,
+              "4": 25
+            },
+            "protocol_failure_rate": 0.2421875,
+            "success_conditioned_on_legal_play": 0.4793814432989691
+          },
+          "metrics": {
+            "failure_rate": 0.63671875,
+            "invalid_action_rate": 0.2421875,
+            "malformed_action_rate": 0.0,
+            "mean_spent": 5.111328125,
+            "mean_steps": 3.40234375,
+            "mean_success_excess_cost": 1.9838709677419355,
+            "success_rate": 0.36328125
+          }
+        }
+      },
+      "recovery_probe": {
+        "attempt_failure_rate": 0.19454225352112675,
+        "attempts": 1136,
+        "episodes": 256,
+        "episodes_abandoned_repeated_failure": 44,
+        "failed_attempts": 221,
+        "failures_recovered": 25,
+        "note": "measurement only; these episodes are never trained on",
+        "recovery_rate": 0.36231884057971014
+      },
+      "serialization": {
+        "actual_state_sha256": "7f1ffa1a2b92cf4438a184535c51acaff3737fa2fcf2c4a19462f6fc5dbf22c1",
+        "exact": true,
+        "expected_state_sha256": "7f1ffa1a2b92cf4438a184535c51acaff3737fa2fcf2c4a19462f6fc5dbf22c1",
+        "missing_keys": [],
+        "unequal_keys": [],
+        "unexpected_keys": []
+      },
+      "teacher_forced_action_nll": 0.11423208845662329
+    },
+    {
+      "artifact": "/kaggle/working/step1-results/t4x2-lc-warm-lr2e5-seed0-8557c2b801d3-134d7b9c5f7d/learner_conditioned_from_dense/budget-512/model",
+      "budget_updates": 512,
+      "collection_episodes": 8192,
+      "evaluation": {
+        "rendering_b": {
+          "comparison": {
+            "label": "zero_shot_rendering_transfer",
+            "seed_policy": "matched_to_validation_seed; no_rendering_b_calibration"
+          },
+          "extended": {
+            "commitment_rate": 0.0,
+            "mean_live_hypotheses_at_commitment": null,
+            "mean_probes": 0.0,
+            "premature_commitment_rate": null,
+            "probe_histogram": {
+              "0": 1024
+            },
+            "protocol_failure_rate": 1.0,
+            "success_conditioned_on_legal_play": null
+          },
+          "metrics": {
+            "failure_rate": 1.0,
+            "invalid_action_rate": 0.0,
+            "malformed_action_rate": 1.0,
+            "mean_spent": 0.0,
+            "mean_steps": 0.0,
+            "mean_success_excess_cost": null,
+            "success_rate": 0.0
+          }
+        },
+        "reversible_control": {
+          "comparison": {
+            "label": "matched_seed_variant_control",
+            "seed_policy": "matched_to_validation_seed"
+          },
+          "extended": {
+            "commitment_rate": 0.724609375,
+            "mean_live_hypotheses_at_commitment": 1.5040431266846361,
+            "mean_probes": 2.607421875,
+            "premature_commitment_rate": 0.41778975741239893,
+            "probe_histogram": {
+              "1": 33,
+              "2": 397,
+              "3": 533,
+              "4": 61
+            },
+            "protocol_failure_rate": 0.544921875,
+            "success_conditioned_on_legal_play": 0.2317596566523605
+          },
+          "metrics": {
+            "failure_rate": 0.89453125,
+            "invalid_action_rate": 0.314453125,
+            "malformed_action_rate": 0.23046875,
+            "mean_spent": 5.06640625,
+            "mean_steps": 4.2490234375,
+            "mean_success_excess_cost": 2.037037037037037,
+            "success_rate": 0.10546875
+          }
+        },
+        "structural": {
+          "comparison": {
+            "label": "structural_generalization",
+            "seed_policy": "held_out_structural_seed_not_a_paired_contrast"
+          },
+          "extended": {
+            "commitment_rate": 0.1943359375,
+            "mean_live_hypotheses_at_commitment": 1.8341708542713568,
+            "mean_probes": 2.150390625,
+            "premature_commitment_rate": 0.6231155778894473,
+            "probe_histogram": {
+              "1": 83,
+              "2": 704,
+              "3": 237
+            },
+            "protocol_failure_rate": 0.8056640625,
+            "success_conditioned_on_legal_play": 0.135678391959799
+          },
+          "metrics": {
+            "failure_rate": 0.9736328125,
+            "invalid_action_rate": 0.3896484375,
+            "malformed_action_rate": 0.416015625,
+            "mean_spent": 4.29296875,
+            "mean_steps": 2.3447265625,
+            "mean_success_excess_cost": 1.962962962962963,
+            "success_rate": 0.0263671875
+          }
+        },
+        "validation": {
+          "comparison": {
+            "label": "held_out_in_distribution",
+            "seed_policy": "held_out_seed"
+          },
+          "extended": {
+            "commitment_rate": 0.724609375,
+            "mean_live_hypotheses_at_commitment": 1.5107816711590296,
+            "mean_probes": 2.587890625,
+            "premature_commitment_rate": 0.42452830188679247,
+            "probe_histogram": {
+              "1": 33,
+              "2": 397,
+              "3": 553,
+              "4": 41
+            },
+            "protocol_failure_rate": 0.275390625,
+            "success_conditioned_on_legal_play": 0.4555256064690027
+          },
+          "metrics": {
+            "failure_rate": 0.669921875,
+            "invalid_action_rate": 0.275390625,
+            "malformed_action_rate": 0.0,
+            "mean_spent": 5.0322265625,
+            "mean_steps": 3.3125,
+            "mean_success_excess_cost": 1.9615384615384615,
+            "success_rate": 0.330078125
+          }
+        }
+      },
+      "recovery_probe": {
+        "attempt_failure_rate": 0.2050390964378801,
+        "attempts": 1151,
+        "episodes": 256,
+        "episodes_abandoned_repeated_failure": 43,
+        "failed_attempts": 236,
+        "failures_recovered": 37,
+        "note": "measurement only; these episodes are never trained on",
+        "recovery_rate": 0.4625
+      },
+      "serialization": {
+        "actual_state_sha256": "44a8335eb2171bcee8840f10db0813111a3e7321904366d252b7aa09c256cffa",
+        "exact": true,
+        "expected_state_sha256": "44a8335eb2171bcee8840f10db0813111a3e7321904366d252b7aa09c256cffa",
+        "missing_keys": [],
+        "unequal_keys": [],
+        "unexpected_keys": []
+      },
+      "teacher_forced_action_nll": 0.11534340032686553
+    }
+  ],
+  "plan": {
+    "aggregation": "DAgger: each round trains on every example collected so far, so the buffer grows while the per-round update count stays fixed",
+    "arm": "learner_conditioned_from_dense",
+    "budget_policy": "collection episodes and optimizer updates are declared and matched across arms; supervised tokens are data dependent and reported, never used to change an update",
+    "budget_unit": "optimizer updates over on-policy episodes collected in rounds",
+    "collection_episode_budget": 8192,
+    "context_length": 2048,
+    "episodes_per_round": 2048,
+    "gradient_accumulation_steps": 2,
+    "max_steps": 512,
+    "milestone_evaluation_episodes": 512,
+    "milestones_updates": [
+      128,
+      256,
+      384,
+      512
+    ],
+    "per_device_sequences": 4,
+    "recovery_probe_episodes": 256,
+    "recovery_probe_seed": 21260811,
+    "root_seed": 20260811,
+    "rounds": 4,
+    "sequences_per_update": 16,
+    "train_seed_base": 25260811,
+    "updates_per_round": 128,
+    "world_size": 2
+  },
+  "rounds": [
+    {
+      "budget_updates": 128,
+      "buffer_examples": 6002,
+      "collection": {
+        "accepted_attempts": 6051,
+        "episodes": 2048,
+        "episodes_abandoned_repeated_failure": 43,
+        "episodes_exhausted_context": 0,
+        "episodes_exhausted_turns": 0,
+        "episodes_terminated": 2005,
+        "failures_recovered": 22,
+        "failures_unrecovered": 43,
+        "generated_action_tokens": 104262,
+        "invalid_attempts": 200,
+        "malformed_attempts": 0,
+        "observation_tokens": 1412654,
+        "states_refused_unlicensed_commit": 249,
+        "states_supervised": 6002,
+        "supervised_correction_tokens": 101516,
+        "turns": 6251,
+        "world_transitions": 6051
+      },
+      "round": 0,
+      "world_seed_range": [
+        25260811,
+        25262858
+      ]
+    },
+    {
+      "budget_updates": 256,
+      "buffer_examples": 16862,
+      "collection": {
+        "accepted_attempts": 4671,
+        "episodes": 2048,
+        "episodes_abandoned_repeated_failure": 1560,
+        "episodes_exhausted_context": 0,
+        "episodes_exhausted_turns": 5,
+        "episodes_terminated": 483,
+        "failures_recovered": 162,
+        "failures_unrecovered": 1560,
+        "generated_action_tokens": 189342,
+        "invalid_attempts": 6490,
+        "malformed_attempts": 5,
+        "observation_tokens": 2538606,
+        "states_refused_unlicensed_commit": 306,
+        "states_supervised": 10860,
+        "supervised_correction_tokens": 182820,
+        "turns": 11166,
+        "world_transitions": 4671
+      },
+      "round": 1,
+      "world_seed_range": [
+        25262859,
+        25264906
+      ]
+    },
+    {
+      "budget_updates": 384,
+      "buffer_examples": 25700,
+      "collection": {
+        "accepted_attempts": 6669,
+        "episodes": 2048,
+        "episodes_abandoned_repeated_failure": 638,
+        "episodes_exhausted_context": 0,
+        "episodes_exhausted_turns": 0,
+        "episodes_terminated": 1410,
+        "failures_recovered": 112,
+        "failures_unrecovered": 638,
+        "generated_action_tokens": 159303,
+        "invalid_attempts": 2779,
+        "malformed_attempts": 5,
+        "observation_tokens": 2119122,
+        "states_refused_unlicensed_commit": 615,
+        "states_supervised": 8838,
+        "supervised_correction_tokens": 148232,
+        "turns": 9453,
+        "world_transitions": 6669
+      },
+      "round": 2,
+      "world_seed_range": [
+        25264907,
+        25266954
+      ]
+    },
+    {
+      "budget_updates": 512,
+      "buffer_examples": 34054,
+      "collection": {
+        "accepted_attempts": 7073,
+        "episodes": 2048,
+        "episodes_abandoned_repeated_failure": 412,
+        "episodes_exhausted_context": 6,
+        "episodes_exhausted_turns": 6,
+        "episodes_terminated": 1630,
+        "failures_recovered": 171,
+        "failures_unrecovered": 412,
+        "generated_action_tokens": 151708,
+        "invalid_attempts": 1941,
+        "malformed_attempts": 5,
+        "observation_tokens": 2015069,
+        "states_refused_unlicensed_commit": 665,
+        "states_supervised": 8354,
+        "supervised_correction_tokens": 140136,
+        "turns": 9019,
+        "world_transitions": 7073
+      },
+      "round": 3,
+      "world_seed_range": [
+        25266955,
+        25269002
+      ]
+    }
+  ],
+  "scientific_acceptance_policy": "measurement only; no capability threshold gates this run",
+  "world": {
+    "budget_slack": 1,
+    "context_length": 2048,
+    "cost_hi": 3,
+    "cost_lo": 1,
+    "min_depth": 2,
+    "n_evidence": 2,
+    "n_hyp": 6,
+    "n_probe": 5,
+    "rendering": "a",
+    "step_slack": 2,
+    "structural_episodes": 1024,
+    "train_episodes": 32768,
+    "train_seed_base": 25260811,
+    "transfer_episodes": 1024,
+    "validation_episodes": 1024,
+    "variant": "irreversible"
+  }
+}
