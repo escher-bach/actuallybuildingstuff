@@ -51,41 +51,52 @@ existing checkpoint.
 
 ## Summary
 
-1. **The dense policy commits before the evidence identifies the answer 73.0% of
-   the time**, with a mean of 2.00 hypotheses still live. First measurement of
-   the quantity. It makes THEORY-PHASE §3.1's mechanism concrete.
+**Learner-conditioned training failed.** It did not match, let alone beat, the
+dense arm on any capability measure, and it is worse than its own matched
+control on every one:
 
-2. **P1's mechanism is confirmed, and it is attributable to the state
-   distribution.** Learner-conditioned supervision moves premature commitment
-   73.0% → 42.5% and probes 1.97 → 2.59. The matched teacher-conditioned control
-   — same pipeline, same everything but whose action advances the world — moves
-   neither: 72.5% and 1.97, both within noise of the untrained checkpoint.
+| | dense | TC control | LC arm |
+|---|---:|---:|---:|
+| success, frozen evaluator | 41.1% | 41.6% | **33.0%** |
+| success, retry-tolerant | 41.7% | 42.2% | **36.8%** |
+| success conditioned on legal play | 45.2% | 43.0% | 45.6% |
+| Rendering B | 0.0% | 0.0% | 0.0% |
 
-3. **P1's capability clause is not confirmed.** §8 predicted premature
-   commitment would fall *and* legal-conditioned success would improve. It
-   didn't: 45.2% → 45.6%, flat. The policy gathers more evidence and commits
-   later, and is no more accurate for it.
+**P1 is not supported.** It predicted that supervision at learner-reached states
+would reduce premature commitment *and* improve legal-conditioned success. The
+second did not happen: 45.2% -> 45.6% is flat. The first did happen -- premature
+commitment 73.0% -> 41.4%, probes 1.98 -> 2.67, both confirmed under
+retry-tolerant scoring so neither is survivorship -- but it is confounded, see
+Section 3.5: the arm trained on 16.2% commit labels against the control's 32.5%,
+and a model given half the commit labels commits less without needing any
+insight about state distributions. A prediction whose operative clause fails,
+and whose surviving clause has an unexcluded mundane explanation, is not
+half-confirmed.
 
-4. **§2 explains why that is coherent rather than contradictory.** The teacher
-   identifies in 2.07 probes because it selects them using `inst.truth`. More
-   probes is not the missing ingredient; the *right* probes are. The arm moved
-   the disposition and not the selection rule, and hypotheses live at commitment
-   fell only 2.00 → 1.51, never to 1.
+**The collapse has a mechanism (Section 3.4).** 92.6% of the extra probing the
+arm learned comes back as a rejected action. The teacher's probe *count* is
+imitable and its probe *selection* is not, because selection uses `inst.truth`.
+Learner conditioning transfers the count alone, and more probes without knowing
+which probe is legal or informative is actively harmful.
 
-5. **The interface cost is real and is caused by learner conditioning, not by
-   the step size.** Protocol failure 3.1% → 27.5% in the arm; 3.1% → 3.3% in the
-   control. Raw success falls 43.8% → 33.0% almost entirely through that term.
+**What the stage did establish**, none of it P1:
 
-6. **From random weights, learner-conditioned supervision crosses the byte
-   grammar where outcome-only RLVR could not** — 11.5% closed-loop, against cold
-   RLVR's exactly zero gradient. The grammar is acquired inside one round of 128
-   updates.
-
-7. **The truth-leak guard refused 1,835 targets in the arm and 3,525 in the cold
-   run, and exactly 0 in the control** — the teacher never commits from a state
-   its own history has not identified.
-
-8. **P3 does not hold as stated.** Failures got rarer, not less persistent.
+1. **The dense policy commits before the evidence identifies the answer 73.5% of
+   the time**, with 2.00 hypotheses still live. First measurement of the
+   quantity, and it very nearly explains the 41% band: guessing among 2.00 live
+   hypotheses gives 50%, and legal-conditioned success is 45%.
+2. **The demonstrator is not imitable.** It solves 100% of episodes in 2.07
+   probes by choosing them with the answer in hand; the dense model already
+   matches that count at 1.94 and scores 41%.
+3. **From random weights, learner-conditioned supervision crosses the byte
+   grammar where outcome-only RLVR could not** -- 11.5% against cold RLVR's
+   exactly zero gradient, with the grammar acquired in one round.
+4. **A truth-derived commit target appears at 18.6% of unlicensed
+   learner-reached states.** The guard refused 1,835 in the arm and 3,525 in the
+   cold run, against 0 in the control.
+5. **The tuned RLVR arm's +6-point sampled gain is entirely removal of illegal
+   actions**; conditioned on legal play it is flat at 42-44% across six cells.
+6. **P3 is not supported.** Failures got rarer, not less persistent.
 
 ---
 
@@ -225,6 +236,63 @@ The only systematic difference between the two tranches is whose actions the
 contexts contain. Why that is destructive to action emission is **not explained
 here**, and the honest statement is that it is an open mechanism rather than a
 described one.
+
+### 3.4 Why the policy collapses: the extra probing is illegal probing
+
+128 updates take success from 43.8% to 7.2%. The same 128 updates in the control
+change nothing. It reproduces at 1e-4 and at 2e-5, so it is not the step size,
+and the control shares the pipeline, so it is not the packing. It has a
+mechanism, and retry-tolerant scoring measures it directly:
+
+| per episode | probes | failed attempts |
+|---|---:|---:|
+| dense | 1.981 | 0.060 |
+| TC control | 1.985 | 0.065 |
+| LC arm | 2.671 | 0.698 |
+
+**+0.690 probes and +0.639 failed attempts: 92.6% of the extra probing returns
+as a rejected action.**
+
+1. At states the learner reaches, the teacher's advice is overwhelmingly *probe
+   more* -- the dense policy commits prematurely 73% of the time, so wherever it
+   wants to commit, the teacher says keep going.
+2. Training on that teaches probing. Probes go 1.98 -> 2.67. This part worked.
+3. `Inspect` is legal only on an unprobed, affordable probe. Probing more
+   without knowing *which* probe is `AlreadyProbed` or `Unaffordable`.
+4. Round 1 collection is the fingerprint: invalid attempts jump 200 -> 6,490
+   immediately after round 0's training while malformed stays at 5. These are
+   well-formed actions the world refuses, not gibberish.
+5. The evaluator ends the episode at the first one.
+
+Section 2 predicted this before the runs. The teacher identifies in 2.07 probes
+*because* it selects them with `inst.truth`. The count is imitable; the
+selection is not. Learner conditioning transfers the count and cannot transfer
+the selection, so it buys probes that discriminate nothing and are frequently
+illegal. `mean_live_hypotheses_at_commitment` agrees: 2.00 -> 1.49, never near
+1. More evidence gathered, and the wrong evidence.
+
+### 3.5 The confound the control does not remove
+
+One config difference produced three dataset differences.
+
+| | LC arm | TC control |
+|---|---:|---:|
+| supervised examples | 34,054 | 25,192 |
+| re-visits to an already-failed state | 11,425 (33.5%) | 0 |
+| fresh decision states | ~22,629 | 25,192 |
+| episodes terminated | 5,528 / 8,192 | 8,192 / 8,192 |
+| commit-label density | ~16.2% | ~32.5% |
+
+A commit target exists only at a licensed state, reached at the end of an
+episode, so terminating fewer episodes means training on fewer commit labels.
+The control saw twice the density. **A model trained on half the commit labels
+commits less and probes more**, which is the whole direction of the Section 3.1
+result, with no state-distribution content at all. The arm also saw *fewer*
+fresh decision states than the control while being described as matched.
+
+Separating the two mechanisms needs a control carrying the arm's label mix with
+the control's state provenance. Matching on episodes and updates does not do it,
+and until that runs the premature-commitment reduction is not attributable.
 
 ### 3.3 Held-out sets at the endpoint
 

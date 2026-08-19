@@ -1,0 +1,72 @@
+{
+  "accelerator_inventory": [
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 0,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    },
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 1,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    }
+  ],
+  "analysis_artifacts": [
+    {
+      "bytes": 17982,
+      "name": "t4x2-recovery-diagnostic-596b19d199a0-62861caffbbc-analysis.tar.gz",
+      "sha256": "54c80cad7dfa6f042431711dd7ef1d448797e588d65194fce9d4e77cabb8982f"
+    }
+  ],
+  "collected_at": "2026-08-19T14:22:40.354835+00:00",
+  "config": {
+    "path": "step1/configs/kaggle/t4x2_recovery_diagnostic.toml",
+    "sha256": "62861caffbbcef5ab66d735488183cdc86a1800f0b513b9fb33b92bb0b3c1002"
+  },
+  "experiment": "recovery-diagnostic",
+  "git": {
+    "remote_url": "https://github.com/escher-bach/actuallybuildingstuff.git",
+    "sha": "596b19d199a080c46680085ff28ffdc588febeb8"
+  },
+  "kaggle": {
+    "accelerator_requested": "NvidiaTeslaT4",
+    "completed_at": "2026-08-19T14:22:32.753526+00:00",
+    "exact_version": "aniruddhavarma/step1-recovery-diagnostic-596b19d/1",
+    "kernel": "aniruddhavarma/step1-recovery-diagnostic-596b19d",
+    "terminal_status": "COMPLETE",
+    "url": "https://www.kaggle.com/code/aniruddhavarma/step1-recovery-diagnostic-596b19d"
+  },
+  "recovery_artifact": {
+    "archive": "t4x2-recovery-diagnostic-596b19d199a0-62861caffbbc.tar.gz",
+    "bytes": 19644,
+    "location": "kaggle output of aniruddhavarma/step1-recovery-diagnostic-596b19d/1",
+    "sha256": "a8ef5fcfde2cc929652fac453396ca6ad3c3e2823b233e4e2214d9305ae0f420"
+  },
+  "result_report": "result-report.json",
+  "root_seed": null,
+  "run_id": "t4x2-recovery-diagnostic-596b19d199a0-62861caffbbc",
+  "run_success": true,
+  "schema_version": 1,
+  "upstream": [
+    {
+      "expected_identity": {},
+      "kernel": "aniruddhavarma/step1-t4x2-dense-seed0-84f2938"
+    },
+    {
+      "expected_identity": {},
+      "kernel": "aniruddhavarma/step1-lc-warm-lr2e5-seed0-8557c2b"
+    },
+    {
+      "expected_identity": {},
+      "kernel": "aniruddhavarma/step1-tc-control-lr2e5-seed0-8557c2b"
+    }
+  ]
+}

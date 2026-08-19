@@ -1,0 +1,156 @@
+{
+  "contract": "step1_decoding_diagnostic_v1",
+  "experiment_config_sha256": "62861caffbbcef5ab66d735488183cdc86a1800f0b513b9fb33b92bb0b3c1002",
+  "greedy_reference": {
+    "dense_seed0": 0.4111328125,
+    "lc_warm_2e5_512": 0.330078125,
+    "tc_control_2e5_512": 0.416015625
+  },
+  "models": [
+    {
+      "artifact": "/kaggle/input/notebooks/aniruddhavarma/step1-t4x2-dense-seed0-84f2938/step1-results/t4x2-dense-seed0-84f29385ed62-b91eedc26552/production/model",
+      "config_hash": "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14",
+      "evaluation_set": {
+        "comparison": {
+          "label": "held_out_in_distribution",
+          "seed_policy": "held_out_seed"
+        },
+        "episodes": 1024,
+        "rendering": "a",
+        "seed": 21260811
+      },
+      "git_sha": "84f29385ed623500aa2e201c45fdcf8c2257fac0",
+      "kind": "dense",
+      "model_state_sha256": "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e",
+      "name": "dense_seed0",
+      "results": [
+        {
+          "decoding": "greedy",
+          "metrics": {
+            "failure_rate": 0.5888671875,
+            "invalid_action_rate": 0.0283203125,
+            "malformed_action_rate": 0.0,
+            "mean_spent": 3.8837890625,
+            "mean_steps": 2.943359375,
+            "mean_success_excess_cost": 0.43942992874109266,
+            "success_rate": 0.4111328125
+          },
+          "sampling_seed_offset": 0,
+          "temperature": 0.0
+        }
+      ],
+      "retry_tolerant": {
+        "commitment_rate": 0.9853515625,
+        "episodes_needing_a_retry": 0.0283203125,
+        "exhausted_rate": 0.0,
+        "mean_live_hypotheses_at_commitment": 2.0,
+        "mean_probes": 1.9814453125,
+        "mean_recoveries": 0.013671875,
+        "mean_retries": 0.0595703125,
+        "premature_commitment_rate": 0.7353815659068385,
+        "success_rate": 0.4169921875
+      },
+      "run": "/kaggle/input/notebooks/aniruddhavarma/step1-t4x2-dense-seed0-84f2938/step1-results/t4x2-dense-seed0-84f29385ed62-b91eedc26552",
+      "teacher_forced_action_nll": null
+    },
+    {
+      "artifact": "/kaggle/input/notebooks/aniruddhavarma/step1-lc-warm-lr2e5-seed0-8557c2b/step1-results/t4x2-lc-warm-lr2e5-seed0-8557c2b801d3-134d7b9c5f7d/learner_conditioned_from_dense/budget-512/model",
+      "budget_updates": 512,
+      "config_hash": "134d7b9c5f7d9cb7b70be5103c943b7b8819586404395d04c14951b1e876e88b",
+      "evaluation_set": {
+        "comparison": {
+          "label": "held_out_in_distribution",
+          "seed_policy": "held_out_seed"
+        },
+        "episodes": 1024,
+        "rendering": "a",
+        "seed": 21260811
+      },
+      "kind": "learner_conditioned",
+      "model_state_sha256": "44a8335eb2171bcee8840f10db0813111a3e7321904366d252b7aa09c256cffa",
+      "name": "lc_warm_2e5_512",
+      "results": [
+        {
+          "decoding": "greedy",
+          "metrics": {
+            "failure_rate": 0.669921875,
+            "invalid_action_rate": 0.275390625,
+            "malformed_action_rate": 0.0,
+            "mean_spent": 5.0322265625,
+            "mean_steps": 3.3125,
+            "mean_success_excess_cost": 1.9615384615384615,
+            "success_rate": 0.330078125
+          },
+          "sampling_seed_offset": 0,
+          "temperature": 0.0
+        }
+      ],
+      "retry_tolerant": {
+        "commitment_rate": 0.80859375,
+        "episodes_needing_a_retry": 0.275390625,
+        "exhausted_rate": 0.0,
+        "mean_live_hypotheses_at_commitment": 1.4927536231884058,
+        "mean_probes": 2.6708984375,
+        "mean_recoveries": 0.087890625,
+        "mean_retries": 0.6982421875,
+        "premature_commitment_rate": 0.4142512077294686,
+        "success_rate": 0.3681640625
+      },
+      "run": "/kaggle/input/notebooks/aniruddhavarma/step1-lc-warm-lr2e5-seed0-8557c2b/step1-results/t4x2-lc-warm-lr2e5-seed0-8557c2b801d3-134d7b9c5f7d",
+      "teacher_forced_action_nll": null
+    },
+    {
+      "artifact": "/kaggle/input/notebooks/aniruddhavarma/step1-tc-control-lr2e5-seed0-8557c2b/step1-results/t4x2-tc-control-lr2e5-seed0-8557c2b801d3-f066b26eef05/learner_conditioned_from_dense/budget-512/model",
+      "budget_updates": 512,
+      "config_hash": "f066b26eef05f118ec77319badbf2145d4ca1d90815325d47a601b38d5307f8e",
+      "evaluation_set": {
+        "comparison": {
+          "label": "held_out_in_distribution",
+          "seed_policy": "held_out_seed"
+        },
+        "episodes": 1024,
+        "rendering": "a",
+        "seed": 21260811
+      },
+      "kind": "learner_conditioned",
+      "model_state_sha256": "bb9c4205d3c1e923810fcd30efb817863a1078a7b37c76b103d37625652163f1",
+      "name": "tc_control_2e5_512",
+      "results": [
+        {
+          "decoding": "greedy",
+          "metrics": {
+            "failure_rate": 0.583984375,
+            "invalid_action_rate": 0.033203125,
+            "malformed_action_rate": 0.0,
+            "mean_spent": 3.90625,
+            "mean_steps": 2.9326171875,
+            "mean_success_excess_cost": 0.4460093896713615,
+            "success_rate": 0.416015625
+          },
+          "sampling_seed_offset": 0,
+          "temperature": 0.0
+        }
+      ],
+      "retry_tolerant": {
+        "commitment_rate": 0.98828125,
+        "episodes_needing_a_retry": 0.033203125,
+        "exhausted_rate": 0.0,
+        "mean_live_hypotheses_at_commitment": 1.9703557312252964,
+        "mean_probes": 1.9853515625,
+        "mean_recoveries": 0.021484375,
+        "mean_retries": 0.0654296875,
+        "premature_commitment_rate": 0.7282608695652174,
+        "success_rate": 0.421875
+      },
+      "run": "/kaggle/input/notebooks/aniruddhavarma/step1-tc-control-lr2e5-seed0-8557c2b/step1-results/t4x2-tc-control-lr2e5-seed0-8557c2b801d3-f066b26eef05",
+      "teacher_forced_action_nll": null
+    }
+  ],
+  "question": "does the decoding rule decide the stage's conclusion? every retained metric is greedy; every RLVR rollout sampled at temperature 1.0",
+  "scientific_acceptance_policy": "diagnostic only; it re-scores existing checkpoints and retrains nothing",
+  "teacher_forced_reference": {
+    "dense_seed0": null,
+    "lc_warm_2e5_512": null,
+    "tc_control_2e5_512": null
+  }
+}
