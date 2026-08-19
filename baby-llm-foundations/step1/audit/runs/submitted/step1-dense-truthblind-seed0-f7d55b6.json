@@ -1,0 +1,13 @@
+{
+  "accelerator_requested": "NvidiaTeslaT4",
+  "config": "step1/configs/kaggle/t4x2_dense_truthblind_seed0.toml",
+  "exact_version": "aniruddhavarma/step1-dense-truthblind-seed0-f7d55b6/1",
+  "experiment": "dense-truthblind-seed0",
+  "git_sha": "f7d55b6e8f0b5f16dafbd2e58acd7a82c707b32f",
+  "kernel": "aniruddhavarma/step1-dense-truthblind-seed0-f7d55b6",
+  "kernel_sources": [],
+  "submitted_at": "2026-08-19T14:52:20.192018+00:00",
+  "upstream_identity": {},
+  "url": "https://www.kaggle.com/code/aniruddhavarma/step1-dense-truthblind-seed0-f7d55b6",
+  "version": 1
+}

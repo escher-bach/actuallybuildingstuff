@@ -1,0 +1,338 @@
+{
+  "accelerator_inventory": [
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 0,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    },
+    {
+      "capability": [
+        7,
+        5
+      ],
+      "index": 1,
+      "name": "Tesla T4",
+      "vram_bytes": 15636037632
+    }
+  ],
+  "captured_at": "2026-08-19T15:25:39.735552+00:00",
+  "config_hash": "8cf0c6a35c80aa0f89938945e961f192880f060ed7c287b5c32483d8f0b1069a",
+  "git_sha": "f7d55b6e8f0b5f16dafbd2e58acd7a82c707b32f",
+  "phases": {
+    "capture_environment": {
+      "details": {
+        "cargo": {
+          "command": [
+            "cargo",
+            "--version"
+          ],
+          "exception": "FileNotFoundError(2, 'No such file or directory')"
+        },
+        "command_line": [
+          "/tmp/step1-runtime/actuallybuildingstuff/baby-llm-foundations/step1/python/step1_experiments/runner.py",
+          "--config",
+          "/tmp/step1-runtime/actuallybuildingstuff/baby-llm-foundations/step1/configs/kaggle/t4x2_dense_truthblind_seed0.toml",
+          "--output-root",
+          "/kaggle/working/step1-results",
+          "--resume",
+          "auto"
+        ],
+        "compiler": {
+          "command": [
+            "cc",
+            "--version"
+          ],
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "cc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+        },
+        "cpu_count_logical": 4,
+        "disk": {
+          "free": 20940513280,
+          "total": 20957446144
+        },
+        "environment": {
+          "CUDA_HOME": "/usr/local/cuda",
+          "CUDA_VERSION": "12.8.1",
+          "KAGGLE_CONTAINER_NAME": "kaggle_3njlqz6tFs03gzDjgZZoXuFRgf9oUiKs6HzSuhkcY-343490252-webtier",
+          "KAGGLE_DATA_PROXY_PROJECT": "kaggle-161607",
+          "KAGGLE_DATA_PROXY_URL": "https://dp.kaggle.net",
+          "KAGGLE_DOCKER_IMAGE": "gcr.io/kaggle-gpu-images/python@sha256:37c64f7dd9c54116ecd1bcc88817c5469b88387388fade02bfa8bf3fc647d461",
+          "KAGGLE_GCP_ZONE": "us-central1-b",
+          "KAGGLE_GRPC_DATA_PROXY_URL": "dp.kaggle.net:443",
+          "KAGGLE_KERNEL_INTEGRATIONS": "",
+          "KAGGLE_KERNEL_RUN_TYPE": "Batch",
+          "KAGGLE_URL_BASE": "https://api.kaggle.com",
+          "NCCL_VERSION": "2.25.1-1"
+        },
+        "git_sha": "f7d55b6e8f0b5f16dafbd2e58acd7a82c707b32f",
+        "git_status_porcelain": "",
+        "nvidia_smi": {
+          "command": [
+            "nvidia-smi"
+          ],
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "Wed Aug 19 14:52:48 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 580.159.04             Driver Version: 580.159.04     CUDA Version: 13.0     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  Tesla T4                       Off |   00000000:00:04.0 Off |                    0 |\n| N/A   45C    P8             11W /   70W |       3MiB /  15360MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n|   1  Tesla T4                       Off |   00000000:00:05.0 Off |                    0 |\n| N/A   41C    P8             11W /   70W |       3MiB /  15360MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|  No running processes found                                                             |\n+-----------------------------------------------------------------------------------------+\n"
+        },
+        "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+        "python": "3.12.13 (main, Mar  4 2026, 09:23:07) [GCC 11.4.0]",
+        "resolved_config": {
+          "_meta": {
+            "config_path": "/tmp/step1-runtime/actuallybuildingstuff/baby-llm-foundations/step1/configs/kaggle/t4x2_dense_truthblind_seed0.toml",
+            "hash": "8cf0c6a35c80aa0f89938945e961f192880f060ed7c287b5c32483d8f0b1069a",
+            "source_git_sha": "f7d55b6e8f0b5f16dafbd2e58acd7a82c707b32f",
+            "tokenizer_hash": "7ff210fae4c0cd4cff12d7d1028350142abc4b6a9380fa26bc1be93d8168bd92"
+          },
+          "preflight": {
+            "checkpoint_after_updates": 8,
+            "resume_updates": 1
+          },
+          "run": {
+            "mode": "dense",
+            "name": "t4x2-dense-truthblind-seed0",
+            "resume": "auto",
+            "root_seed": 20260811
+          },
+          "training": {
+            "checkpoint_interval_updates": 28,
+            "checkpoint_total_limit": 6,
+            "global_tokens_per_update": 32768,
+            "learning_rate": 0.0006,
+            "microbatch_sequences": 4,
+            "token_budget": 100007936,
+            "train_target_policy": "truth_blind_optimal",
+            "warmup_fraction": 0.02,
+            "weight_decay": 0.1
+          },
+          "world": {
+            "budget_slack": 1,
+            "context_length": 2048,
+            "cost_hi": 3,
+            "cost_lo": 1,
+            "min_depth": 2,
+            "n_evidence": 2,
+            "n_hyp": 6,
+            "n_probe": 5,
+            "rendering": "a",
+            "step_slack": 2,
+            "structural_episodes": 1024,
+            "train_episodes": 32768,
+            "transfer_episodes": 1024,
+            "validation_episodes": 1024,
+            "variant": "irreversible"
+          }
+        },
+        "torch": {
+          "cuda": "12.8",
+          "cudnn": 91002,
+          "devices": [
+            {
+              "capability": [
+                7,
+                5
+              ],
+              "index": 0,
+              "name": "Tesla T4",
+              "vram_bytes": 15636037632
+            },
+            {
+              "capability": [
+                7,
+                5
+              ],
+              "index": 1,
+              "name": "Tesla T4",
+              "vram_bytes": 15636037632
+            }
+          ],
+          "version": "2.10.0+cu128"
+        }
+      },
+      "finished_at": "2026-08-19T14:52:49.199071+00:00",
+      "state": "complete"
+    },
+    "correctness_tests": {
+      "details": {},
+      "finished_at": "2026-08-19T14:55:11.419776+00:00",
+      "state": "complete"
+    },
+    "cpu_throughput": {
+      "details": {
+        "gate_policy": "diagnostic_only",
+        "passes_80_percent_gate": false,
+        "policy": "30 seconds or 1000 batches after warm-up",
+        "raw_text": {
+          "iqr_per_second": 233030.73442156706,
+          "median_per_second": 2406616.8742687283,
+          "seconds": 30.00370380000004,
+          "work": 72308431
+        },
+        "world": {
+          "iqr_per_second": 149007.81132600526,
+          "median_per_second": 1625933.6729720808,
+          "seconds": 30.004615919000003,
+          "work": 48764793
+        },
+        "world_to_raw_ratio": 0.6756096869245691
+      },
+      "finished_at": "2026-08-19T14:56:11.513757+00:00",
+      "state": "complete"
+    },
+    "dataloader_throughput": {
+      "details": {
+        "iqr_per_second": 1627676.3235793372,
+        "median_per_second": 2596915.639701695,
+        "pinned_memory": true,
+        "seconds": 30.009535410000012,
+        "work": 74719649,
+        "workers": 2
+      },
+      "finished_at": "2026-08-19T14:56:48.189708+00:00",
+      "state": "complete"
+    },
+    "evaluate": {
+      "details": {
+        "checkpoint": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/production/model",
+        "generation_batch_size": 32,
+        "sets": {
+          "rendering_b": {
+            "comparison": {
+              "label": "zero_shot_rendering_transfer",
+              "seed_policy": "matched_to_validation_seed; no_rendering_b_calibration"
+            },
+            "metrics": {
+              "failure_rate": 1.0,
+              "invalid_action_rate": 0.0,
+              "malformed_action_rate": 1.0,
+              "mean_spent": 0.0,
+              "mean_steps": 0.0,
+              "mean_success_excess_cost": null,
+              "success_rate": 0.0
+            }
+          },
+          "reversible_control": {
+            "comparison": {
+              "label": "matched_seed_variant_control",
+              "seed_policy": "matched_to_validation_seed"
+            },
+            "metrics": {
+              "failure_rate": 0.9296875,
+              "invalid_action_rate": 0.2880859375,
+              "malformed_action_rate": 0.359375,
+              "mean_spent": 5.0673828125,
+              "mean_steps": 4.1171875,
+              "mean_success_excess_cost": 2.0277777777777777,
+              "success_rate": 0.0703125
+            }
+          },
+          "structural": {
+            "comparison": {
+              "label": "structural_generalization",
+              "seed_policy": "held_out_structural_seed_not_a_paired_contrast"
+            },
+            "metrics": {
+              "failure_rate": 0.9736328125,
+              "invalid_action_rate": 0.517578125,
+              "malformed_action_rate": 0.3466796875,
+              "mean_spent": 3.6533203125,
+              "mean_steps": 1.9296875,
+              "mean_success_excess_cost": 2.111111111111111,
+              "success_rate": 0.0263671875
+            }
+          },
+          "validation": {
+            "comparison": {
+              "label": "held_out_in_distribution",
+              "seed_policy": "held_out_seed"
+            },
+            "metrics": {
+              "failure_rate": 0.62890625,
+              "invalid_action_rate": 0.20703125,
+              "malformed_action_rate": 0.0,
+              "mean_spent": 4.9970703125,
+              "mean_steps": 3.3427734375,
+              "mean_success_excess_cost": 1.8526315789473684,
+              "success_rate": 0.37109375
+            }
+          }
+        },
+        "teacher_forced_action_nll": 0.14008195605509424
+      },
+      "finished_at": "2026-08-19T15:25:39.713576+00:00",
+      "state": "complete"
+    },
+    "gpu_preflight": {
+      "details": {
+        "model_artifact": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/diagnostic-preflight/model",
+        "preflight_report": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/diagnostic-preflight/preflight_report.json",
+        "resumed_global_step": 9,
+        "trainer_checkpoint": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/diagnostic-preflight/checkpoints/checkpoint-8"
+      },
+      "finished_at": "2026-08-19T14:57:17.307652+00:00",
+      "state": "complete"
+    },
+    "install_and_build": {
+      "details": {},
+      "finished_at": "2026-08-19T14:53:56.973281+00:00",
+      "state": "complete"
+    },
+    "package_results": {
+      "details": {
+        "success": true
+      },
+      "finished_at": "2026-08-19T15:25:39.722946+00:00",
+      "state": "complete"
+    },
+    "prepare_shards": {
+      "details": {
+        "structural": {
+          "content_hash": "1aa5e654c62ca474e1fd451a668229c59f8c8aab018b2f6eaa834a1eb38067ce",
+          "manifest": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/datasets/structural.manifest",
+          "path": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/datasets/structural.bin",
+          "replay": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/datasets/structural.replay",
+          "target_policy": "teacher_preferred"
+        },
+        "train": {
+          "content_hash": "55d816f54f7ca673bc95715cca50f7822905c0a0b3d57eeddcbd1db178907003",
+          "manifest": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/datasets/train.manifest",
+          "path": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/datasets/train.bin",
+          "replay": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/datasets/train.replay",
+          "target_policy": "truth_blind_optimal"
+        },
+        "transfer": {
+          "content_hash": "d3181375764d1969c07051f3b7a20ec6500ab244d057da064301cd4170c7990d",
+          "manifest": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/datasets/transfer.manifest",
+          "path": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/datasets/transfer.bin",
+          "replay": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/datasets/transfer.replay",
+          "target_policy": "teacher_preferred"
+        },
+        "validation": {
+          "content_hash": "f9ce6e3f2978fd6a46116a9741553089e1b6afcd1086b773f56c523b707fcaaf",
+          "manifest": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/datasets/validation.manifest",
+          "path": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/datasets/validation.bin",
+          "replay": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/datasets/validation.replay",
+          "target_policy": "teacher_preferred"
+        }
+      },
+      "finished_at": "2026-08-19T14:56:17.645944+00:00",
+      "state": "complete"
+    },
+    "train": {
+      "details": {
+        "global_step": 3052,
+        "model_artifact": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/production/model",
+        "trainer_checkpoint": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/production/checkpoints/checkpoint-3052",
+        "training_report": "/kaggle/working/step1-results/t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80/production/training_report.json"
+      },
+      "finished_at": "2026-08-19T15:20:01.517544+00:00",
+      "state": "complete"
+    }
+  },
+  "run_id": "t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80",
+  "success": true
+}

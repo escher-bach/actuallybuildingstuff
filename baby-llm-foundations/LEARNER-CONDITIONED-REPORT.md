@@ -102,6 +102,41 @@ which probe is legal or informative is actively harmful.
 
 ---
 
+## 0b. The truth-blind expert arms: both failed the 50% bar
+
+The account in Section 2 said the demonstration was misleading -- the teacher
+identifies in 2.07 probes because it reads the answer, so imitating its cost
+profile caps the learner. That predicts a better student from an expert a
+learner can actually follow. Two arms tested it against a stated bar of >50%
+closed-loop success. Both failed, and both came in below the original baseline.
+
+| arm | expert imitated | validation success |
+|---|---|---:|
+| dense seed 0 | privileged teacher, 100% at 2.07 probes | **41.1%** |
+| `dense-truthblind-seed0` | truth-blind optimum, 97.7% at 2.63 probes | **37.1%** |
+| `lc-truthblind-seed0` | truth-blind optimum | **35.1%** |
+
+The model did imitate the new expert: mean steps 2.94 -> 3.34 and mean spend
+3.88 -> 5.00, so it adopted the higher probe count the truth-blind policy
+demonstrates. It executed the more expensive strategy and got fewer answers
+right.
+
+**The hypothesis is falsified.** An expert whose own play scores 97.7% produces
+a 37.1% student under the recipe that produced 41.1% from a 100% expert. The
+demonstrator's followability is not the bottleneck.
+
+The learner-conditioned arm also ran with `on_failure = "end_episode"`, so
+collection stopped at the first illegal action exactly as the evaluator does and
+no training context held a rejected attempt. That removed the retry dilution and
+did not change the outcome: 43.8% -> 9.2% at the first round, partial recovery
+to 41.6%, ending at 35.1%. The first-round collapse is not caused by contexts
+containing the learner's own failures either.
+
+Run ids: `t4x2-dense-truthblind-seed0-f7d55b6e8f0b-8cf0c6a35c80`,
+`t4x2-lc-truthblind-seed0-f7d55b6e8f0b-5050d1ec63c1`.
+
+---
+
 ## 1. What was measured
 
 THEORY-PHASE §7's rule: *a raw success rate is not a measurement of decision
