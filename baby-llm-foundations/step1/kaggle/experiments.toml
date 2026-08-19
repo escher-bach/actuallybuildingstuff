@@ -122,6 +122,17 @@ git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
 config_hash = "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14"
 model_state_sha256 = "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e"
 
+[experiments.recovery-diagnostic]
+title = "Step 1 recovery diagnostic"
+slug_prefix = "step1-recovery-diagnostic"
+config = "step1/configs/kaggle/t4x2_recovery_diagnostic.toml"
+purpose = "does the evaluator's die-at-first-failure convention decide the learner-conditioned result? scores three checkpoints frozen and retry-tolerant; trains nothing"
+kernel_sources = [
+    "aniruddhavarma/step1-t4x2-dense-seed0-84f2938",
+    "aniruddhavarma/step1-lc-warm-lr2e5-seed0-8557c2b",
+    "aniruddhavarma/step1-tc-control-lr2e5-seed0-8557c2b",
+]
+
 [experiments.decoding-diagnostic]
 title = "Step 1 decoding diagnostic"
 slug_prefix = "step1-decoding-diagnostic"

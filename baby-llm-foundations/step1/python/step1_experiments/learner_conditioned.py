@@ -38,9 +38,9 @@ from pathlib import Path
 import torch
 
 from .artifacts import atomic_json
-from .data import SequenceDataset, collate
+from .data import ACTION, BOS, OBS, SequenceDataset, _family, collate, encode_bytes
 from .evaluate import EVALUATION_METRIC_NAMES, _aggregate_rows, _execute_batched, _matched_sets
-from .learner import CollectionSettings, assert_collection_contract, collect_tranche
+from .learner import MALFORMED_ATTEMPT, CollectionSettings, assert_collection_contract, collect_tranche
 from .standard_stack import EXPECTED_PARAMETER_COUNT, assert_model_contract, load_tokenizer
 from .train import _state_dict_sha256
 
@@ -169,6 +169,123 @@ def _aggregate_extended(rows: list[dict]) -> dict:
             sum(row["live_hypotheses_at_commitment"] for row in committed) / len(committed)
             if committed else None
         ),
+    }
+
+
+@torch.no_grad()
+def _execute_retry_tolerant(model, params: dict, seed: int, count: int, rendering: str,
+                            device, settings: CollectionSettings, max_retries: int) -> list[dict]:
+    """Score a policy under the recovery the world and the teacher already allow.
+
+    The frozen evaluator drops an episode at its first malformed or invalid
+    action.  That is a convention of the evaluator, not a rule of the world:
+    `step_attempts` leaves the state unchanged and the episode `Running`, and the
+    teacher supplies a target from that unchanged state.  Learner-conditioned
+    training is built on exactly that, so scoring it with a rule that grants no
+    second attempt charges it full price for behaviour the regime was taught.
+
+    This grants up to `max_retries` consecutive failures per state and is
+    otherwise the frozen evaluator: same worlds, same greedy decoding, same
+    success definition, same privileged instrumentation.  A failed attempt stays
+    in the context, which is how the arm was trained.
+
+    It is reported alongside the frozen number, never instead of it.
+    """
+    from world_py import Batch
+
+    from .learner import _decode_actions
+
+    n_probe = params["n_probe"]
+    worlds = [Batch(_family(params), seed=seed + index, n_episodes=1) for index in range(count)]
+    histories: list[list[int]] = [[BOS] for _ in worlds]
+    probes = [0] * count
+    retries = [0] * count
+    recovered = [0] * count
+    consecutive = [0] * count
+    commitment: list[dict | None] = [None] * count
+    exhausted = [False] * count
+    live = list(range(count))
+    limit = params["step_slack"] + params["n_probe"] + params["n_hyp"] + 4
+    steps = [0] * count
+    for _turn in range(settings.max_turns):
+        if not live:
+            break
+        contexts, active = [], []
+        for index in live:
+            observation = [OBS, *encode_bytes(worlds[index].observations(rendering)[0]), ACTION]
+            context = histories[index] + observation
+            if len(context) + settings.max_action_tokens + 2 > settings.context_length:
+                exhausted[index] = True
+                continue
+            contexts.append(context)
+            active.append(index)
+        if not active:
+            break
+        attempts = _decode_actions(model, contexts, settings, device)
+        still_live = []
+        for index, context, (tokens, text) in zip(active, contexts, attempts):
+            licensed = worlds[index].privileged_teacher_targets()[0]["licenses_commitment"]
+            live_hypotheses = worlds[index].privileged_consistent_counts()[0]
+            histories[index] = context + tokens
+            record = worlds[index].step_attempts([text if text is not None else MALFORMED_ATTEMPT], rendering)[0]
+            accepted = text is not None and record["parsed_action"] is not None and record["accepted"]
+            if not accepted:
+                retries[index] += 1
+                consecutive[index] += 1
+                if consecutive[index] > max_retries:
+                    continue
+                still_live.append(index)
+                continue
+            if consecutive[index]:
+                recovered[index] += 1
+            consecutive[index] = 0
+            if record["parsed_action"] < n_probe:
+                probes[index] += 1
+            else:
+                commitment[index] = {"licensed": bool(licensed), "live_hypotheses": int(live_hypotheses)}
+            steps[index] += 1
+            if worlds[index].done()[0] or steps[index] >= limit:
+                continue
+            still_live.append(index)
+        live = still_live
+    rows = []
+    for index, world in enumerate(worlds):
+        terminated, correct, spent, *_ = world.privileged_outcomes()[0]
+        rows.append({
+            # Success is the verifier's, exactly as the frozen evaluator defines
+            # it, minus the "no failed attempt ever occurred" clause the world
+            # itself does not impose.
+            "success": bool(terminated and correct),
+            "spent": int(spent), "steps": steps[index], "probes": probes[index],
+            "retries": retries[index], "recovered": recovered[index],
+            "exhausted": exhausted[index],
+            "committed": commitment[index] is not None,
+            "licensed_at_commitment": commitment[index]["licensed"] if commitment[index] else None,
+            "live_hypotheses_at_commitment": commitment[index]["live_hypotheses"] if commitment[index] else None,
+        })
+    return rows
+
+
+def aggregate_retry_tolerant(rows: list[dict]) -> dict:
+    """The same quantities as the frozen read, with recovery permitted."""
+    if not rows:
+        raise AssertionError("retry-tolerant evaluation received no rows")
+    total = len(rows)
+    committed = [row for row in rows if row["committed"]]
+    premature = [row for row in committed if not row["licensed_at_commitment"]]
+    return {
+        "success_rate": sum(row["success"] for row in rows) / total,
+        "commitment_rate": len(committed) / total,
+        "premature_commitment_rate": len(premature) / len(committed) if committed else None,
+        "mean_probes": sum(row["probes"] for row in rows) / total,
+        "mean_live_hypotheses_at_commitment": (
+            sum(row["live_hypotheses_at_commitment"] for row in committed) / len(committed)
+            if committed else None
+        ),
+        "mean_retries": sum(row["retries"] for row in rows) / total,
+        "episodes_needing_a_retry": sum(row["retries"] > 0 for row in rows) / total,
+        "mean_recoveries": sum(row["recovered"] for row in rows) / total,
+        "exhausted_rate": sum(row["exhausted"] for row in rows) / total,
     }
 
 

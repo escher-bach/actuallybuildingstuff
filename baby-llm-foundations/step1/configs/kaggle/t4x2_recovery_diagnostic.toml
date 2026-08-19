@@ -1,0 +1,77 @@
+[run]
+name = "t4x2-recovery-diagnostic"
+root_seed = 20260811
+mode = "decoding_diagnostic"
+# Does the frozen evaluator's failure convention decide the learner-conditioned
+# result? It ends an episode at its first malformed or invalid action. The world
+# does not: a rejected action leaves the state unchanged and the episode
+# running, and the teacher labels that unchanged state -- which is precisely
+# what learner-conditioned training is built on. So the arm is scored under a
+# rule its regime was never optimized against, while the teacher-conditioned
+# control, which never errs, pays nothing for it.
+#
+# Three checkpoints, one held-out set, two rules: the frozen greedy evaluator
+# and the same evaluator granting up to two retries from the unchanged state.
+#
+# What each outcome means, declared before launch:
+#   - LC recovers most of its lost success and TC barely moves -> the reported
+#     "interface collapse" is largely the convention, and the raw-success
+#     comparison in the stage report must be withdrawn;
+#   - both move together             -> the convention is not what separated
+#     them and the arm really did damage action emission;
+#   - LC does not recover            -> its failures are terminal in substance,
+#     not merely by convention, and the stage report stands.
+#
+# Premature commitment is re-read the same way. It is computed over episodes
+# that committed, and the frozen rule kills 27.5% of the arm's episodes before
+# they commit, so the 73.0% -> 42.5% headline is exposed to survivorship.
+arm = "diagnostic"
+
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+rendering = "a"
+context_length = 2048
+train_episodes = 32768
+validation_episodes = 1024
+structural_episodes = 1024
+transfer_episodes = 1024
+
+[evaluation]
+episodes = 1024
+closed_loop = true
+teacher_forced_nll = false
+retry_tolerant = true
+max_retries = 2
+retry_max_turns = 16
+
+[[decoding]]
+name = "greedy"
+temperature = 0.0
+repeats = 1
+
+[[models]]
+name = "dense_seed0"
+kind = "dense"
+git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+config_hash = "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14"
+model_state_sha256 = "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e"
+
+[[models]]
+name = "lc_warm_2e5_512"
+kind = "learner_conditioned"
+config_hash = "134d7b9c5f7d9cb7b70be5103c943b7b8819586404395d04c14951b1e876e88b"
+budget_updates = 512
+
+[[models]]
+name = "tc_control_2e5_512"
+kind = "learner_conditioned"
+config_hash = "f066b26eef05f118ec77319badbf2145d4ca1d90815325d47a601b38d5307f8e"
+budget_updates = 512

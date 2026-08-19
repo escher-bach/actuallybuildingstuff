@@ -90,6 +90,16 @@ def resolve_checkpoints(config: dict, roots: list[Path]) -> list[dict]:
             })
             budget = entry["budget_updates"]
             artifact = run / entry["arm"] / f"budget-{budget}" / "checkpoints" / f"checkpoint-{budget}"
+        elif entry["kind"] == "learner_conditioned":
+            # A learner- or teacher-conditioned arm endpoint. Both regimes write
+            # the same report and the same budget-N layout; `collection.policy`
+            # is what separated them, and the config hash carries it.
+            run = locate_run(roots, "learner_conditioned_report.json", {
+                "contract": "step1_learner_conditioned_dagger_v1",
+                "experiment_config_sha256": entry["config_hash"],
+            })
+            report = json.loads((run / "learner_conditioned_report.json").read_text())
+            artifact = run / report["plan"]["arm"] / f"budget-{entry['budget_updates']}" / "model"
         else:
             raise ValueError(f"unknown model kind {entry['kind']!r}")
         if not (artifact / "config.json").is_file():
@@ -134,10 +144,32 @@ def score(entry: dict, config: dict, device, shard: Path | None = None) -> dict:
                     raise FloatingPointError(f"non-finite metric {entry['name']}.{rule['name']}.{name}")
             results.append({"decoding": rule["name"], "temperature": rule["temperature"],
                             "sampling_seed_offset": index, "metrics": metrics})
+    retry_tolerant = None
+    if config["evaluation"].get("retry_tolerant"):
+        # The frozen evaluator ends an episode at its first protocol failure.
+        # The world does not: `step_attempts` leaves the state unchanged and the
+        # episode running, and the teacher labels that unchanged state. Scoring a
+        # regime trained on recovery with a rule that grants none charges it for
+        # behaviour the world permits, so both readings are reported.
+        from .learner import CollectionSettings
+        from .learner_conditioned import _execute_retry_tolerant, aggregate_retry_tolerant
+
+        settings = CollectionSettings(
+            max_turns=config["evaluation"]["retry_max_turns"],
+            max_action_tokens=96,
+            max_consecutive_failures=config["evaluation"]["max_retries"] + 1,
+            context_length=config["world"]["context_length"],
+        )
+        rows = _execute_retry_tolerant(
+            model, params, seed, count, rendering, device, settings,
+            config["evaluation"]["max_retries"],
+        )
+        retry_tolerant = aggregate_retry_tolerant(rows)
     model.to("cpu")
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
-    return {**entry, "model_state_sha256": state_sha, "teacher_forced_action_nll": nll, "evaluation_set": {
+    return {**entry, "model_state_sha256": state_sha, "teacher_forced_action_nll": nll,
+            "retry_tolerant": retry_tolerant, "evaluation_set": {
         "seed": seed, "episodes": count, "rendering": rendering, "comparison": comparison,
     }, "results": results}
 
@@ -162,6 +194,10 @@ def assert_diagnostic_contract(report: dict, config: dict) -> None:
             value = model.get("teacher_forced_action_nll")
             if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value):
                 raise AssertionError(f"{model['name']} has no finite teacher-forced diagnostic")
+        if config["evaluation"].get("retry_tolerant"):
+            result = model.get("retry_tolerant")
+            if not result or not isinstance(result.get("success_rate"), (int, float)):
+                raise AssertionError(f"{model['name']} has no retry-tolerant score")
         # Every model must be scored on the identical world set.
         if model["evaluation_set"]["seed"] != report["models"][0]["evaluation_set"]["seed"]:
             raise AssertionError("models were scored on different evaluation worlds")
