@@ -64,6 +64,16 @@ class CollectionCounters:
     observation_tokens: int = 0
     supervised_correction_tokens: int = 0
     states_supervised: int = 0
+    # The composition of the supervised set, not just its size. A commit target
+    # exists only at a licensed state, which sits at the end of an episode, so a
+    # regime that terminates fewer episodes trains on fewer commit labels and
+    # will commit less for reasons that have nothing to do with which states it
+    # visited. Without these two counters that confound is invisible.
+    supervised_commit_targets: int = 0
+    supervised_probe_targets: int = 0
+    # Examples emitted at a state the episode had already failed at. Same state,
+    # same teacher target, longer polluted context.
+    states_repeated_after_failure: int = 0
     # The guard above. A nonzero value here is the arm working, not failing.
     states_refused_unlicensed_commit: int = 0
     accepted_attempts: int = 0
@@ -92,6 +102,10 @@ class CollectionSettings:
     max_consecutive_failures: int
     context_length: int
     temperature: float = 0.0
+    # Whether to supervise a state the episode has already failed at. Those
+    # examples teach recovery, which the frozen evaluator cannot score, and they
+    # were a third of the first arm's training set.
+    supervise_repeat_states: bool = True
     # "learner" is the arm; "teacher" is its control. Under "teacher" the world
     # advances on the teacher's own action instead of the model's, so the states
     # visited are teacher states while the packing, the masking, the seeds, the
@@ -109,6 +123,7 @@ class CollectionSettings:
             max_consecutive_failures=collection["max_consecutive_failures"],
             context_length=config["world"]["context_length"],
             temperature=collection.get("temperature", 0.0),
+            supervise_repeat_states=collection.get("supervise_repeat_states", True),
             policy=collection.get("policy", "learner"),
         )
         if settings.policy not in ("learner", "teacher"):
@@ -262,6 +277,11 @@ def collect_tranche(model, params: dict, seeds: list[int], rendering: str,
                 counters.states_refused_unlicensed_commit += 1
                 traces[index].refused_states += 1
                 continue
+            repeated = consecutive_failures[index] > 0
+            if repeated:
+                counters.states_repeated_after_failure += 1
+                if not settings.supervise_repeat_states:
+                    continue
             correction = render_action(action, n_probe, params["n_hyp"], rendering)
             example = _supervised_example(context, correction)
             if len(example.tokens) > settings.context_length:
@@ -272,6 +292,10 @@ def collect_tranche(model, params: dict, seeds: list[int], rendering: str,
                 )
             examples.append(example)
             counters.states_supervised += 1
+            if action >= n_probe:
+                counters.supervised_commit_targets += 1
+            else:
+                counters.supervised_probe_targets += 1
             counters.supervised_correction_tokens += sum(example.loss)
             traces[index].supervised_states += 1
 
