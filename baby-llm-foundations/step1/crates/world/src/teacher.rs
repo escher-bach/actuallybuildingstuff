@@ -107,6 +107,170 @@ pub fn consistent(inst: &Instance, st: &State) -> u64 {
     mask
 }
 
+// ---------------------------------------------------------------------
+// The truth-blind optimum
+// ---------------------------------------------------------------------
+
+/// Bayes-optimal action for an expert that may read the evidence table but
+/// NOT `inst.truth`.
+///
+/// The dense teacher identifies inside ~2 binary probes because it only has to
+/// isolate the hypothesis it already knows; a learner must separate whatever
+/// the evidence leaves live. Imitating the teacher's cost profile therefore
+/// caps a learner at a budget that is only sufficient with the answer in hand.
+/// This policy is what a learner can actually follow: it reaches ~97.7% on the
+/// STEP-1 family using ~2.63 probes.
+///
+/// `consistent` is derived from `st.history` alone, so every quantity this
+/// policy branches on is available to something that never sees `truth`.
+/// Backward induction over `(probed, consistent, spent, steps)` under a uniform
+/// prior on the consistent set: commit now for `1/|consistent|`, or buy an
+/// affordable unprobed probe and average over the evidence it may return.
+pub fn truth_blind_optimal_action(inst: &Instance, st: &State) -> Action {
+    let cons = consistent(inst, st);
+    let fallback = Action::Commit(cons.trailing_zeros() as HypId);
+    let live = cons.count_ones();
+    if live <= 1 || st.step + 1 >= inst.step_limit {
+        return fallback;
+    }
+    let mut memo = std::collections::HashMap::new();
+    let mut best = 1.0 / live as f64;
+    let mut chosen = fallback;
+    for (q, subsets, cost) in tb_options(inst, st.probed, cons, st.spent) {
+        let mut value = 0.0;
+        for subset in subsets.values() {
+            let weight = subset.count_ones() as f64 / live as f64;
+            value += weight
+                * tb_value(inst, st.probed | (1u64 << q), *subset, st.spent + cost, st.step + 1, &mut memo);
+        }
+        if value > best {
+            best = value;
+            chosen = Action::Inspect(q);
+        }
+    }
+    chosen
+}
+
+/// Success probability of [`truth_blind_optimal_action`] played to the end,
+/// and the probes it expects to buy.
+pub fn truth_blind_optimal_value(inst: &Instance, st: &State) -> (f64, f64) {
+    let cons = consistent(inst, st);
+    let mut memo = std::collections::HashMap::new();
+    let mut probe_memo = std::collections::HashMap::new();
+    (
+        tb_value(inst, st.probed, cons, st.spent, st.step, &mut memo),
+        tb_probes(inst, st.probed, cons, st.spent, st.step, &mut memo, &mut probe_memo),
+    )
+}
+
+type TbBuckets = std::collections::HashMap<u16, u64>;
+
+/// Every affordable unprobed probe that actually splits `cons`, with the
+/// partition it induces. A probe that separates nothing can only waste budget.
+fn tb_options(inst: &Instance, probed: u64, cons: u64, spent: i32) -> Vec<(ProbeId, TbBuckets, i32)> {
+    let mut out = Vec::new();
+    for q in 0..inst.n_probe {
+        if probed & (1u64 << q) != 0 {
+            continue;
+        }
+        let cost = inst.probe_cost[q as usize];
+        if spent + cost > inst.budget {
+            continue;
+        }
+        let mut buckets: TbBuckets = std::collections::HashMap::new();
+        for h in 0..inst.n_hyp {
+            if cons & (1u64 << h) == 0 {
+                continue;
+            }
+            *buckets.entry(inst.evidence_of(q, h) as u16).or_insert(0) |= 1u64 << h;
+        }
+        if buckets.len() >= 2 {
+            out.push((q, buckets, cost));
+        }
+    }
+    out
+}
+
+fn tb_value(
+    inst: &Instance,
+    probed: u64,
+    cons: u64,
+    spent: i32,
+    steps: u16,
+    memo: &mut std::collections::HashMap<(u64, u64, i32, u16), f64>,
+) -> f64 {
+    let live = cons.count_ones();
+    if live <= 1 {
+        return 1.0;
+    }
+    if steps + 1 >= inst.step_limit {
+        return 1.0 / live as f64;
+    }
+    let key = (probed, cons, spent, steps);
+    if let Some(&cached) = memo.get(&key) {
+        return cached;
+    }
+    let mut best = 1.0 / live as f64;
+    for (q, subsets, cost) in tb_options(inst, probed, cons, spent) {
+        let mut value = 0.0;
+        for subset in subsets.values() {
+            let weight = subset.count_ones() as f64 / live as f64;
+            value += weight * tb_value(inst, probed | (1u64 << q), *subset, spent + cost, steps + 1, memo);
+        }
+        if value > best {
+            best = value;
+        }
+    }
+    memo.insert(key, best);
+    best
+}
+
+fn tb_probes(
+    inst: &Instance,
+    probed: u64,
+    cons: u64,
+    spent: i32,
+    steps: u16,
+    memo: &mut std::collections::HashMap<(u64, u64, i32, u16), f64>,
+    probe_memo: &mut std::collections::HashMap<(u64, u64, i32, u16), f64>,
+) -> f64 {
+    let live = cons.count_ones();
+    if live <= 1 || steps + 1 >= inst.step_limit {
+        return 0.0;
+    }
+    let key = (probed, cons, spent, steps);
+    if let Some(&cached) = probe_memo.get(&key) {
+        return cached;
+    }
+    let mut best = 1.0 / live as f64;
+    let mut chosen: Option<(ProbeId, TbBuckets, i32)> = None;
+    for (q, subsets, cost) in tb_options(inst, probed, cons, spent) {
+        let mut value = 0.0;
+        for subset in subsets.values() {
+            let weight = subset.count_ones() as f64 / live as f64;
+            value += weight * tb_value(inst, probed | (1u64 << q), *subset, spent + cost, steps + 1, memo);
+        }
+        if value > best {
+            best = value;
+            chosen = Some((q, subsets, cost));
+        }
+    }
+    let result = match chosen {
+        None => 0.0,
+        Some((q, subsets, cost)) => {
+            let mut total = 1.0;
+            for subset in subsets.values() {
+                let weight = subset.count_ones() as f64 / live as f64;
+                total += weight
+                    * tb_probes(inst, probed | (1u64 << q), *subset, spent + cost, steps + 1, memo, probe_memo);
+            }
+            total
+        }
+    };
+    probe_memo.insert(key, result);
+    result
+}
+
 /// For hypothesis `pivot`, the set of hypotheses in `cons` (excluding
 /// `pivot` itself) that a probe must still be separated from.
 fn others_of(inst: &Instance, cons: u64, pivot: HypId) -> Vec<HypId> {

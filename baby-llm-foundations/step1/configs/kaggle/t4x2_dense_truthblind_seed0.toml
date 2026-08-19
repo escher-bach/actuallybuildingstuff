@@ -1,0 +1,55 @@
+# The dense recipe, unchanged, with one field different: the expert whose
+# trajectories are imitated. `truth_blind_optimal` is the Bayes-optimal policy
+# that reads the evidence table but NOT the answer -- it scores 97.7% on its own
+# play using 2.63 probes, where the privileged teacher scores 100% using 2.07
+# only because it already knows which hypothesis to isolate.
+#
+# The dense seed-0 arm imitated the privileged teacher and settled at 41.1% with
+# 1.94 probes, i.e. it copied a cost profile that is sufficient only with the
+# answer in hand. This asks whether imitating a followable expert clears 50%.
+#
+# Training and evaluation are the same paradigm: full clean episodes, greedy,
+# episode over at the first illegal action, scored on closed-loop success.
+
+[run]
+name = "t4x2-dense-truthblind-seed0"
+root_seed = 20260811
+mode = "dense"
+resume = "auto"
+
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+rendering = "a"
+context_length = 2048
+train_episodes = 32768
+validation_episodes = 1024
+structural_episodes = 1024
+transfer_episodes = 1024
+
+[training]
+# The only field that differs from t4x2_dense_seed0.toml.
+train_target_policy = "truth_blind_optimal"
+# Exact 32,768-token update units; this is 3,052 updates (100,007,936 tokens).
+token_budget = 100007936
+global_tokens_per_update = 32768
+microbatch_sequences = 4
+learning_rate = 0.0006
+warmup_fraction = 0.02
+weight_decay = 0.1
+# Trainer natively owns a uniform step cadence.  28 updates (917,504 nominal
+# tokens) divides the exact 3,052-update budget, so Trainer writes the final
+# resumable checkpoint as well as the periodic ones.
+checkpoint_interval_updates = 28
+checkpoint_total_limit = 6
+
+[preflight]
+checkpoint_after_updates = 8
+resume_updates = 1

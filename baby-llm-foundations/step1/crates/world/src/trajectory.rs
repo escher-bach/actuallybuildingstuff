@@ -4,7 +4,7 @@
 //! teacher. It never derives a target from hidden state itself.
 
 use crate::render::{render_action, render_observation, Rendering};
-use crate::teacher::teach;
+use crate::teacher::{consistent, teach, truth_blind_optimal_action};
 use crate::{reset, step, valid_actions, Action, Instance, State, Status};
 
 /// Fragment-level encoder used by Rust packing. Production tokenizers should
@@ -112,6 +112,12 @@ pub enum TargetPolicy {
     /// Uniform over the actions legal in the state, which is exactly the
     /// unguided policy whose closed-loop success is measured independently.
     RandomValid,
+    /// The Bayes-optimal expert that reads the evidence table but not `truth`.
+    /// Unlike the two above it drives the *rollout* as well as the label, so
+    /// the demonstrated trajectory is one a learner could actually follow:
+    /// the dense teacher's ~2 probes are only sufficient with the answer in
+    /// hand, and imitating that cost profile caps the learner.
+    TruthBlindOptimal,
 }
 
 impl TargetPolicy {
@@ -119,6 +125,7 @@ impl TargetPolicy {
         match self {
             TargetPolicy::TeacherPreferred => "teacher_preferred",
             TargetPolicy::RandomValid => "random_valid_target_shuffled",
+            TargetPolicy::TruthBlindOptimal => "truth_blind_optimal",
         }
     }
 
@@ -126,6 +133,7 @@ impl TargetPolicy {
         match value {
             "teacher_preferred" => Some(TargetPolicy::TeacherPreferred),
             "random_valid_target_shuffled" => Some(TargetPolicy::RandomValid),
+            "truth_blind_optimal" => Some(TargetPolicy::TruthBlindOptimal),
             _ => None,
         }
     }
@@ -170,28 +178,43 @@ pub fn generate_trajectory_with_targets(
         if state.step >= max_steps {
             return Err(TrajectoryError::DidNotTerminate { max_steps });
         }
-        let targets = teach(inst, &state);
-        if targets.preferred_actions.is_empty() {
-            return Err(TrajectoryError::EmptyTeacherTarget { step: state.step });
-        }
-        let selected_index =
-            representative_index(inst, state.step, targets.preferred_actions.len());
-        let selected_action = targets.preferred_actions[selected_index];
-        let supervised_action = match policy {
-            TargetPolicy::TeacherPreferred => selected_action,
-            TargetPolicy::RandomValid => {
-                let legal = valid_actions(inst, &state);
-                debug_assert!(!legal.is_empty());
-                legal[shuffled_index(inst, state.step, legal.len())]
+        // The truth-blind expert never consults `teach`, so nothing
+        // truth-derived reaches the record it produces.
+        let item = if matches!(policy, TargetPolicy::TruthBlindOptimal) {
+            let action = truth_blind_optimal_action(inst, &state);
+            TrajectoryStep {
+                observation: render_observation(inst, &state, rendering),
+                preferred_actions: vec![action],
+                selected_action: action,
+                supervised_action: action,
+                licenses_commitment: consistent(inst, &state).count_ones() == 1,
+            }
+        } else {
+            let targets = teach(inst, &state);
+            if targets.preferred_actions.is_empty() {
+                return Err(TrajectoryError::EmptyTeacherTarget { step: state.step });
+            }
+            let selected_index =
+                representative_index(inst, state.step, targets.preferred_actions.len());
+            let selected_action = targets.preferred_actions[selected_index];
+            let supervised_action = match policy {
+                TargetPolicy::TeacherPreferred => selected_action,
+                TargetPolicy::RandomValid => {
+                    let legal = valid_actions(inst, &state);
+                    debug_assert!(!legal.is_empty());
+                    legal[shuffled_index(inst, state.step, legal.len())]
+                }
+                TargetPolicy::TruthBlindOptimal => unreachable!(),
+            };
+            TrajectoryStep {
+                observation: render_observation(inst, &state, rendering),
+                preferred_actions: targets.preferred_actions,
+                selected_action,
+                supervised_action,
+                licenses_commitment: targets.licenses_commitment,
             }
         };
-        let item = TrajectoryStep {
-            observation: render_observation(inst, &state, rendering),
-            preferred_actions: targets.preferred_actions,
-            selected_action,
-            supervised_action,
-            licenses_commitment: targets.licenses_commitment,
-        };
+        let selected_action = item.selected_action;
         step(inst, &mut state, selected_action)
             .map_err(|_| TrajectoryError::TeacherActionRejected { step: state.step })?;
         steps.push(item);
@@ -468,6 +491,58 @@ mod tests {
         (0..10_000)
             .find_map(|index| sample(&params(variant), 20260811, index).ok())
             .expect("test parameters must produce an accepted instance")
+    }
+
+    /// The truth-blind expert is the one a learner could actually follow, so
+    /// what matters is that its own play wins nearly always -- imitating a
+    /// demonstrator that loses is pointless. It is deliberately NOT 100%: it
+    /// cannot read the answer, so a residual guess remains.
+    #[test]
+    fn truth_blind_expert_wins_nearly_always_and_probes_more_than_the_teacher() {
+        let params = FamilyParams {
+            n_hyp: 6, n_probe: 5, n_evidence: 2, cost_lo: 1, cost_hi: 3,
+            budget_slack: 1, min_depth: 2, step_slack: 2, variant: Variant::Irreversible,
+        };
+        let mut wins = 0usize;
+        let mut total = 0usize;
+        let mut blind_probes = 0usize;
+        let mut teacher_probes = 0usize;
+        let mut index = 0u64;
+        while total < 200 && index < 20_000 {
+            if let Ok(inst) = sample(&params, 4242, index) {
+                let blind = generate_trajectory_with_targets(
+                    &inst, Rendering::A, TargetPolicy::TruthBlindOptimal,
+                )
+                .expect("the truth-blind expert must terminate inside the step limit");
+                let teacher = generate_teacher_trajectory(&inst, Rendering::A).unwrap();
+                blind_probes += blind
+                    .steps
+                    .iter()
+                    .filter(|s| matches!(s.selected_action, Action::Inspect(_)))
+                    .count();
+                teacher_probes += teacher
+                    .steps
+                    .iter()
+                    .filter(|s| matches!(s.selected_action, Action::Inspect(_)))
+                    .count();
+                if matches!(
+                    blind.final_state.status,
+                    Status::Terminated { correct: true, .. }
+                ) {
+                    wins += 1;
+                }
+                total += 1;
+            }
+            index += 1;
+        }
+        assert_eq!(total, 200);
+        let rate = wins as f64 / total as f64;
+        assert!(rate > 0.90, "truth-blind expert won only {rate:.3} of episodes");
+        // It must pay for not knowing the answer, or it is secretly reading it.
+        assert!(
+            blind_probes > teacher_probes,
+            "truth-blind expert used {blind_probes} probes against the teacher's {teacher_probes}"
+        );
     }
 
     #[test]

@@ -106,6 +106,16 @@ class CollectionSettings:
     # examples teach recovery, which the frozen evaluator cannot score, and they
     # were a third of the first arm's training set.
     supervise_repeat_states: bool = True
+    # Which expert labels the states the learner reaches. "teacher" is the
+    # privileged truth-reading teacher; "truth_blind_optimal" is the Bayes-
+    # optimal policy that reads the evidence table but not the answer, and is
+    # therefore a policy a learner could actually execute.
+    expert: str = "teacher"
+    # "end_episode" makes collection follow the evaluator exactly: an episode
+    # stops at its first malformed or invalid action, so the states supervised
+    # are the states the scored policy visits and no training context ever
+    # contains a rejected attempt. "retry" is the older behaviour.
+    on_failure: str = "retry"
     # "learner" is the arm; "teacher" is its control. Under "teacher" the world
     # advances on the teacher's own action instead of the model's, so the states
     # visited are teacher states while the packing, the masking, the seeds, the
@@ -124,8 +134,14 @@ class CollectionSettings:
             context_length=config["world"]["context_length"],
             temperature=collection.get("temperature", 0.0),
             supervise_repeat_states=collection.get("supervise_repeat_states", True),
+            expert=collection.get("expert", "teacher"),
+            on_failure=collection.get("on_failure", "retry"),
             policy=collection.get("policy", "learner"),
         )
+        if settings.expert not in ("teacher", "truth_blind_optimal"):
+            raise ValueError(f"collection.expert must be 'teacher' or 'truth_blind_optimal', got {settings.expert!r}")
+        if settings.on_failure not in ("retry", "end_episode"):
+            raise ValueError(f"collection.on_failure must be 'retry' or 'end_episode', got {settings.on_failure!r}")
         if settings.policy not in ("learner", "teacher"):
             raise ValueError(f"collection.policy must be 'learner' or 'teacher', got {settings.policy!r}")
         if settings.max_turns < 1 or settings.max_action_tokens < 1:
@@ -271,8 +287,13 @@ def collect_tranche(model, params: dict, seeds: list[int], rendering: str,
         # Supervise before acting: the target belongs to this state, and the
         # learner's own action must not be able to influence it.
         for index, context in zip(active, contexts):
-            targets = worlds[index].privileged_teacher_targets()[0]
-            action = _teacher_target(targets, n_probe)
+            if settings.expert == "truth_blind_optimal":
+                # Nothing truth-derived is consulted, so the unlicensed-commit
+                # guard has nothing to refuse: this expert cannot propose a
+                # commit the evidence does not support.
+                action = worlds[index].truth_blind_optimal_actions()[0]
+            else:
+                action = _teacher_target(worlds[index].privileged_teacher_targets()[0], n_probe)
             if action is None:
                 counters.states_refused_unlicensed_commit += 1
                 traces[index].refused_states += 1
@@ -305,7 +326,9 @@ def collect_tranche(model, params: dict, seeds: list[int], rendering: str,
             # packing, the mask, the counters, the contract -- is untouched.
             attempts = []
             for index in active:
-                action = _teacher_target(worlds[index].privileged_teacher_targets()[0], n_probe)
+                action = (worlds[index].truth_blind_optimal_actions()[0]
+                          if settings.expert == "truth_blind_optimal"
+                          else _teacher_target(worlds[index].privileged_teacher_targets()[0], n_probe))
                 if action is None:
                     attempts.append((encode_bytes(MALFORMED_ATTEMPT) + [END_TURN], MALFORMED_ATTEMPT))
                     continue
@@ -342,6 +365,13 @@ def collect_tranche(model, params: dict, seeds: list[int], rendering: str,
                 still_live.append(index)
                 continue
             consecutive_failures[index] += 1
+            if settings.on_failure == "end_episode":
+                # Exactly the evaluator's rule, so the collected state
+                # distribution is the one the scored policy actually produces.
+                counters.failures_unrecovered += 1
+                traces[index].end_reason = "protocol_failure"
+                counters.episodes_abandoned_repeated_failure += 1
+                continue
             if consecutive_failures[index] >= settings.max_consecutive_failures:
                 counters.failures_unrecovered += 1
                 traces[index].end_reason = "repeated_failure"
