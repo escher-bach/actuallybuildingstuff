@@ -217,6 +217,40 @@ def truth_blind_ceiling(params: dict, seed: int, episodes: int) -> dict:
     }
 
 
+def truth_blind_optimum(params: dict, seed: int, episodes: int) -> dict:
+    """What a learner that cannot read the answer can actually achieve.
+
+    The teacher identifies in ~2 probes by choosing them with `inst.truth` in
+    hand: it needs only the true hypothesis to end up alone in a cell. It is
+    tempting to conclude from that the demonstration cannot be followed. That
+    conclusion does not survive measurement, and a single fixed probe order is
+    not evidence for it -- a bad fixed order wastes the budget on probes that
+    separate nothing.
+
+    This is the Bayes-optimal truth-blind policy by backward induction: at each
+    state, commit now for `1 / |consistent|`, or buy an affordable unprobed
+    probe and average over the evidence it might return. It answers two things
+    the teacher's own numbers cannot: how well a learner *could* do here, and
+    how many probes doing that well actually costs.
+    """
+    from world_py import truth_blind_optimal_success
+
+    values = truth_blind_optimal_success(_family(params), seed, episodes)
+    success = [value for value, _probes in values]
+    probes = [count for _value, count in values]
+    return {
+        "episodes": episodes,
+        "success_ceiling": _mean(success),
+        "certain_identification_rate": sum(1 for value in success if value > 0.999) / episodes,
+        "mean_probes": _mean(probes),
+        "interpretation": (
+            "the task is very nearly solvable without truth; the teacher's lower probe count is a "
+            "privilege of knowing the answer, so imitating its cost profile caps the learner below "
+            "this ceiling"
+        ),
+    }
+
+
 def teacher_target_leakage(params: dict, seed: int, episodes: int, max_turns: int = 8) -> dict:
     """Does querying the teacher off its own trajectory leak the answer?
 
@@ -299,6 +333,14 @@ def assert_audit_contract(report: dict, params: dict) -> None:
         raise AssertionError(f"truth-blind ceiling is not a probability: {ceiling['success_ceiling']}")
     if ceiling["success_ceiling"] < teacher["success_rate"] and ceiling["identifiable_rate"] == 1.0:
         raise AssertionError("every episode is identifiable yet the ceiling is below the teacher's score")
+    optimum = report["truth_blind_optimum"]
+    if not 0.0 <= optimum["success_ceiling"] <= 1.0:
+        raise AssertionError(f"truth-blind optimum is not a probability: {optimum['success_ceiling']}")
+    if optimum["success_ceiling"] < ceiling["identifiable_rate"] - 0.5:
+        raise AssertionError(
+            "every episode is identifiable in hindsight yet the adaptive optimum is far below it; "
+            "the backward induction is not searching the same actions"
+        )
     leakage = report["teacher_target_leakage"]
     if leakage["unlicensed_states"] <= 0:
         raise AssertionError(
@@ -320,6 +362,7 @@ def audit(config: dict, ceiling_episodes: int = 256) -> dict:
     opening = opening_liveness(world, seed, episodes)
     teacher = teacher_play(world, seed, episodes)
     blind = truth_blind_identification(world, seed, episodes)
+    optimum = truth_blind_optimum(world, seed, episodes)
     ceiling = truth_blind_ceiling(world, seed, min(ceiling_episodes, episodes))
     leakage = teacher_target_leakage(world, seed, min(ceiling_episodes, episodes))
     report = {
@@ -336,6 +379,7 @@ def audit(config: dict, ceiling_episodes: int = 256) -> dict:
         "opening_liveness": opening,
         "teacher_play": teacher,
         "truth_blind_identification": blind,
+        "truth_blind_optimum": optimum,
         "truth_blind_ceiling": ceiling,
         "teacher_target_leakage": leakage,
         "identification_ceiling": {

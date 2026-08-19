@@ -71,6 +71,13 @@
       "4": 51
     }
   },
+  "truth_blind_optimum": {
+    "certain_identification_rate": 0.9111328125,
+    "episodes": 1024,
+    "interpretation": "the task is very nearly solvable without truth; the teacher's lower probe count is a privilege of knowing the answer, so imitating its cost profile caps the learner below this ceiling",
+    "mean_probes": 2.62841796875,
+    "success_ceiling": 0.97705078125
+  },
   "world": {
     "budget_slack": 1,
     "context_length": 2048,

@@ -422,6 +422,183 @@ fn step_error_name(error: StepError) -> &'static str {
 
 /// Canonical public action rendering. The model is trained on this text, not
 /// the private integer action encoding used by the batched executor.
+/// The Bayes-optimal success rate for a learner that CANNOT read `truth`.
+///
+/// The dense teacher chooses probes with `inst.truth` in hand: it needs only
+/// the true hypothesis to end up alone in a cell, which is why it identifies
+/// inside two binary probes when two binary probes cannot separate six
+/// hypotheses. That leaves open whether a learner without truth could do as
+/// well by choosing adaptively, and a single fixed probe order cannot answer
+/// it -- a bad fixed order spends the budget on probes that separate nothing.
+///
+/// This settles it exactly. Backward induction over `(probed set, consistent
+/// set, spent)` under a uniform prior on the consistent hypotheses: at each
+/// state the learner may commit now, worth `1 / |consistent|`, or buy any
+/// affordable unprobed probe and average over the evidence it might return.
+/// The maximum is the best any truth-blind policy can do on that instance.
+///
+/// PRIVILEGED and audit-only: the evidence table never crosses to Python,
+/// only the resulting probability.
+#[pyfunction]
+fn truth_blind_optimal_success(
+    params: &PyFamilyParams,
+    seed: u64,
+    n_episodes: usize,
+) -> PyResult<Vec<(f64, f64)>> {
+    let mut out: Vec<(f64, f64)> = Vec::with_capacity(n_episodes);
+    let mut index = 0u64;
+    while out.len() < n_episodes && index < MAX_REJECTION_ATTEMPTS {
+        if let Ok(instance) = sample(&params.inner, seed, index) {
+            out.push((optimal_truth_blind(&instance), optimal_truth_blind_probes(&instance)));
+        }
+        index += 1;
+    }
+    if out.len() != n_episodes {
+        return Err(PyValueError::new_err("could not sample the requested episodes"));
+    }
+    Ok(out)
+}
+
+fn optimal_truth_blind(inst: &Instance) -> f64 {
+    let full: u64 = (1u64 << inst.n_hyp) - 1;
+    let mut memo = std::collections::HashMap::new();
+    best_value(inst, 0u64, full, 0, 0, &mut memo)
+}
+
+/// Expected probes bought by the optimal truth-blind policy above. Reported
+/// beside the teacher's own 2.07: if the optimum needs materially more, then
+/// imitating the teacher's probe *count* caps the learner below what a
+/// truth-blind policy can reach, and the demonstration is misleading rather
+/// than un-followable.
+fn optimal_truth_blind_probes(inst: &Instance) -> f64 {
+    let full: u64 = (1u64 << inst.n_hyp) - 1;
+    let mut memo = std::collections::HashMap::new();
+    let mut probe_memo = std::collections::HashMap::new();
+    expected_probes(inst, 0u64, full, 0, 0, &mut memo, &mut probe_memo)
+}
+
+fn expected_probes(
+    inst: &Instance,
+    probed: u64,
+    consistent: u64,
+    spent: i32,
+    steps: u16,
+    memo: &mut std::collections::HashMap<(u64, u64, i32, u16), f64>,
+    probe_memo: &mut std::collections::HashMap<(u64, u64, i32, u16), f64>,
+) -> f64 {
+    let live = consistent.count_ones();
+    if live <= 1 || steps + 1 >= inst.step_limit {
+        return 0.0;
+    }
+    let key = (probed, consistent, spent, steps);
+    if let Some(&cached) = probe_memo.get(&key) {
+        return cached;
+    }
+    // Replay the same argmax the value recursion takes, then count its probes.
+    let mut best = 1.0 / live as f64;
+    let mut chosen: Option<(u16, std::collections::HashMap<u16, u64>, i32)> = None;
+    for q in 0..inst.n_probe {
+        let bit = 1u64 << q;
+        if probed & bit != 0 {
+            continue;
+        }
+        let cost = inst.probe_cost[q as usize];
+        if spent + cost > inst.budget {
+            continue;
+        }
+        let mut buckets: std::collections::HashMap<u16, u64> = std::collections::HashMap::new();
+        for h in 0..inst.n_hyp {
+            if consistent & (1u64 << h) == 0 {
+                continue;
+            }
+            *buckets.entry(inst.evidence_of(q, h) as u16).or_insert(0) |= 1u64 << h;
+        }
+        if buckets.len() < 2 {
+            continue;
+        }
+        let mut value = 0.0;
+        for subset in buckets.values() {
+            let weight = subset.count_ones() as f64 / live as f64;
+            value += weight * best_value(inst, probed | bit, *subset, spent + cost, steps + 1, memo);
+        }
+        if value > best {
+            best = value;
+            chosen = Some((q, buckets, cost));
+        }
+    }
+    let result = match chosen {
+        None => 0.0,
+        Some((q, buckets, cost)) => {
+            let mut total = 1.0;
+            for subset in buckets.values() {
+                let weight = subset.count_ones() as f64 / live as f64;
+                total += weight
+                    * expected_probes(inst, probed | (1u64 << q), *subset, spent + cost, steps + 1, memo, probe_memo);
+            }
+            total
+        }
+    };
+    probe_memo.insert(key, result);
+    result
+}
+
+fn best_value(
+    inst: &Instance,
+    probed: u64,
+    consistent: u64,
+    spent: i32,
+    steps: u16,
+    memo: &mut std::collections::HashMap<(u64, u64, i32, u16), f64>,
+) -> f64 {
+    let live = consistent.count_ones();
+    if live <= 1 {
+        return 1.0;
+    }
+    // Committing costs a step; a learner with no step left must commit now.
+    if steps + 1 >= inst.step_limit {
+        return 1.0 / live as f64;
+    }
+    let key = (probed, consistent, spent, steps);
+    if let Some(&cached) = memo.get(&key) {
+        return cached;
+    }
+    // Guess uniformly among the hypotheses still consistent.
+    let mut best = 1.0 / live as f64;
+    for q in 0..inst.n_probe {
+        let bit = 1u64 << q;
+        if probed & bit != 0 {
+            continue;
+        }
+        let cost = inst.probe_cost[q as usize];
+        if spent + cost > inst.budget {
+            continue;
+        }
+        // Partition the consistent set by the evidence this probe would return.
+        let mut buckets: std::collections::HashMap<u16, u64> = std::collections::HashMap::new();
+        for h in 0..inst.n_hyp {
+            if consistent & (1u64 << h) == 0 {
+                continue;
+            }
+            *buckets.entry(inst.evidence_of(q, h) as u16).or_insert(0) |= 1u64 << h;
+        }
+        if buckets.len() < 2 {
+            // Separates nothing here; buying it can only waste budget.
+            continue;
+        }
+        let mut value = 0.0;
+        for subset in buckets.values() {
+            let weight = subset.count_ones() as f64 / live as f64;
+            value += weight
+                * best_value(inst, probed | bit, *subset, spent + cost, steps + 1, memo);
+        }
+        if value > best {
+            best = value;
+        }
+    }
+    memo.insert(key, best);
+    best
+}
+
 #[pyfunction]
 fn render_action(encoded: i64, n_probe: u16, n_hyp: u16, rendering: &str) -> PyResult<String> {
     let action = decode_action(encoded, n_probe, n_hyp).map_err(PyValueError::new_err)?;
@@ -496,5 +673,6 @@ fn world_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_action, m)?)?;
     m.add_function(wrap_pyfunction!(generate_teacher_shard, m)?)?;
     m.add_function(wrap_pyfunction!(tokenizer_identity, m)?)?;
+    m.add_function(wrap_pyfunction!(truth_blind_optimal_success, m)?)?;
     Ok(())
 }

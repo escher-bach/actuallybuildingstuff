@@ -85,9 +85,11 @@ which probe is legal or informative is actively harmful.
    the time**, with 2.00 hypotheses still live. First measurement of the
    quantity, and it very nearly explains the 41% band: guessing among 2.00 live
    hypotheses gives 50%, and legal-conditioned success is 45%.
-2. **The demonstrator is not imitable.** It solves 100% of episodes in 2.07
-   probes by choosing them with the answer in hand; the dense model already
-   matches that count at 1.94 and scores 41%.
+2. **The demonstration is misleading, and the task is nearly solvable without
+   truth.** A Bayes-optimal truth-blind learner reaches **97.7%** using **2.63**
+   probes. The teacher needs only 2.07 because it picks them knowing the answer,
+   so imitating its cost profile caps the learner well below the ceiling -- and
+   the dense model sits at 1.94, imitating exactly that.
 3. **From random weights, learner-conditioned supervision crosses the byte
    grammar where outcome-only RLVR could not** -- 11.5% against cold RLVR's
    exactly zero gradient, with the grammar acquired in one round.
@@ -127,7 +129,7 @@ RLVR-STAGE-REPORT §10 states this qualitatively. This is the number.
 
 ---
 
-## 2. The demonstrator is not a policy the learner can imitate
+## 2. The demonstration is misleading, but the task is solvable without truth
 
 A CPU replay audit ([`step1/audit/world/`](step1/audit/world/)) ran before the
 arms and changed what they were testing.
@@ -139,7 +141,8 @@ arms and changed what they were testing.
 | teacher mean probes | **2.07** (954 episodes at two, 70 at three) |
 | dense model mean probes | 1.94 |
 | every episode identifiable within budget | yes — truth-blind ceiling 1.0 |
-| fixed truth-blind order buying everything affordable | identifies **60.7%** |
+| fixed truth-blind order buying everything affordable | identifies 60.7% |
+| **Bayes-optimal truth-blind policy** | **97.7% success, 2.63 probes** |
 
 THEORY-PHASE §2 reasoned that six hypotheses under binary evidence need
 ⌈log₂ 6⌉ = 3 probes, so 1.94 meant the model stops before the evidence *can*
@@ -147,15 +150,23 @@ identify the answer, with a ceiling near 67%. Two binary probes cannot separate
 six hypotheses — and the teacher does not have to. `teach` reads `inst.truth`
 and needs only the true hypothesis to land in a cell of its own.
 
-**So the model is not under-probing.** It matches its demonstrator's probe count
-almost exactly and scores 41.1% against 100%. The gap is which probes, not how
-many. The world is not the obstacle — every episode is identifiable inside the
-budget — but the budget is tight enough that choosing wrong forecloses the
-answer, which is why a fixed truth-blind order fails 39% of the time.
+**So the model is not under-probing relative to its demonstrator** — it matches
+2.07 with 1.94 — **but it is under-probing relative to what a truth-blind
+learner needs**, which is 2.63.
 
-This is a sharper form of §3's fitted-map account than §3 states: the teacher's
-trajectory distribution is *itself truth-conditioned*, so cloning it copies a
-cost profile whose sufficiency came from information the learner does not have.
+An earlier version of this section claimed the teacher was "not imitable",
+inferring an impossibility from the single fixed order that identifies only
+60.7%. That was wrong, and the backward induction above retires it: a learner
+with no access to truth reaches 97.7%, identifying with certainty in 91.1% of
+episodes. A good adaptive rule exists and nothing prevents learning it.
+
+The defensible claim is weaker and more useful. The teacher's trajectory
+distribution is *truth-conditioned*, so cloning it copies a cost profile whose
+sufficiency came from information the learner does not have. Imitation
+therefore caps the learner at a probe budget that is only enough for someone who
+already knows the answer. The gap from 41.1% to 97.7% is not the world's
+difficulty and not the demonstrator's un-followability; it is a policy that
+exists, is reachable truth-blind, and was not learned.
 
 ### 2.1 A hazard learner conditioning creates
 
@@ -264,12 +275,23 @@ as a rejected action.**
    well-formed actions the world refuses, not gibberish.
 5. The evaluator ends the episode at the first one.
 
-Section 2 predicted this before the runs. The teacher identifies in 2.07 probes
-*because* it selects them with `inst.truth`. The count is imitable; the
-selection is not. Learner conditioning transfers the count and cannot transfer
-the selection, so it buys probes that discriminate nothing and are frequently
-illegal. `mean_live_hypotheses_at_commitment` agrees: 2.00 -> 1.49, never near
-1. More evidence gathered, and the wrong evidence.
+Note what this is *not*. Every teacher target is legal: `preferred_actions` is a
+subset of `valid_actions`, which excludes already-probed and unaffordable
+probes, and 2,564 targets checked at deliberately off-trajectory states produced
+zero exceptions. The teacher never proposes an illegal action. The illegality is
+the model's own, surfaced by operating at a depth it had never reached -- the
+dense policy's 2.8% invalid rate was partly an artefact of quitting early, so
+its inability to track which probes are spent was never exposed. Section 7.3 of
+the migration plan also keeps the learner's rejected attempts in context, so
+repeated probes appear in training contexts thousands of times: legal targets,
+contexts saturated with illegal repeats.
+
+The probe *count* was never the binding constraint, which the ceiling makes
+plain. The optimal truth-blind policy uses 2.63 probes; this arm moved from 1.94
+to 2.59, within 0.04 of it, and scored 33%. It corrected the count almost
+exactly and gained nothing. What binds is which probe, and legality.
+`mean_live_hypotheses_at_commitment` agrees: 2.00 -> 1.49, never near 1. More
+evidence gathered, and the wrong evidence.
 
 ### 3.5 The confound the control does not remove
 
