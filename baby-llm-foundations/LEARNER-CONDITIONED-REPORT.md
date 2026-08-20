@@ -1,5 +1,30 @@
 # Learner-Conditioned Dense Supervision
 
+> **SUPERSEDED IN ITS INTERPRETATION — read
+> [STEP-1-EXPERIMENT-DESIGN-FAILURE.md](STEP-1-EXPERIMENT-DESIGN-FAILURE.md) first.**
+>
+> Every measurement below is correctly recorded. Two design errors mean much of
+> what they were taken to *mean* does not survive:
+>
+> 1. **The "truth-blind optimum" is not the learner's ceiling.** It reads the
+>    complete evidence table, every probe cost and the step limit. Dropping only
+>    `truth` does not put it in the learner's information state, so 97.7% is a
+>    table-aware oracle value. Everywhere this report calls it a ceiling for a
+>    learner, or an expert "a learner can actually follow", it is wrong.
+> 2. **The generator gives two hypothesis labels stable public meanings.**
+>    `sample_evidence_table` rewrites a draw when `v == h`, which at
+>    `n_evidence = 2` makes hypothesis 0 always return evidence 1 and hypothesis
+>    1 always return evidence 0 — verified over 400 instances and all probes by
+>    `evidence_distribution_is_not_conditioned_on_the_hypothesis_label`. A public
+>    policy exploiting only that scores ~47%, and the two-probe value is 41.67%
+>    against the dense arm's 41.1% at 1.94 probes.
+>
+> Consequently the 40–45% band is not established as evidence about capacity,
+> optimization, or acquisition of hypothesis elimination, and the Section 0b
+> claim that the truth-blind arms *falsify* demonstrator followability is void:
+> that demonstrator was still table-conditioned.
+
+
 ## Stage report: STEP-1 §6's third condition, on the existing world family
 
 ### Status

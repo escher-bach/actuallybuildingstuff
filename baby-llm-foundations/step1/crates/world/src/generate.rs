@@ -641,6 +641,39 @@ mod tests {
         out
     }
 
+    /// Does `P(E | H = h)` change under a permutation of hypothesis LABELS?
+    ///
+    /// It must not. If two labels carry stable public meanings across
+    /// instances, a policy can score well by reading the label rather than by
+    /// eliminating hypotheses, and the whole family stops measuring what it
+    /// was built to measure.
+    #[test]
+    fn evidence_distribution_is_not_conditioned_on_the_hypothesis_label() {
+        let p = FamilyParams {
+            n_hyp: 6, n_probe: 5, n_evidence: 2, cost_lo: 1, cost_hi: 3,
+            budget_slack: 1, min_depth: 2, step_slack: 2, variant: Variant::Irreversible,
+        };
+        let mut seen: Vec<std::collections::HashSet<u16>> = vec![Default::default(); 6];
+        let mut index = 0u64;
+        let mut found = 0usize;
+        while found < 400 && index < 40_000 {
+            if let Ok(inst) = sample(&p, 909, index) {
+                for h in 0..inst.n_hyp {
+                    for q in 0..inst.n_probe {
+                        seen[h as usize].insert(inst.evidence_of(q, h));
+                    }
+                }
+                found += 1;
+            }
+            index += 1;
+        }
+        let constant: Vec<u16> = (0..6u16).filter(|&h| seen[h as usize].len() == 1).collect();
+        assert!(
+            constant.is_empty(),
+            "hypotheses {constant:?} return a CONSTANT evidence value across {found} instances              and all probes: {seen:?}. Their public labels therefore mean something fixed, and a              policy can exploit that without eliminating anything."
+        );
+    }
+
     #[test]
     fn sample_is_deterministic_and_varies_by_index() {
         let p = params(Variant::Irreversible);
