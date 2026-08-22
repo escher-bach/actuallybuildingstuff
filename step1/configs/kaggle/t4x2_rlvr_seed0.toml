@@ -1,0 +1,71 @@
+[run]
+name = "t4x2-rlvr-seed0"
+root_seed = 20260811
+mode = "rlvr"
+# Outcome-only verified learning from the same initialization policy the dense
+# arm used. This is the predeclared STEP-1 §6 comparison row.
+arm = "outcome_only_from_initialization"
+
+# Identical to t4x2_dense_seed0.toml so both arms draw training worlds from one
+# generated family and are scored on the very same held-out evaluation seeds.
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+rendering = "a"
+context_length = 2048
+train_episodes = 32768
+validation_episodes = 1024
+structural_episodes = 1024
+transfer_episodes = 1024
+
+[rollout]
+# A declared seed band disjoint from validation (+1e6), structural (+2e6), and
+# Rendering B transfer (+3e6).
+train_seed_offset = 4000000
+# The budget makes the real bound: an accepted probe is the only action that
+# lengthens a trajectory, and malformed or invalid actions end it exactly as
+# they do in the evaluator.
+max_turns = 12
+max_action_tokens = 96
+max_prompt_tokens = 256
+max_completion_tokens = 1536
+generation_rows = 32
+# TRL's own sampling defaults; nothing here was tuned against the evaluator.
+temperature = 1.0
+top_p = 1.0
+top_k = 0
+
+[grpo]
+num_generations = 8
+per_device_sequences = 4
+steps_per_generation = 8
+# 4 sequences * 2 ranks * 8 accumulation steps = 64 rollouts per update, of
+# which 8 are distinct worlds sampled 8 times each. 763 updates * 64 = 48,832
+# rollout episodes, exactly the sequence count the dense seed-0 arm consumed.
+max_steps = 763
+learning_rate = 0.00001
+warmup_fraction = 0.02
+weight_decay = 0.0
+lr_scheduler_type = "constant_with_warmup"
+# TRL defaults, recorded rather than tuned. beta = 0 means no reference model
+# and therefore no KL term that could reintroduce teacher information.
+beta = 0.0
+epsilon = 0.2
+loss_type = "dapo"
+scale_rewards = "group"
+num_iterations = 1
+mask_truncated_completions = false
+# Verified spend is logged at zero weight: the trained objective is the
+# verified terminal verdict alone.
+spend_reward_weight = 0.0
+milestones_updates = [95, 191, 382, 763]
+
+[evaluation]
+milestone_episodes = 512

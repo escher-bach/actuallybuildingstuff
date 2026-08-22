@@ -1,0 +1,7 @@
+{
+  "add_bos_token": false,
+  "add_eos_token": false,
+  "clean_up_tokenization_spaces": false,
+  "model_max_length": 2048,
+  "tokenizer_class": "PreTrainedTokenizerFast"
+}

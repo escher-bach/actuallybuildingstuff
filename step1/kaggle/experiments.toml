@@ -1,0 +1,108 @@
+# Declarative Step 1 experiment registry.
+#
+# One entry is one launchable experiment. It contains no credentials and no
+# mutable Kaggle state: the notebook slug is derived from the pinned commit, so
+# every commit submits under its own immutable slug.
+
+schema_version = 1
+owner = "aniruddhavarma"
+git_remote = "origin"
+launcher_template = "step1/kaggle/step1_t4x2_launcher.ipynb"
+output_root = "/kaggle/working/step1-results"
+accelerator = "NvidiaTeslaT4"
+
+[experiments.rlvr-smoke]
+title = "Step 1 RLVR smoke"
+slug_prefix = "step1-rlvr-smoke"
+config = "step1/configs/kaggle/t4x2_rlvr_smoke.toml"
+purpose = "plumbing gate for the outcome-only stage; not a scientific result"
+
+[experiments.rlvr-seed0]
+title = "Step 1 RLVR seed 0"
+slug_prefix = "step1-rlvr-seed0"
+config = "step1/configs/kaggle/t4x2_rlvr_seed0.toml"
+purpose = "outcome-only verified learning from initialization, seed 0"
+
+[experiments.rlvr-warmstart-seed0]
+title = "Step 1 RLVR warm start seed 0"
+slug_prefix = "step1-rlvr-warmstart-seed0"
+config = "step1/configs/kaggle/t4x2_rlvr_warmstart_seed0.toml"
+purpose = "outcome-only optimization of the completed dense seed-0 policy"
+# Cloud-to-cloud dependency: the dense checkpoint is attached from its own
+# Kaggle output and never routed through the operator's device. The identity
+# below is re-verified inside the run by step1_experiments.rlvr before use.
+kernel_sources = ["aniruddhavarma/step1-t4x2-dense-seed0-84f2938"]
+
+[experiments.rlvr-warmstart-seed0.upstream_identity."aniruddhavarma/step1-t4x2-dense-seed0-84f2938"]
+git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+config_hash = "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14"
+model_state_sha256 = "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e"
+
+[experiments.rlvr-klanchor-seed0]
+title = "Step 1 RLVR KL-anchored seed 0"
+slug_prefix = "step1-rlvr-klanchor-seed0"
+config = "step1/configs/kaggle/t4x2_rlvr_klanchor_seed0.toml"
+purpose = "post-SFT outcome-only RL with a KL trust region; paired with rlvr-warmstart-seed0 at matched budget"
+kernel_sources = ["aniruddhavarma/step1-t4x2-dense-seed0-84f2938"]
+
+[experiments.rlvr-klanchor-seed0.upstream_identity."aniruddhavarma/step1-t4x2-dense-seed0-84f2938"]
+git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+config_hash = "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14"
+model_state_sha256 = "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e"
+
+[experiments.rlvr-bigstep-seed0]
+title = "Step 1 RLVR larger step seed 0"
+slug_prefix = "step1-rlvr-bigstep-seed0"
+config = "step1/configs/kaggle/t4x2_rlvr_bigstep_seed0.toml"
+purpose = "post-SFT outcome-only RL at 1e-4; paired with rlvr-klanchor-seed0 to isolate step size"
+kernel_sources = ["aniruddhavarma/step1-t4x2-dense-seed0-84f2938"]
+
+[experiments.rlvr-bigstep-seed0.upstream_identity."aniruddhavarma/step1-t4x2-dense-seed0-84f2938"]
+git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+config_hash = "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14"
+model_state_sha256 = "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e"
+
+[experiments.rlvr-bestshot-seed0]
+title = "Step 1 RLVR best shot seed 0"
+slug_prefix = "step1-rlvr-bestshot-seed0"
+config = "step1/configs/kaggle/t4x2_rlvr_bestshot_seed0.toml"
+purpose = "best configuration the measured arms justify; deliberately multi-knob, ablate only if it works"
+kernel_sources = ["aniruddhavarma/step1-t4x2-dense-seed0-84f2938"]
+
+[experiments.rlvr-bestshot-seed0.upstream_identity."aniruddhavarma/step1-t4x2-dense-seed0-84f2938"]
+git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+config_hash = "b91eedc2655253edd662c320753c2680cb7842484411c22130deeda31a58cb14"
+model_state_sha256 = "cef0ac5a4159d65eae336be58c34dfe1e3f078a8024f4b98a7ca1a78e42a9a6e"
+
+[experiments.decoding-diagnostic]
+title = "Step 1 decoding diagnostic"
+slug_prefix = "step1-decoding-diagnostic"
+config = "step1/configs/kaggle/t4x2_decoding_diagnostic.toml"
+purpose = "re-scores the dense and best-shot checkpoints greedily and at the rollout temperature; trains nothing"
+kernel_sources = [
+    "aniruddhavarma/step1-t4x2-dense-seed0-84f2938",
+    "aniruddhavarma/step1-rlvr-bestshot-seed0-4975e04",
+]
+
+[experiments.dense-shuffled-seed0]
+title = "Step 1 dense target-shuffled control"
+slug_prefix = "step1-dense-shuffled-seed0"
+config = "step1/configs/kaggle/t4x2_dense_shuffled_seed0.toml"
+purpose = "STEP-1 section 11 control: dense recipe with the state-to-action correspondence destroyed"
+
+[experiments.transfer-forgetting]
+title = "Step 1 transfer forgetting"
+slug_prefix = "step1-transfer-forgetting"
+config = "step1/configs/kaggle/t4x2_transfer_forgetting.toml"
+purpose = "scores the seed-0 Rendering B terminal endpoints back on Rendering A; trains nothing"
+kernel_sources = ["aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9"]
+
+[experiments.transfer-retention]
+title = "Step 1 transfer retention"
+slug_prefix = "step1-transfer-retention"
+config = "step1/configs/kaggle/t4x2_transfer_retention.toml"
+purpose = "teacher-forced A-target NLL for the B-trained endpoints; separates an overwritten surface from lost knowledge"
+kernel_sources = [
+    "aniruddhavarma/step1-rendering-b-terminal-seed0-b7ccae9",
+    "aniruddhavarma/step1-t4x2-dense-seed0-84f2938",
+]

@@ -1,0 +1,87 @@
+[run]
+name = "t4x2-transfer-forgetting"
+root_seed = 20260811
+mode = "decoding_diagnostic"
+
+# How much Rendering A survives Rendering B training?
+#
+# The transfer stage measured its endpoints on B only, so what happened to the
+# original capability was never checked. This scores the seed-0 terminal
+# endpoints on the *A* worlds the dense arm was scored on — the same 1,024
+# held-out episodes, the same greedy evaluator — at every declared B budget, so
+# the answer is a curve rather than a single point.
+#
+# References already established on this exact set:
+#   dense seed 0, before any B training ............ 41.1%
+#   target-shuffled control (chance commitment) .... 16.1%
+#   an A-naive model has never been scored on A; the init arm supplies it.
+
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+# The point of the diagnostic: evaluate on A, not on the B the models were last
+# trained on.
+rendering = "a"
+context_length = 2048
+train_episodes = 32768
+validation_episodes = 1024
+structural_episodes = 1024
+transfer_episodes = 1024
+
+[evaluation]
+episodes = 1024
+
+# Greedy only. Retention is a question about the decoded policy, and every
+# number this is compared against is greedy.
+[[decoding]]
+name = "greedy"
+temperature = 0.0
+repeats = 1
+
+# The A-trained arm across its whole B schedule. Each endpoint is an
+# independent run that restarted from the dense A checkpoint, so this is a
+# curve over B exposure, not a single trajectory.
+[[models]]
+name = "a_trained_b92"
+kind = "transfer"
+arm = "a_trained"
+budget_updates = 92
+source_git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+
+[[models]]
+name = "a_trained_b306"
+kind = "transfer"
+arm = "a_trained"
+budget_updates = 306
+source_git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+
+[[models]]
+name = "a_trained_b916"
+kind = "transfer"
+arm = "a_trained"
+budget_updates = 916
+source_git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+
+[[models]]
+name = "a_trained_b3052_converged"
+kind = "transfer"
+arm = "a_trained"
+budget_updates = 3052
+source_git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"
+
+# The A-naive control: identical initialization, trained only on B. Whatever it
+# scores on A is what "never learned A" looks like, and it is the floor the
+# A-trained arm would have to fall to for forgetting to be total.
+[[models]]
+name = "init_b3052_a_naive"
+kind = "transfer"
+arm = "init"
+budget_updates = 3052
+source_git_sha = "84f29385ed623500aa2e201c45fdcf8c2257fac0"

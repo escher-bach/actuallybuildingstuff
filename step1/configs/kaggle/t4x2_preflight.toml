@@ -1,0 +1,43 @@
+[run]
+name = "t4x2-preflight"
+root_seed = 20260811
+mode = "preflight"
+resume = "auto"
+
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+rendering = "a"
+# Measured A/B trajectories reach 950 bytes.  2048 is the smallest power of
+# two with 10% headroom over the 99.9th-percentile measurement.
+context_length = 2048
+train_episodes = 2048
+validation_episodes = 256
+structural_episodes = 256
+transfer_episodes = 256
+
+[training]
+# Budgets are exact nominal global input tokens: ranks * per-device sequences
+# * context length.  2,097,152 is 64 updates of 32,768 tokens.
+token_budget = 2097152
+global_tokens_per_update = 32768
+microbatch_sequences = 4
+learning_rate = 0.0006
+warmup_fraction = 0.02
+weight_decay = 0.1
+# Standard Trainer step cadence: every 32 updates = 1,048,576 nominal tokens.
+checkpoint_interval_updates = 32
+checkpoint_total_limit = 2
+
+[preflight]
+# Trainer stops after this standard checkpoint, reconstructs a new Trainer,
+# resumes it for one update, then saves/reloads the HF artifact.
+checkpoint_after_updates = 8
+resume_updates = 1

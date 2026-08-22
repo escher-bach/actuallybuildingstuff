@@ -1,0 +1,40 @@
+[run]
+name = "t4x2-dense-seed0"
+root_seed = 20260811
+mode = "dense"
+resume = "auto"
+
+[world]
+n_hyp = 6
+n_probe = 5
+n_evidence = 2
+cost_lo = 1
+cost_hi = 3
+budget_slack = 1
+min_depth = 2
+step_slack = 2
+variant = "irreversible"
+rendering = "a"
+context_length = 2048
+train_episodes = 32768
+validation_episodes = 1024
+structural_episodes = 1024
+transfer_episodes = 1024
+
+[training]
+# Exact 32,768-token update units; this is 3,052 updates (100,007,936 tokens).
+token_budget = 100007936
+global_tokens_per_update = 32768
+microbatch_sequences = 4
+learning_rate = 0.0006
+warmup_fraction = 0.02
+weight_decay = 0.1
+# Trainer natively owns a uniform step cadence.  28 updates (917,504 nominal
+# tokens) divides the exact 3,052-update budget, so Trainer writes the final
+# resumable checkpoint as well as the periodic ones.
+checkpoint_interval_updates = 28
+checkpoint_total_limit = 6
+
+[preflight]
+checkpoint_after_updates = 8
+resume_updates = 1
