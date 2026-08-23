@@ -1,0 +1,27 @@
+{
+  "capture_environment": {
+    "status": "complete",
+    "timestamp": 1787525301.5586705
+  },
+  "correctness_tests": {
+    "status": "complete",
+    "timestamp": 1787525410.4166226
+  },
+  "cpu_benchmark": {
+    "status": "complete",
+    "timestamp": 1787525445.6022623
+  },
+  "gpu_vertical_slice": {
+    "status": "running",
+    "timestamp": 1787525445.6024623
+  },
+  "install_and_build": {
+    "status": "complete",
+    "timestamp": 1787525353.811263,
+    "wheel_sha256": "a518ad89082021e20793a171ca418d780d9a73f009860014d74406268d99f0b5"
+  },
+  "world_validation": {
+    "status": "complete",
+    "timestamp": 1787525410.537602
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "architecture_gate_passed": null,
+  "audit_verified": true,
+  "collected_at_unix": 1787524737.4817212,
+  "configuration": {
+    "path": "step2/configs/kaggle/t4x2_vertical_slice.toml",
+    "sha256": "327b642994bc36d5d3f9672e6c9254b427ab4d97d93233a2c7a20e63888170ba"
+  },
+  "downloaded_files": [
+    {
+      "path": "step2-architecture-world-54bfa53.log",
+      "sha256": "753aa0ca1f65dc0cbfecbbe76f46c3e4724605b73e5411c2d0d3ed32c6639eb8",
+      "size": 39272
+    },
+    {
+      "path": "step2-results/audit-manifest.json",
+      "sha256": "626cda6b598608e6e5a5b436fcd2e22199fb2cf76e202a07dd3c5099d3e78f01",
+      "size": 1641
+    },
+    {
+      "path": "step2-results/environment.json",
+      "sha256": "0ac97813c1b990230eb787922019e7d14031548aef26df59e18e0d286facc688",
+      "size": 2993
+    },
+    {
+      "path": "step2-results/logs/maturin-build.log",
+      "sha256": "e14bc9a3299b8de4aba560d729ed4bc4fd27b842f2e01f23682da4bd513e9e56",
+      "size": 140
+    },
+    {
+      "path": "step2-results/logs/pip-install.log",
+      "sha256": "6543a888502e6f9994a52deb684601b866f72de00f7b48ec89e955486d22f19d",
+      "size": 13145
+    },
+    {
+      "path": "step2-results/phase_status.json",
+      "sha256": "102774cb06b82e6e7bf42320f24a0da9bbbb1b9cc8cf3b1261f47b609f0a7e9a",
+      "size": 187
+    },
+    {
+      "path": "step2-results/summary.json",
+      "sha256": "e329dc8c6b41a90ae93142acc3aed137ee182911fc99d5f44e425f6c00b9058d",
+      "size": 1415
+    }
+  ],
+  "experiment": "architecture-world-vertical-slice",
+  "kaggle": {
+    "completion_time": "2026-08-23T22:33:45.680000",
+    "owner_slug_version": "aniruddhavarma/step2-architecture-world-54bfa53/1",
+    "push_url": "https://www.kaggle.com/code/aniruddhavarma/step2-architecture-world-54bfa53",
+    "terminal_status": "aniruddhavarma/step2-architecture-world-54bfa53/1 has status \"KernelWorkerStatus.ERROR\"",
+    "url": "https://www.kaggle.com/code/aniruddhavarma/step2-architecture-world-54bfa53/versions/1"
+  },
+  "kernel": "aniruddhavarma/step2-architecture-world-54bfa53",
+  "model_sha256": null,
+  "observed_accelerator_inventory": null,
+  "recovery_artifact": null,
+  "remote_manifest_sha256": "626cda6b598608e6e5a5b436fcd2e22199fb2cf76e202a07dd3c5099d3e78f01",
+  "requested_accelerator": "NvidiaTeslaT4",
+  "root_seed": 20260824,
+  "run_id": "aniruddhavarma/step2-architecture-world-54bfa53/1",
+  "schema_version": 1,
+  "scientific_report": null,
+  "source": {
+    "git_remote": "origin",
+    "git_remote_url": "https://github.com/escher-bach/actuallybuildingstuff.git",
+    "git_sha": "54bfa53b3fdfba7475f17d83a9e099d5988bc0bc"
+  },
+  "status": "failed",
+  "upstream_kaggle_versions": [],
+  "verified_manifest_entries": [
+    "environment.json",
+    "logs/maturin-build.log",
+    "logs/pip-install.log",
+    "phase_status.json"
+  ],
+  "world_size": null
+}

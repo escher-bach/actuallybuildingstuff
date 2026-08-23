@@ -1,8 +1,8 @@
 # First Architecture–World Vertical Slice
 
 **Date:** 2026-08-24
-**Status:** architecture gate passed remotely; corrected candidate retry pending
-after a per-rank scheduler-step integration failure
+**Status:** architecture gate and corrected bounded candidate start completed;
+source-world competence remains unestablished
 
 ## 1. Why this must precede checkpoint evidence
 
@@ -140,3 +140,8 @@ checkpoint as the intended training candidate. The correction uses
 `step_scheduler_with_optimizer=False`, steps once after each successful global
 optimizer update, and fails immediately if scheduler epoch and successful-step
 count diverge.
+
+The fifth remote attempt (`1d965c5`, version 1) completed with the corrected
+invariant: 256 successful global optimizer steps, scheduler epoch 256, and a
+monotone post-warm-up cosine ending at zero. The retained checkpoint and full
+interpretation are in [GPU-VERTICAL-SLICE-RESULT.md](GPU-VERTICAL-SLICE-RESULT.md).

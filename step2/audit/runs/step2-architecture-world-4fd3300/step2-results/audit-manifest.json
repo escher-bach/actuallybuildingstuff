@@ -1,0 +1,83 @@
+{
+  "artifacts": [
+    {
+      "path": "cpu-benchmark.json",
+      "sha256": "3cb77675a07770764c7375f1a35b7ce5cc969dca8e8ab5e764bb63bafa487437",
+      "size": 748
+    },
+    {
+      "path": "environment.json",
+      "sha256": "f98ac9c78961541b0bee14cef60e609697d40da75704c906487acabf55f567c2",
+      "size": 2993
+    },
+    {
+      "path": "logs/cpu-benchmark.log",
+      "sha256": "1910469a6c157d6f83389eebd9aff9acb58b911044a16f636612d07c18c8b5d3",
+      "size": 655
+    },
+    {
+      "path": "logs/gpu-vertical-slice.log",
+      "sha256": "b12dfb18c65fc36fa5f23ff6f8898dba17784fd7538f75901b2e28b23e142ea2",
+      "size": 5326
+    },
+    {
+      "path": "logs/maturin-build.log",
+      "sha256": "0729648467a7b9769f5acf335661fe5b052a7fc2002ebd9b2ece9816eca8e3a8",
+      "size": 2113
+    },
+    {
+      "path": "logs/pip-install.log",
+      "sha256": "234d0276f70c5980ba9ce73869006ef905d76fd4c7ff297ee6c733a5a6caa1fc",
+      "size": 13143
+    },
+    {
+      "path": "logs/python-tests.log",
+      "sha256": "c09ebeb3d62874c3baefa5c9747de155e9bcc1d8a0092b648650954a7fe15918",
+      "size": 2287
+    },
+    {
+      "path": "logs/rust-tests.log",
+      "sha256": "eb89423228ea40a7e53efe0bd83a71458d30b551522ca0430b3a4a68b440a121",
+      "size": 1984
+    },
+    {
+      "path": "logs/rust-toolchain.log",
+      "sha256": "2775ffb86baebfb4c9959501cdd336fe315dd8e1229ffaede4f428f33862f10d",
+      "size": 196
+    },
+    {
+      "path": "logs/rustup-download.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "logs/rustup-install.log",
+      "sha256": "ce2fe4d6ae1e2ebfbe4066303e0a5ecf39d7e40223a122a465e19d573d0514f8",
+      "size": 1345
+    },
+    {
+      "path": "logs/world-validation.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "logs/world-wheel-install.log",
+      "sha256": "8e100b81b04cab196e9fb2b53e9e8a3a9015fa4389d2845dbf9a45a45538e9d9",
+      "size": 178
+    },
+    {
+      "path": "phase_status.json",
+      "sha256": "24d6e3a85d92f7ae280d7ef8e6dd9f23fda318dd97a741b75fb63a1dd60bbcff",
+      "size": 639
+    },
+    {
+      "path": "world-validation.json",
+      "sha256": "3eda2e976fb93da763fffca4edec995e3fda7cbb0bbe9cc543c9fc929c456cec",
+      "size": 384
+    }
+  ],
+  "config_sha256": "327b642994bc36d5d3f9672e6c9254b427ab4d97d93233a2c7a20e63888170ba",
+  "error": "RuntimeError: command failed with exit code 1 after 25.1s: ['/usr/bin/python3', '-m', 'accelerate.commands.launch', '--multi_gpu', '--num_processes', '2', '-m', 'step2_experiments.train', '--config', '/tmp/step2-runtime/baby-robot-foundations/step2/configs/kaggle/t4x2_vertical_slice.toml', '--output-root', '/kaggle/working/step2-results']\nTraceback (most recent call last):\n  File \"/tmp/step2-runtime/baby-robot-foundations/step2/python/step2_experiments/runner.py\", line 324, in main\n    run_logged(\n  File \"/tmp/step2-runtime/baby-robot-foundations/step2/python/step2_experiments/runner.py\", line 55, in run_logged\n    raise RuntimeError(\nRuntimeError: command failed with exit code 1 after 25.1s: ['/usr/bin/python3', '-m', 'accelerate.commands.launch', '--multi_gpu', '--num_processes', '2', '-m', 'step2_experiments.train', '--config', '/tmp/step2-runtime/baby-robot-foundations/step2/configs/kaggle/t4x2_vertical_slice.toml', '--output-root', '/kaggle/working/step2-results']\n",
+  "git_sha": "4fd3300cfc51254f92d63d75445930a81956ae13",
+  "status": "failed"
+}

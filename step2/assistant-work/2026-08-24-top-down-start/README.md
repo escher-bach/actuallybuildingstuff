@@ -1,9 +1,9 @@
 # Assistant Work: STEP 2 Top-Down Starting Point
 
 **Date:** 2026-08-24
-**Status:** architecture/world vertical slice is implemented; local CPU gates
-pass; one two-T4 vertical-slice and bounded checkpoint-start run is authorized
-and pending launch
+**Status:** architecture/world vertical slice passed on two T4s; an audited
+bounded `c1-start-candidate` exists; source-world competence and transfer remain
+unestablished
 **Scope:** research, implementation, and authorized T4 validation; no TPU run
 
 This folder is deliberately separate from user-authored STEP 2 contracts.
@@ -87,6 +87,9 @@ loop; it does not replace independent validity or transfer evidence.
 - [FIRST-VERTICAL-SLICE.md](FIRST-VERTICAL-SLICE.md) — apparatus-first test,
   Rust/Python ownership boundary, local CPU evidence, GPU gate, and checkpoint
   classification.
+- [GPU-VERTICAL-SLICE-RESULT.md](GPU-VERTICAL-SLICE-RESULT.md) — audited two-T4
+  result, overhead measurements, retained remote artifact, scientific boundary,
+  and next recursive action.
 
 ## Boundary from STEP 1
 

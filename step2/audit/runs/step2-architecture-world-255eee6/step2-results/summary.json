@@ -1,0 +1,35 @@
+{
+  "checkpoint_label": "c1-start-candidate",
+  "config_sha256": "6ab2780efc5908b66627b58dcd2fb53ce2a8bf8012b9a9798e0a85a7357ef0be",
+  "error": "RuntimeError: command failed with exit code 1 after 30.8s: ['/usr/bin/python3', '-m', 'accelerate.commands.launch', '--multi_gpu', '--num_processes', '2', '--num_machines', '1', '--mixed_precision', 'fp16', '--dynamo_backend', 'no', '-m', 'step2_experiments.train', '--config', '/tmp/step2-runtime/baby-robot-foundations/step2/configs/kaggle/t4x2_vertical_slice.toml', '--output-root', '/kaggle/working/step2-results']\nTraceback (most recent call last):\n  File \"/tmp/step2-runtime/baby-robot-foundations/step2/python/step2_experiments/runner.py\", line 330, in main\n    run_logged(\n  File \"/tmp/step2-runtime/baby-robot-foundations/step2/python/step2_experiments/runner.py\", line 55, in run_logged\n    raise RuntimeError(\nRuntimeError: command failed with exit code 1 after 30.8s: ['/usr/bin/python3', '-m', 'accelerate.commands.launch', '--multi_gpu', '--num_processes', '2', '--num_machines', '1', '--mixed_precision', 'fp16', '--dynamo_backend', 'no', '-m', 'step2_experiments.train', '--config', '/tmp/step2-runtime/baby-robot-foundations/step2/configs/kaggle/t4x2_vertical_slice.toml', '--output-root', '/kaggle/working/step2-results']\n",
+  "git_sha": "255eee60db4273ead5fd10ceeab0a066df823a5b",
+  "phase_status": {
+    "capture_environment": {
+      "status": "complete",
+      "timestamp": 1787525301.5586705
+    },
+    "correctness_tests": {
+      "status": "complete",
+      "timestamp": 1787525410.4166226
+    },
+    "cpu_benchmark": {
+      "status": "complete",
+      "timestamp": 1787525445.6022623
+    },
+    "gpu_vertical_slice": {
+      "status": "running",
+      "timestamp": 1787525445.6024623
+    },
+    "install_and_build": {
+      "status": "complete",
+      "timestamp": 1787525353.811263,
+      "wheel_sha256": "a518ad89082021e20793a171ca418d780d9a73f009860014d74406268d99f0b5"
+    },
+    "world_validation": {
+      "status": "complete",
+      "timestamp": 1787525410.537602
+    }
+  },
+  "purpose": "prove the selected architecture/token ABI works on the Rust first-world family, then start a fresh bounded C1 candidate",
+  "status": "failed"
+}

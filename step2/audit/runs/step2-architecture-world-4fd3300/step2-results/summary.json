@@ -1,0 +1,35 @@
+{
+  "checkpoint_label": "c1-start-candidate",
+  "config_sha256": "327b642994bc36d5d3f9672e6c9254b427ab4d97d93233a2c7a20e63888170ba",
+  "error": "RuntimeError: command failed with exit code 1 after 25.1s: ['/usr/bin/python3', '-m', 'accelerate.commands.launch', '--multi_gpu', '--num_processes', '2', '-m', 'step2_experiments.train', '--config', '/tmp/step2-runtime/baby-robot-foundations/step2/configs/kaggle/t4x2_vertical_slice.toml', '--output-root', '/kaggle/working/step2-results']\nTraceback (most recent call last):\n  File \"/tmp/step2-runtime/baby-robot-foundations/step2/python/step2_experiments/runner.py\", line 324, in main\n    run_logged(\n  File \"/tmp/step2-runtime/baby-robot-foundations/step2/python/step2_experiments/runner.py\", line 55, in run_logged\n    raise RuntimeError(\nRuntimeError: command failed with exit code 1 after 25.1s: ['/usr/bin/python3', '-m', 'accelerate.commands.launch', '--multi_gpu', '--num_processes', '2', '-m', 'step2_experiments.train', '--config', '/tmp/step2-runtime/baby-robot-foundations/step2/configs/kaggle/t4x2_vertical_slice.toml', '--output-root', '/kaggle/working/step2-results']\n",
+  "git_sha": "4fd3300cfc51254f92d63d75445930a81956ae13",
+  "phase_status": {
+    "capture_environment": {
+      "status": "complete",
+      "timestamp": 1787524773.4451418
+    },
+    "correctness_tests": {
+      "status": "complete",
+      "timestamp": 1787524880.3266146
+    },
+    "cpu_benchmark": {
+      "status": "complete",
+      "timestamp": 1787524916.2324872
+    },
+    "gpu_vertical_slice": {
+      "status": "running",
+      "timestamp": 1787524916.2326627
+    },
+    "install_and_build": {
+      "status": "complete",
+      "timestamp": 1787524825.2287307,
+      "wheel_sha256": "4282194a4eb0432a39aca7dafde4ccb56748f26a80b84b5a0d32a0cf032d29ae"
+    },
+    "world_validation": {
+      "status": "complete",
+      "timestamp": 1787524880.4533563
+    }
+  },
+  "purpose": "prove the selected architecture/token ABI works on the Rust first-world family, then start a fresh bounded C1 candidate",
+  "status": "failed"
+}

@@ -1,0 +1,18 @@
+{
+  "checkpoint_label": "c1-start-candidate",
+  "config_sha256": "327b642994bc36d5d3f9672e6c9254b427ab4d97d93233a2c7a20e63888170ba",
+  "error": "RuntimeError: command failed with exit code 1 after 0.1s: ['/usr/bin/python3', '-m', 'maturin', 'build', '--release', '--locked', '--manifest-path', '/tmp/step2-runtime/baby-robot-foundations/step2/crates/world-py/Cargo.toml', '--out', '/tmp/step2-wheels']\nTraceback (most recent call last):\n  File \"/tmp/step2-runtime/baby-robot-foundations/step2/python/step2_experiments/runner.py\", line 156, in main\n    run_logged(\n  File \"/tmp/step2-runtime/baby-robot-foundations/step2/python/step2_experiments/runner.py\", line 55, in run_logged\n    raise RuntimeError(\nRuntimeError: command failed with exit code 1 after 0.1s: ['/usr/bin/python3', '-m', 'maturin', 'build', '--release', '--locked', '--manifest-path', '/tmp/step2-runtime/baby-robot-foundations/step2/crates/world-py/Cargo.toml', '--out', '/tmp/step2-wheels']\n",
+  "git_sha": "54bfa53b3fdfba7475f17d83a9e099d5988bc0bc",
+  "phase_status": {
+    "capture_environment": {
+      "status": "complete",
+      "timestamp": 1787524436.7955334
+    },
+    "install_and_build": {
+      "status": "running",
+      "timestamp": 1787524436.7957299
+    }
+  },
+  "purpose": "prove the selected architecture/token ABI works on the Rust first-world family, then start a fresh bounded C1 candidate",
+  "status": "failed"
+}

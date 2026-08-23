@@ -1,0 +1,25 @@
+{
+  "command_line": [
+    "/tmp/step2-runtime/baby-robot-foundations/step2/python/step2_experiments/runner.py",
+    "--config",
+    "/tmp/step2-runtime/baby-robot-foundations/step2/configs/kaggle/t4x2_vertical_slice.toml",
+    "--output-root",
+    "/kaggle/working/step2-results"
+  ],
+  "config_sha256": "6ab2780efc5908b66627b58dcd2fb53ce2a8bf8012b9a9798e0a85a7357ef0be",
+  "disk_free_bytes": 20940550144,
+  "git_sha": "56d39fb21c9fdcad7b4141dcf06be26ac2e92360",
+  "git_status": "",
+  "machine": "x86_64",
+  "nvidia_smi": "Sun Aug 23 22:55:24 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 580.159.04             Driver Version: 580.159.04     CUDA Version: 13.0     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  Tesla T4                       Off |   00000000:00:04.0 Off |                    0 |\n| N/A   38C    P8             10W /   70W |       0MiB /  15360MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n|   1  Tesla T4                       Off |   00000000:00:05.0 Off |                    0 |\n| N/A   38C    P8             10W /   70W |       0MiB /  15360MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|  No running processes found                                                             |\n+-----------------------------------------------------------------------------------------+\n",
+  "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+  "processor": "x86_64",
+  "python": "3.12.13 (main, Mar  4 2026, 09:23:07) [GCC 11.4.0]",
+  "python_executable": "/usr/bin/python3",
+  "safe_environment": {
+    "KAGGLE_DATA_PROXY_TOKEN": "<redacted>",
+    "KAGGLE_KERNEL_RUN_TYPE": "Batch",
+    "KAGGLE_URL_BASE": "https://api.kaggle.com",
+    "NVIDIA_VISIBLE_DEVICES": "all"
+  }
+}

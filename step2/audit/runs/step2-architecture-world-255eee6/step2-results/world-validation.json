@@ -1,0 +1,18 @@
+{
+  "action_targets": 20138,
+  "count": 4096,
+  "dimension_counts": [
+    0,
+    1024,
+    1024,
+    1024,
+    1024
+  ],
+  "max_length": 120,
+  "max_oracle_error": 5.960464477539063e-08,
+  "min_length": 16,
+  "oracle_version": "public-prefix-oracle-0.1.0",
+  "outcome_targets": 50858,
+  "token_abi_version": "physical-event-abi-0.1.0",
+  "world_version": "calibrated-monomial-0.1.0"
+}

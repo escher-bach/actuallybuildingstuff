@@ -1,0 +1,251 @@
+{
+  "accelerator_inventory": {
+    "device_names": [
+      "Tesla T4",
+      "Tesla T4"
+    ],
+    "torch_version": "2.10.0+cu128",
+    "world_size": 2
+  },
+  "architecture_gate_passed": true,
+  "architecture_gate_progress": {
+    "diagnostic_closed_loop": {
+      "by_dimension": {
+        "1": {
+          "episodes": 1,
+          "success_rate": 0.0,
+          "terminal_error": 0.0034484341740608215
+        },
+        "2": {
+          "episodes": 1,
+          "success_rate": 0.0,
+          "terminal_error": 0.25292062759399414
+        },
+        "3": {
+          "episodes": 1,
+          "success_rate": 0.0,
+          "terminal_error": 0.35444408655166626
+        },
+        "4": {
+          "episodes": 1,
+          "success_rate": 0.0,
+          "terminal_error": 0.7029557228088379
+        }
+      },
+      "episodes": 4,
+      "mean_steps": 4.0,
+      "success_rate": 0.0,
+      "terminal_error": 0.32844221591949463
+    },
+    "diagnostic_weights_discarded": true,
+    "fresh_blank_lineage_initialized": true,
+    "overfit_gate": {
+      "final_loss": 0.1296704262495041,
+      "initial_loss": 0.6355816125869751,
+      "observed_final_fraction": 0.20401852992838046,
+      "passed": true,
+      "required_final_fraction": 0.8,
+      "scheduler_last_epoch": 126,
+      "successful_optimizer_steps": 126,
+      "trace": [
+        0.6355816125869751,
+        0.6355816125869751,
+        0.6355816125869751,
+        0.40367981791496277,
+        0.4724475145339966,
+        0.46862709522247314,
+        0.4899809956550598,
+        0.3296494781970978,
+        0.12968842685222626
+      ],
+      "updates": 128,
+      "warmup_updates": 12
+    },
+    "parameter_report": {
+      "adapter_and_heads": 13457,
+      "backbone": 21243648,
+      "total": 22147985,
+      "trainable": 22147985,
+      "visual": 890880
+    },
+    "resume_smoke": {
+      "attempted": true,
+      "checksum_after": [
+        9982.791253874051,
+        18841.615474257826,
+        22147985.0
+      ],
+      "checksum_before": [
+        9982.791253874051,
+        18841.615474257826,
+        22147985.0
+      ],
+      "passed": true,
+      "update": 4
+    }
+  },
+  "checkpoint_label": "c1-start-candidate",
+  "closed_loop": {
+    "by_dimension": {
+      "1": {
+        "episodes": 16,
+        "success_rate": 0.0,
+        "terminal_error": 0.17993304133415222
+      },
+      "2": {
+        "episodes": 16,
+        "success_rate": 0.0,
+        "terminal_error": 0.4050168991088867
+      },
+      "3": {
+        "episodes": 16,
+        "success_rate": 0.0,
+        "terminal_error": 0.3745150864124298
+      },
+      "4": {
+        "episodes": 16,
+        "success_rate": 0.0,
+        "terminal_error": 0.4124983847141266
+      }
+    },
+    "episodes": 64,
+    "mean_steps": 4.0,
+    "success_rate": 0.0,
+    "terminal_error": 0.3429908752441406
+  },
+  "config_sha256": "6ab2780efc5908b66627b58dcd2fb53ce2a8bf8012b9a9798e0a85a7357ef0be",
+  "error": null,
+  "git_sha": "1d965c5fb2be8a39d88e41a8f144d9cd2f5cee31",
+  "model_sha256": "07c9f0a5cccf1810785f96cc2a903955bb3460b92f4c16a3f871774eb25ccee3",
+  "oracle_closed_loop": {
+    "by_dimension": {
+      "1": {
+        "episodes": 16,
+        "success_rate": 1.0,
+        "terminal_error": 1.862645149230957e-09
+      },
+      "2": {
+        "episodes": 16,
+        "success_rate": 1.0,
+        "terminal_error": 1.862645149230957e-09
+      },
+      "3": {
+        "episodes": 16,
+        "success_rate": 1.0,
+        "terminal_error": 9.313225746154785e-10
+      },
+      "4": {
+        "episodes": 16,
+        "success_rate": 1.0,
+        "terminal_error": 2.7939677238464355e-09
+      }
+    },
+    "episodes": 64,
+    "mean_steps": 1.90625,
+    "success_rate": 1.0,
+    "terminal_error": 1.862645149230957e-09
+  },
+  "phase_status": {
+    "capture_environment": {
+      "status": "complete",
+      "timestamp": 1787526285.5036564
+    },
+    "correctness_tests": {
+      "status": "complete",
+      "timestamp": 1787526389.2169917
+    },
+    "cpu_benchmark": {
+      "status": "complete",
+      "timestamp": 1787526424.961079
+    },
+    "gpu_vertical_slice": {
+      "status": "complete",
+      "timestamp": 1787526486.781084
+    },
+    "install_and_build": {
+      "status": "complete",
+      "timestamp": 1787526337.739477,
+      "wheel_sha256": "060271f7983155ff37cdac45fdd8627a400b0e6571b419a7d02f4953f3063cbe"
+    },
+    "world_validation": {
+      "status": "complete",
+      "timestamp": 1787526389.3467479
+    }
+  },
+  "purpose": "prove the selected architecture/token ABI works on the Rust first-world family, then start a fresh bounded C1 candidate",
+  "recovery_artifact": {
+    "files": [
+      {
+        "path": "accelerate-state/model.safetensors",
+        "sha256": "07c9f0a5cccf1810785f96cc2a903955bb3460b92f4c16a3f871774eb25ccee3",
+        "size": 88606476
+      },
+      {
+        "path": "accelerate-state/optimizer.bin",
+        "sha256": "43715dbfb28fbc9690c829200ebbbbd80fdb0820bf9667160152b0aaf9ae089c",
+        "size": 170152907
+      },
+      {
+        "path": "accelerate-state/random_states_0.pkl",
+        "sha256": "8634d6ade734b91d53a9236690c92b40beebfce6e9f9b34c43b87b5d14894ebd",
+        "size": 15017
+      },
+      {
+        "path": "accelerate-state/random_states_1.pkl",
+        "sha256": "74c6f3b7168aa5847e9ae68ce5ddf632db85c778d8a5080e7ecb0e170a07e40b",
+        "size": 15017
+      },
+      {
+        "path": "accelerate-state/scaler.pt",
+        "sha256": "03ca4da6244be6bab5050cfcf19b501bcefb9fe4a723f7ea9a907841cdc09bf7",
+        "size": 1383
+      },
+      {
+        "path": "accelerate-state/scheduler.bin",
+        "sha256": "071d2289b25e67edac9756178cd8b03d470e3f34e4148dac7a1a6b28d819d236",
+        "size": 1465
+      },
+      {
+        "path": "model/config.json",
+        "sha256": "bbfcbb90cf1bb95d428bdc32ccdf2168381b9d09f459fab18486ca7f4bc85a47",
+        "size": 579
+      },
+      {
+        "path": "model/model.safetensors",
+        "sha256": "07c9f0a5cccf1810785f96cc2a903955bb3460b92f4c16a3f871774eb25ccee3",
+        "size": 88606476
+      }
+    ],
+    "remote_path": "step2-results/checkpoints/c1-start-candidate",
+    "sha256": "dd7fa5391f5c0f30fa61050a901a27261724322f3132a3b999a6e46c29243c9b",
+    "size": 347399320
+  },
+  "root_seed": 20260824,
+  "status": "complete",
+  "validation": {
+    "action_l1": 0.5432475873619128,
+    "by_dimension": {
+      "1": {
+        "action_l1": 0.44457303560697115,
+        "episodes": 16,
+        "outcome_l1": 0.14091618855794272
+      },
+      "2": {
+        "action_l1": 0.5767627954483032,
+        "episodes": 16,
+        "outcome_l1": 0.14084401726722717
+      },
+      "3": {
+        "action_l1": 0.5230224132537842,
+        "episodes": 16,
+        "outcome_l1": 0.10356488227844238
+      },
+      "4": {
+        "action_l1": 0.5617021322250366,
+        "episodes": 16,
+        "outcome_l1": 0.08927204211552937
+      }
+    },
+    "outcome_l1": 0.10463797235368781
+  }
+}

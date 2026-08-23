@@ -1,0 +1,28 @@
+{
+  "artifacts": [
+    {
+      "path": "environment.json",
+      "sha256": "0ac97813c1b990230eb787922019e7d14031548aef26df59e18e0d286facc688",
+      "size": 2993
+    },
+    {
+      "path": "logs/maturin-build.log",
+      "sha256": "e14bc9a3299b8de4aba560d729ed4bc4fd27b842f2e01f23682da4bd513e9e56",
+      "size": 140
+    },
+    {
+      "path": "logs/pip-install.log",
+      "sha256": "6543a888502e6f9994a52deb684601b866f72de00f7b48ec89e955486d22f19d",
+      "size": 13145
+    },
+    {
+      "path": "phase_status.json",
+      "sha256": "102774cb06b82e6e7bf42320f24a0da9bbbb1b9cc8cf3b1261f47b609f0a7e9a",
+      "size": 187
+    }
+  ],
+  "config_sha256": "327b642994bc36d5d3f9672e6c9254b427ab4d97d93233a2c7a20e63888170ba",
+  "error": "RuntimeError: command failed with exit code 1 after 0.1s: ['/usr/bin/python3', '-m', 'maturin', 'build', '--release', '--locked', '--manifest-path', '/tmp/step2-runtime/baby-robot-foundations/step2/crates/world-py/Cargo.toml', '--out', '/tmp/step2-wheels']\nTraceback (most recent call last):\n  File \"/tmp/step2-runtime/baby-robot-foundations/step2/python/step2_experiments/runner.py\", line 156, in main\n    run_logged(\n  File \"/tmp/step2-runtime/baby-robot-foundations/step2/python/step2_experiments/runner.py\", line 55, in run_logged\n    raise RuntimeError(\nRuntimeError: command failed with exit code 1 after 0.1s: ['/usr/bin/python3', '-m', 'maturin', 'build', '--release', '--locked', '--manifest-path', '/tmp/step2-runtime/baby-robot-foundations/step2/crates/world-py/Cargo.toml', '--out', '/tmp/step2-wheels']\n",
+  "git_sha": "54bfa53b3fdfba7475f17d83a9e099d5988bc0bc",
+  "status": "failed"
+}

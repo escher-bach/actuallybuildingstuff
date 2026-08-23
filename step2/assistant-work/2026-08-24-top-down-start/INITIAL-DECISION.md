@@ -1,9 +1,9 @@
 # Initial STEP 2 Decision
 
 **Date:** 2026-08-24
-**Status:** selected vertical slice implemented; CPU tests completed; one
-two-T4 architecture/world gate and bounded `c1-start-candidate` run authorized;
-TPU remains unauthorized
+**Status:** selected vertical slice implemented and audited on two T4s;
+architecture/ABI gate passed and a bounded `c1-start-candidate` was retained;
+source competence and transfer remain unestablished; TPU remains unauthorized
 
 ## Decision in one statement
 
