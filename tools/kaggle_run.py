@@ -235,7 +235,10 @@ def launch(name: str) -> str:
         )
         metadata = {
             "id": kernel_ref,
-            "title": f"{selected['title']} [{sha[:7]}]",
+            # Kaggle rejects a new kernel when title slugification does not
+            # reproduce the explicit id. Keep the scientific title in the
+            # notebook and use the immutable run slug as the API title.
+            "title": slug,
             "code_file": notebook_name,
             "language": "python",
             "kernel_type": "notebook",
