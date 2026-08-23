@@ -19,7 +19,20 @@ REGISTRY = ROOT / "step2" / "kaggle" / "experiments.toml"
 
 
 def command_output(command: list[str], *, cwd: Path = ROOT) -> str:
-    return subprocess.check_output(command, cwd=cwd, text=True, stderr=subprocess.STDOUT).strip()
+    completed = subprocess.run(
+        command,
+        cwd=cwd,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+    output = completed.stdout.strip()
+    if completed.returncode:
+        raise SystemExit(
+            f"command failed with exit code {completed.returncode}: {command}\n{output}"
+        )
+    return output
 
 
 def command_run(command: list[str], *, cwd: Path = ROOT) -> None:
