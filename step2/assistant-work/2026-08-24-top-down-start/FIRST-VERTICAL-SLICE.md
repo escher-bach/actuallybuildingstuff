@@ -1,9 +1,8 @@
 # First Architecture–World Vertical Slice
 
 **Date:** 2026-08-24
-**Status:** local CPU gates passed; authorized two-T4 retry pending after
-image-toolchain, diagnostic-schedule, and distributed-save rendezvous apparatus
-failures
+**Status:** architecture gate passed remotely; corrected candidate retry pending
+after a per-rank scheduler-step integration failure
 
 ## 1. Why this must precede checkpoint evidence
 
@@ -129,3 +128,15 @@ rank 0's `model.safetensors` was visible and fell back to a nonexistent legacy
 immediately after `Accelerator.save_state`; it changes neither weights nor the
 world/training budget. Gate progress is now written separately before later
 steps so a downstream apparatus failure cannot erase an earlier pass.
+
+The fourth remote attempt (`56d39fb`, version 1) completed: the exact model
+reduced diagnostic loss from `0.6356` to `0.3443`, the distributed resume smoke
+passed, and 256 fresh-lineage updates produced a recoverable artifact. Its
+learning-rate trace then exposed that Accelerate's scheduler wrapper advanced
+once per process because batches are produced directly rather than through an
+Accelerate-prepared DataLoader: the cosine reached zero near update 128 and
+rose again. This preserves the architecture-gate result but supersedes that
+checkpoint as the intended training candidate. The correction uses
+`step_scheduler_with_optimizer=False`, steps once after each successful global
+optimizer update, and fails immediately if scheduler epoch and successful-step
+count diverge.

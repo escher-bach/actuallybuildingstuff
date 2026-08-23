@@ -79,6 +79,11 @@ def aggregate_scalar(accelerator: Accelerator, value: torch.Tensor) -> float:
     return accelerator.gather(value.detach().float().reshape(1)).mean().item()
 
 
+def scheduler_last_epoch(scheduler: Any) -> int:
+    underlying = getattr(scheduler, "scheduler", scheduler)
+    return int(underlying.last_epoch)
+
+
 @torch.no_grad()
 def teacher_forced_eval(
     accelerator: Accelerator,
@@ -250,6 +255,7 @@ def run_overfit_gate(
     with torch.no_grad():
         initial = aggregate_scalar(accelerator, model(**fixed_batch).loss)
     trace = [initial]
+    scheduler_steps = 0
     model.train()
     for update in range(updates):
         optimizer.zero_grad(set_to_none=True)
@@ -258,7 +264,14 @@ def run_overfit_gate(
         if accelerator.sync_gradients:
             accelerator.clip_grad_norm_(model.parameters(), float(run["max_grad_norm"]))
         optimizer.step()
-        scheduler.step()
+        if not accelerator.optimizer_step_was_skipped:
+            scheduler.step()
+            scheduler_steps += 1
+        if scheduler_last_epoch(scheduler) != scheduler_steps:
+            raise RuntimeError(
+                "diagnostic scheduler advanced by a non-global-update count: "
+                f"last_epoch={scheduler_last_epoch(scheduler)}, successful_steps={scheduler_steps}"
+            )
         if update in {0, 1, 3, 7, 15, 31, 63, updates - 1}:
             trace.append(aggregate_scalar(accelerator, output.loss))
     model.eval()
@@ -274,6 +287,8 @@ def run_overfit_gate(
         "trace": trace,
         "updates": updates,
         "warmup_updates": warmup,
+        "successful_optimizer_steps": scheduler_steps,
+        "scheduler_last_epoch": scheduler_last_epoch(scheduler),
         "passed": passed,
     }
     if not passed:
@@ -336,6 +351,11 @@ def main() -> None:
     accelerator = Accelerator(
         mixed_precision=str(run["mixed_precision"]),
         gradient_accumulation_steps=int(run["gradient_accumulation_steps"]),
+        # Batches are generated directly per rank rather than supplied through
+        # an Accelerate-prepared DataLoader. The default scheduler wrapper would
+        # therefore step once per process. We step exactly once after each
+        # successful global optimizer update below.
+        step_scheduler_with_optimizer=False,
         kwargs_handlers=[ddp],
     )
     if accelerator.num_processes != 2:
@@ -398,6 +418,7 @@ def main() -> None:
     batch_size = int(run["per_device_batch_size"])
     loss_trace: list[dict[str, float | int]] = []
     resume_smoke: dict[str, Any] = {"passed": False}
+    scheduler_steps = 0
 
     model.train()
     for update in range(int(run["max_updates"])):
@@ -417,7 +438,14 @@ def main() -> None:
             if accelerator.sync_gradients:
                 accelerator.clip_grad_norm_(model.parameters(), float(run["max_grad_norm"]))
             optimizer.step()
-            scheduler.step()
+            if not accelerator.optimizer_step_was_skipped:
+                scheduler.step()
+                scheduler_steps += 1
+            if scheduler_last_epoch(scheduler) != scheduler_steps:
+                raise RuntimeError(
+                    "scheduler advanced by a non-global-update count: "
+                    f"last_epoch={scheduler_last_epoch(scheduler)}, successful_steps={scheduler_steps}"
+                )
 
         if update % int(run["log_every"]) == 0 or update == int(run["max_updates"]) - 1:
             loss_trace.append(
@@ -511,6 +539,9 @@ def main() -> None:
             "oracle_closed_loop": oracle_closed_loop,
             "world_versions": step2_world_py.versions(),
             "updates": int(run["max_updates"]),
+            "successful_optimizer_steps": scheduler_steps,
+            "scheduler_last_epoch": scheduler_last_epoch(scheduler),
+            "scheduler_step_policy": "once per successful global optimizer update",
             "global_episodes": int(run["max_updates"]) * batch_size * accelerator.num_processes,
             "elapsed_seconds": time.time() - started,
             "world_size": accelerator.num_processes,

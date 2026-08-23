@@ -21,6 +21,7 @@ from step2_experiments.train import (
     closed_loop_eval,
     model_checksum,
     run_overfit_gate,
+    scheduler_last_epoch,
 )
 
 
@@ -176,7 +177,7 @@ class ModelIntegrationTests(unittest.TestCase):
         accelerator.free_memory()
 
     def test_accelerate_state_restore_is_exact(self) -> None:
-        accelerator = Accelerator(cpu=True)
+        accelerator = Accelerator(cpu=True, step_scheduler_with_optimizer=False)
         model = Step2ForTrajectoryPrediction(tiny_config())
         optimizer = build_optimizer(model, 1.0e-3, 0.0)
         scheduler = get_cosine_schedule_with_warmup(optimizer, 1, 4)
@@ -201,6 +202,23 @@ class ModelIntegrationTests(unittest.TestCase):
             accelerator.load_state(directory)
         after = model_checksum(accelerator.unwrap_model(model))
         self.assertTrue(torch.equal(before, after))
+        accelerator.free_memory()
+
+    def test_manual_scheduler_advances_once_per_global_update(self) -> None:
+        accelerator = Accelerator(cpu=True, step_scheduler_with_optimizer=False)
+        model = Step2ForTrajectoryPrediction(tiny_config())
+        optimizer = build_optimizer(model, 1.0e-3, 0.0)
+        scheduler = get_cosine_schedule_with_warmup(optimizer, 1, 4)
+        model, optimizer, scheduler = accelerator.prepare(model, optimizer, scheduler)
+        observed = []
+        for _ in range(4):
+            optimizer.zero_grad(set_to_none=True)
+            next(model.parameters()).sum().backward()
+            optimizer.step()
+            if not accelerator.optimizer_step_was_skipped:
+                scheduler.step()
+            observed.append(scheduler_last_epoch(scheduler))
+        self.assertEqual(observed, [1, 2, 3, 4])
         accelerator.free_memory()
 
 
