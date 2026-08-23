@@ -1,0 +1,12 @@
+[package]
+name = "step2-world-py"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "step2_world_py"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.23.5", features = ["extension-module"] }
+step2-world = { path = "../world" }

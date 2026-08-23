@@ -1,0 +1,12 @@
+schema_version = 1
+owner = "aniruddhavarma"
+git_remote = "origin"
+repo_url = "https://github.com/escher-bach/actuallybuildingstuff.git"
+output_root = "/kaggle/working/step2-results"
+accelerator = "NvidiaTeslaT4"
+
+[experiments.architecture-world-vertical-slice]
+title = "STEP 2 architecture and first-world vertical slice"
+slug_prefix = "step2-architecture-world"
+config = "step2/configs/kaggle/t4x2_vertical_slice.toml"
+purpose = "two-T4 apparatus gate followed by a fresh bounded C1 candidate start"

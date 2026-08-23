@@ -1,0 +1,6 @@
+/target/
+/dist/
+/.compat/
+/audit/launches/
+/audit/logs/
+/audit/runs/*/logs/

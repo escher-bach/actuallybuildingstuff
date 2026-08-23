@@ -1,4 +1,92 @@
-# Step 1 Experiment Execution Plan
+# Experiment Execution Plan
+
+## STEP 2 two-T4 vertical-slice amendment — 2026-08-24
+
+The user has explicitly authorized CPU tests and a two-T4 GPU test of the
+selected STEP 2 architecture joined to the first Rust world family, followed in
+the same allocation by the start of bounded first-checkpoint generation. This
+amendment is the sole authorized STEP 2 launch at present. The closed STEP 1
+runs below remain closed.
+
+### Scientific and apparatus boundary
+
+The run tests one prerequisite claim before any checkpoint is interpreted:
+
+> the fully random ICRT-derived Llama core, physical-event token ABI,
+> schema-conditioned continuous readouts, Rust public-prefix oracle, and
+> `W_calibrated_monomial[d=1..4]` transcript can execute one finite
+> forward/backward update, overfit a fixed real batch, save/reload, run on both
+> T4 ranks, checkpoint/resume, and then train from a fresh random reset.
+
+The fixed-batch diagnostic weights are discarded. Only the separately reset
+lineage may produce `c1-start-candidate`. Passing this apparatus gate does not
+establish world validity, downstream transfer, or completion of the first
+developmental session. A failure before the fresh lineage starts is an
+apparatus failure.
+
+The governing scientific drafts are under
+`step2/assistant-work/2026-08-24-top-down-start/`, with the inherited
+information-boundary and procedural-generation requirements in
+`step2/WORLD-VALIDITY.md`.
+
+### STEP 2 implementation boundary
+
+- Rust owns process generation, latent transition execution, the
+  serializer-level public-prefix teacher/oracle, verifier, deterministic replay,
+  and batched online rollout state.
+- PyO3 exposes one batched learner-tensor boundary plus explicitly privileged
+  validator methods. Python does not reproduce the transition or oracle.
+- Hugging Face `LlamaModel` owns transformer blocks, causal masking, RoPE,
+  RMSNorm, and SwiGLU. PyTorch owns continuous adapters/heads; Accelerate owns
+  mixed precision, DDP, gradient synchronization, and state restore.
+- All learned tensors initialize randomly. No STEP 1/Pythia, language, visual,
+  or action weights are loaded.
+
+### STEP 2 run and source contract
+
+The sole entry point is:
+
+```text
+python tools/kaggle_run.py launch --experiment architecture-world-vertical-slice
+```
+
+It renders a launcher in an ephemeral directory and submits it with the
+official Kaggle CLI requesting `NvidiaTeslaT4`. The launcher clones the
+configured GitHub repository, checks out one full 40-character commit, verifies
+that exact SHA, and invokes exactly once:
+
+```text
+python -m step2_experiments.runner \
+  --config step2/configs/kaggle/t4x2_vertical_slice.toml \
+  --output-root /kaggle/working/step2-results
+```
+
+The notebook contains no world, model, training, or evaluation code. The source
+clone, dependency cache, Rust target, and wheel remain under `/tmp`; only result
+artifacts are written under `/kaggle/working`.
+
+The STEP 2 runner must execute in this order:
+
+```text
+capture_environment
+  -> install_and_build
+  -> Rust and Python correctness tests
+  -> generated-world validity sweep
+  -> Kaggle-CPU world/binding throughput
+  -> exact two-T4 verification
+  -> real-batch architecture overfit gate
+  -> discard diagnostic weights and reinitialize
+  -> checkpoint/restore smoke
+  -> bounded training start
+  -> teacher-forced and closed-loop evaluation
+  -> retained candidate checkpoint and compact audit artifacts
+```
+
+The retained checkpoint stays on Kaggle. `collect` downloads only selected JSON
+evidence and logs, verifies the audit manifest, and writes a local receipt under
+`step2/audit/runs/`. TPU execution remains unauthorized by this amendment.
+
+---
 
 ## Kaggle 2xT4 implementation specification
 

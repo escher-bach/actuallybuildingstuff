@@ -1,0 +1,46 @@
+schema_version = 1
+
+[run]
+name = "step2-architecture-world-vertical-slice"
+purpose = "prove the selected architecture/token ABI works on the Rust first-world family, then start a fresh bounded C1 candidate"
+seed = 20260824
+require_two_t4 = true
+mixed_precision = "fp16"
+max_updates = 256
+per_device_batch_size = 8
+gradient_accumulation_steps = 1
+learning_rate = 0.0003
+weight_decay = 0.1
+warmup_updates = 12
+max_grad_norm = 1.0
+log_every = 8
+eval_batches = 4
+resume_smoke_update = 4
+overfit_updates = 64
+overfit_per_device_batch_size = 4
+overfit_required_fraction = 0.70
+checkpoint_label = "c1-start-candidate"
+
+[model]
+config = "step2/artifacts/icrt-derived-small/model_config.json"
+sequence_length = 192
+
+[world]
+d_min = 1
+d_max = 4
+gain_min = 0.75
+gain_max = 1.25
+action_limit = 0.20
+calibration_pulse = 0.10
+max_control_steps = 4
+train_seed = 11001
+validation_seed = 22001
+overfit_seed = 33001
+rollout_seed = 44001
+
+[preflight]
+validation_instances = 4096
+cpu_benchmark_episodes = 4096
+cpu_benchmark_batch_size = 64
+cpu_benchmark_repeats = 5
+rollout_episodes_per_rank = 32
