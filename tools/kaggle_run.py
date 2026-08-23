@@ -320,7 +320,8 @@ def collect(kernel: str) -> Path:
     destination = ROOT / "step2" / "audit" / "runs" / slug
     destination.mkdir(parents=True, exist_ok=True)
     pattern = (
-        r"(^|/)(summary|training-result|cpu-benchmark|world-validation|phase_status|environment|audit-manifest)\.json$"
+        r"(^|/)(summary|training-result|architecture-gate-progress|cpu-benchmark|world-validation|"
+        r"phase_status|environment|audit-manifest)\.json$"
         r"|(^|/)logs/(pip-install|rustup-download|rustup-install|rust-toolchain|maturin-build|"
         r"world-wheel-install|rust-tests|python-tests|world-validation|cpu-benchmark|gpu-vertical-slice)\.log$"
     )
@@ -397,6 +398,7 @@ def collect(kernel: str) -> Path:
         "model_sha256": summary.get("model_sha256"),
         "recovery_artifact": summary.get("recovery_artifact"),
         "architecture_gate_passed": summary.get("architecture_gate_passed"),
+        "architecture_gate_progress": summary.get("architecture_gate_progress"),
         "scientific_report": None,
         "audit_verified": True,
         "verified_manifest_entries": verified_entries,

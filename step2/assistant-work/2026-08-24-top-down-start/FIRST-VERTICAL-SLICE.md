@@ -2,7 +2,8 @@
 
 **Date:** 2026-08-24
 **Status:** local CPU gates passed; authorized two-T4 retry pending after
-image-toolchain and diagnostic-schedule apparatus failures
+image-toolchain, diagnostic-schedule, and distributed-save rendezvous apparatus
+failures
 
 ## 1. Why this must precede checkpoint evidence
 
@@ -119,3 +120,12 @@ training recipe uses warm-up. That is an apparatus/optimizer-gate failure, not
 a world-validity failure. The retry aligns the disposable diagnostic with the
 declared warm-up and cosine schedule; it does not relax the blank reset or
 retain diagnostic weights.
+
+The third remote attempt (`255eee6`, version 1) progressed past the scheduled
+overfit gate, discarded the diagnostic model, initialized the fresh blank
+lineage, and reached its update-4 resume smoke. Rank 1 then tried to load before
+rank 0's `model.safetensors` was visible and fell back to a nonexistent legacy
+`pytorch_model.bin`. The correction is the standard distributed rendezvous
+immediately after `Accelerator.save_state`; it changes neither weights nor the
+world/training budget. Gate progress is now written separately before later
+steps so a downstream apparatus failure cannot erase an earlier pass.

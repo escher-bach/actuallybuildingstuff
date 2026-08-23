@@ -358,6 +358,18 @@ def main() -> None:
     del diagnostic_model
     accelerator.free_memory()
     accelerator.wait_for_everyone()
+    gate_progress: dict[str, Any] = {
+        "overfit_gate": overfit,
+        "diagnostic_closed_loop": diagnostic_closed_loop,
+        "diagnostic_weights_discarded": True,
+        "fresh_blank_lineage_initialized": False,
+        "resume_smoke": {"passed": False, "attempted": False},
+    }
+    gate_progress_path = output_root / "architecture-gate-progress.json"
+    if accelerator.is_main_process:
+        gate_progress_path.write_text(
+            json.dumps(gate_progress, indent=2, sort_keys=True), encoding="utf-8"
+        )
 
     # The diagnostic weights are deliberately discarded. This reset begins the
     # true blank C1-candidate lineage.
@@ -365,6 +377,16 @@ def main() -> None:
     model = Step2ForTrajectoryPrediction(model_config)
     params = parameter_report(model)
     assert_selected_parameter_report(params)
+    gate_progress.update(
+        {
+            "fresh_blank_lineage_initialized": True,
+            "parameter_report": params,
+        }
+    )
+    if accelerator.is_main_process:
+        gate_progress_path.write_text(
+            json.dumps(gate_progress, indent=2, sort_keys=True), encoding="utf-8"
+        )
     optimizer = build_optimizer(model, float(run["learning_rate"]), float(run["weight_decay"]))
     scheduler = get_cosine_schedule_with_warmup(
         optimizer,
@@ -411,6 +433,11 @@ def main() -> None:
         if update + 1 == int(run["resume_smoke_update"]):
             resume_dir = output_root / "resume-smoke"
             accelerator.save_state(str(resume_dir))
+            # save_state is main-process-only for model weights. Without an
+            # explicit rendezvous, another rank can inspect the directory
+            # before model.safetensors is visible and incorrectly fall back to
+            # the legacy pytorch_model.bin filename.
+            accelerator.wait_for_everyone()
             before = model_checksum(accelerator.unwrap_model(model))
             with torch.no_grad():
                 next(accelerator.unwrap_model(model).parameters()).add_(0.5)
@@ -426,6 +453,11 @@ def main() -> None:
             }
             if not resume_smoke["passed"]:
                 raise RuntimeError(f"accelerator checkpoint restore failed: {resume_smoke}")
+            gate_progress["resume_smoke"] = {**resume_smoke, "attempted": True}
+            if accelerator.is_main_process:
+                gate_progress_path.write_text(
+                    json.dumps(gate_progress, indent=2, sort_keys=True), encoding="utf-8"
+                )
 
     validation = teacher_forced_eval(accelerator, model, config, start_index=0)
     rollout_count = int(config["preflight"]["rollout_episodes_per_rank"])

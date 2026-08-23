@@ -378,6 +378,10 @@ def main() -> None:
             "git_sha": manifest["git_sha"],
             "config_sha256": manifest["config_sha256"],
         }
+        if (output_root / "architecture-gate-progress.json").exists():
+            summary["architecture_gate_progress"] = json.loads(
+                (output_root / "architecture-gate-progress.json").read_text(encoding="utf-8")
+            )
         if (output_root / "training-result.json").exists():
             result = json.loads((output_root / "training-result.json").read_text(encoding="utf-8"))
             summary.update(
