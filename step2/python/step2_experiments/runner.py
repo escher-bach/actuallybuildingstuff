@@ -151,6 +151,62 @@ def main() -> None:
             log_path=logs / "pip-install.log",
             timeout=900,
         )
+        toolchain = tomllib.loads((repo / "step2" / "rust-toolchain.toml").read_text(encoding="utf-8"))[
+            "toolchain"
+        ]["channel"]
+        cargo_home = Path("/tmp/step2-cargo")
+        rustup_home = Path("/tmp/step2-rustup")
+        env.update(
+            {
+                "CARGO_HOME": str(cargo_home),
+                "RUSTUP_HOME": str(rustup_home),
+                "RUSTUP_TOOLCHAIN": str(toolchain),
+                "PATH": str(cargo_home / "bin") + os.pathsep + env["PATH"],
+            }
+        )
+        rustup_installer = Path("/tmp/rustup-init.sh")
+        if not (cargo_home / "bin" / "cargo").is_file():
+            run_logged(
+                [
+                    "curl",
+                    "--proto",
+                    "=https",
+                    "--tlsv1.2",
+                    "--fail",
+                    "--silent",
+                    "--show-error",
+                    "https://sh.rustup.rs",
+                    "--output",
+                    str(rustup_installer),
+                ],
+                cwd=repo,
+                env=env,
+                log_path=logs / "rustup-download.log",
+                timeout=300,
+            )
+            run_logged(
+                [
+                    "sh",
+                    str(rustup_installer),
+                    "-y",
+                    "--no-modify-path",
+                    "--profile",
+                    "minimal",
+                    "--default-toolchain",
+                    str(toolchain),
+                ],
+                cwd=repo,
+                env=env,
+                log_path=logs / "rustup-install.log",
+                timeout=900,
+            )
+        run_logged(
+            [str(cargo_home / "bin" / "rustc"), "--version", "--verbose"],
+            cwd=repo,
+            env=env,
+            log_path=logs / "rust-toolchain.log",
+            timeout=60,
+        )
         wheel_dir = Path("/tmp/step2-wheels") if Path("/tmp").exists() else repo / "step2" / "dist"
         wheel_dir.mkdir(parents=True, exist_ok=True)
         run_logged(

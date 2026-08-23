@@ -1,7 +1,8 @@
 # First Architecture–World Vertical Slice
 
 **Date:** 2026-08-24
-**Status:** local CPU gates passed; authorized two-T4 run pending
+**Status:** local CPU gates passed; authorized two-T4 retry pending after an
+image-toolchain apparatus failure
 
 ## 1. Why this must precede checkpoint evidence
 
@@ -101,3 +102,10 @@ python tools/kaggle_run.py launch --experiment architecture-world-vertical-slice
 
 The heavyweight candidate checkpoint remains in Kaggle output. Only compact
 audit evidence is retrieved locally.
+
+Kaggle's current GPU image does not guarantee Cargo. The runner therefore uses
+the standard `rustup` path to install the pinned minimal Rust `1.88.0`
+toolchain under `/tmp`. Its measured install/build time is setup overhead, not
+world-generation throughput. The first remote attempt (`54bfa53`, version 1)
+stopped at Maturin before importing the world or model because Cargo was absent;
+it carries no scientific evidence about either component.

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -19,9 +20,12 @@ REGISTRY = ROOT / "step2" / "kaggle" / "experiments.toml"
 
 
 def command_output(command: list[str], *, cwd: Path = ROOT) -> str:
+    environment = os.environ.copy()
+    environment["PYTHONUTF8"] = "1"
     completed = subprocess.run(
         command,
         cwd=cwd,
+        env=environment,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -36,7 +40,9 @@ def command_output(command: list[str], *, cwd: Path = ROOT) -> str:
 
 
 def command_run(command: list[str], *, cwd: Path = ROOT) -> None:
-    subprocess.run(command, cwd=cwd, check=True)
+    environment = os.environ.copy()
+    environment["PYTHONUTF8"] = "1"
+    subprocess.run(command, cwd=cwd, env=environment, check=True)
 
 
 def sha256_file(path: Path) -> str:
@@ -315,7 +321,8 @@ def collect(kernel: str) -> Path:
     destination.mkdir(parents=True, exist_ok=True)
     pattern = (
         r"(^|/)(summary|training-result|cpu-benchmark|world-validation|phase_status|environment|audit-manifest)\.json$"
-        r"|(^|/)logs/(gpu-vertical-slice|python-tests|rust-tests)\.log$"
+        r"|(^|/)logs/(pip-install|rustup-download|rustup-install|rust-toolchain|maturin-build|"
+        r"world-wheel-install|rust-tests|python-tests|world-validation|cpu-benchmark|gpu-vertical-slice)\.log$"
     )
     command_run(
         [

@@ -79,6 +79,8 @@ class KaggleContractTests(unittest.TestCase):
         self.assertEqual(data["accelerator"], "NvidiaTeslaT4")
         self.assertTrue((ROOT / experiment["config"]).is_file())
         self.assertTrue((ROOT / "step2" / "requirements-kaggle.txt").is_file())
+        toolchain = (ROOT / "step2" / "rust-toolchain.toml").read_text(encoding="utf-8")
+        self.assertIn('channel = "1.88.0"', toolchain)
 
 
 if __name__ == "__main__":
