@@ -227,7 +227,16 @@ def run_overfit_gate(
     set_seed(int(run["seed"]))
     model = Step2ForTrajectoryPrediction(model_config)
     optimizer = build_optimizer(model, float(run["learning_rate"]), float(run["weight_decay"]))
-    model, optimizer = accelerator.prepare(model, optimizer)
+    updates = int(run["overfit_updates"])
+    warmup = int(run.get("overfit_warmup_updates", 0))
+    if warmup < 0 or warmup >= updates:
+        raise ValueError("overfit_warmup_updates must satisfy 0 <= warmup < overfit_updates")
+    scheduler = get_cosine_schedule_with_warmup(
+        optimizer,
+        num_warmup_steps=warmup,
+        num_training_steps=updates,
+    )
+    model, optimizer, scheduler = accelerator.prepare(model, optimizer, scheduler)
     local_start = accelerator.process_index * batch_size
     fixed_batch, _ = generate_torch_batch(
         seed=int(world["overfit_seed"]),
@@ -242,14 +251,15 @@ def run_overfit_gate(
         initial = aggregate_scalar(accelerator, model(**fixed_batch).loss)
     trace = [initial]
     model.train()
-    for update in range(int(run["overfit_updates"])):
+    for update in range(updates):
         optimizer.zero_grad(set_to_none=True)
         output = model(**fixed_batch)
         accelerator.backward(output.loss)
         if accelerator.sync_gradients:
             accelerator.clip_grad_norm_(model.parameters(), float(run["max_grad_norm"]))
         optimizer.step()
-        if update in {0, 1, 3, 7, 15, 31, int(run["overfit_updates"]) - 1}:
+        scheduler.step()
+        if update in {0, 1, 3, 7, 15, 31, 63, updates - 1}:
             trace.append(aggregate_scalar(accelerator, output.loss))
     model.eval()
     with torch.no_grad():
@@ -262,6 +272,8 @@ def run_overfit_gate(
         "required_final_fraction": required,
         "observed_final_fraction": final / initial,
         "trace": trace,
+        "updates": updates,
+        "warmup_updates": warmup,
         "passed": passed,
     }
     if not passed:

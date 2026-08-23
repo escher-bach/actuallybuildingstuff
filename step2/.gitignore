@@ -3,4 +3,5 @@
 /.compat/
 /audit/launches/
 /audit/logs/
-/audit/runs/*/logs/
+/audit/runs/**/logs/
+/audit/runs/*/*.log

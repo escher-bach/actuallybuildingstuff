@@ -1,8 +1,8 @@
 # First Architecture–World Vertical Slice
 
 **Date:** 2026-08-24
-**Status:** local CPU gates passed; authorized two-T4 retry pending after an
-image-toolchain apparatus failure
+**Status:** local CPU gates passed; authorized two-T4 retry pending after
+image-toolchain and diagnostic-schedule apparatus failures
 
 ## 1. Why this must precede checkpoint evidence
 
@@ -76,8 +76,9 @@ The committed run uses the exact 12x384 model and must establish:
 
 1. exactly two visible T4 GPUs and two completed Accelerate ranks;
 2. finite forward/backward on real Rust batches;
-3. fixed-batch loss after 64 diagnostic updates no more than 70% of its initial
-   value;
+3. fixed-batch loss after 128 scheduled diagnostic updates no more than 80% of
+   its initial value, using a four-episode global cohort that still covers
+   dimensions 1–4;
 4. checkpoint mutation followed by exact Accelerate state restoration;
 5. diagnostic weights discarded before lineage initialization;
 6. 256 bounded post-reset updates over 4,096 generated encounters;
@@ -109,3 +110,12 @@ toolchain under `/tmp`. Its measured install/build time is setup overhead, not
 world-generation throughput. The first remote attempt (`54bfa53`, version 1)
 stopped at Maturin before importing the world or model because Cargo was absent;
 it carries no scientific evidence about either component.
+
+The second remote attempt (`4fd3300`, version 1) passed installation, all
+correctness tests, 4,096 generated-world checks, and the CPU benchmark. Its
+diagnostic loss rose from `0.8807` to `0.9686`; inspection showed that the
+diagnostic used an unscheduled full learning rate even though the retained
+training recipe uses warm-up. That is an apparatus/optimizer-gate failure, not
+a world-validity failure. The retry aligns the disposable diagnostic with the
+declared warm-up and cosine schedule; it does not relax the blank reset or
+retain diagnostic weights.

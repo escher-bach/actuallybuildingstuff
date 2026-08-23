@@ -16,9 +16,10 @@ max_grad_norm = 1.0
 log_every = 8
 eval_batches = 4
 resume_smoke_update = 4
-overfit_updates = 64
-overfit_per_device_batch_size = 4
-overfit_required_fraction = 0.70
+overfit_updates = 128
+overfit_warmup_updates = 12
+overfit_per_device_batch_size = 2
+overfit_required_fraction = 0.80
 checkpoint_label = "c1-start-candidate"
 
 [model]

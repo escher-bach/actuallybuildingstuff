@@ -136,6 +136,7 @@ class ModelIntegrationTests(unittest.TestCase):
                 "weight_decay": 0.0,
                 "max_grad_norm": 1.0,
                 "overfit_updates": 12,
+                "overfit_warmup_updates": 2,
                 "overfit_required_fraction": 0.90,
             },
             "model": {"sequence_length": 192},
