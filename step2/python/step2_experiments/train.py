@@ -41,6 +41,29 @@ from .model import (
 )
 
 
+def mark_stage(name: str) -> None:
+    """Emit a per-rank stage marker.
+
+    A collective that the ranks enter unequal numbers of times deadlocks with
+    no traceback. Printing every stage from every rank turns that silence into
+    a readable record of which rank stopped where.
+    """
+
+    rank = os.environ.get("RANK", "0")
+    print(f"[step2-stage rank{rank}] {time.strftime('%H:%M:%S')} {name}", flush=True)
+
+
+def assert_every_rank_arrived(trainer: Trainer, stage_name: str) -> None:
+    """Port of the STEP 1 preflight rank-completion check."""
+
+    processes = trainer.accelerator.num_processes
+    arrived = trainer.accelerator.gather_for_metrics(
+        torch.tensor([trainer.args.process_index], device=trainer.args.device)
+    ).detach().cpu().tolist()
+    if sorted(arrived) != list(range(processes)):
+        raise AssertionError(f"not every rank reached {stage_name}: {arrived}")
+
+
 def load_config(path: Path) -> dict[str, Any]:
     return tomllib.loads(path.read_text(encoding="utf-8"))
 
@@ -556,7 +579,10 @@ def main() -> None:
     assert_world_model_compatibility(model_config)
     started = time.time()
 
+    mark_stage("architecture-gate:start")
     overfit, diagnostic_trainer = run_overfit_gate(model_config, config, output_root)
+    mark_stage("architecture-gate:done")
+    mark_stage("diagnostic-closed-loop:start")
     diagnostic_closed_loop = closed_loop_eval(
         diagnostic_trainer.accelerator,
         diagnostic_trainer.model,
@@ -587,6 +613,7 @@ def main() -> None:
     model, parent_model = load_lineage_model(model_config, args.parent_model)
     params = parameter_report(model)
     assert_selected_parameter_report(params)
+    mark_stage("untrained-baseline:start")
     untrained_baseline = held_out_learner_evaluation(
         diagnostic_trainer.accelerator,
         model.to(diagnostic_trainer.accelerator.device),
@@ -600,6 +627,7 @@ def main() -> None:
             "updates": 0,
         }
     )
+    mark_stage("untrained-baseline:done")
     gate_progress["untrained_baseline"] = untrained_baseline
     if diagnostic_trainer.is_world_process_zero():
         gate_progress_path.write_text(
@@ -622,6 +650,7 @@ def main() -> None:
         gate_progress_path.write_text(
             json.dumps(gate_progress, indent=2, sort_keys=True), encoding="utf-8"
         )
+    mark_stage("lineage-training:start")
     trainer, train_metrics, resume_smoke = train_with_resume_smoke(
         model=model,
         dataset=dataset,
@@ -638,6 +667,9 @@ def main() -> None:
             json.dumps(gate_progress, indent=2, sort_keys=True), encoding="utf-8"
         )
 
+    mark_stage("lineage-training:done")
+    assert_every_rank_arrived(trainer, "lineage training")
+    mark_stage("final-evaluation:start")
     trained = held_out_learner_evaluation(
         trainer.accelerator,
         trainer.model,
@@ -656,6 +688,7 @@ def main() -> None:
         use_oracle=True,
     )
 
+    mark_stage("final-evaluation:done")
     model_dir = checkpoint_root / "model"
     trainer.save_model(model_dir)
     trainer.save_state()

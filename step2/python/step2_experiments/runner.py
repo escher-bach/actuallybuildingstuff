@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import deque
 import hashlib
 import json
 import os
@@ -11,6 +12,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import tomllib
 import traceback
@@ -29,6 +31,19 @@ def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def atomic_json(path: Path, value: Any) -> None:
+    """Write JSON via a temporary file and one rename.
+
+    A run killed partway through a plain write leaves a truncated audit file,
+    losing exactly the evidence that explains why it was killed.
+    """
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".partial")
+    temporary.write_text(json.dumps(value, indent=2, sort_keys=True), encoding="utf-8")
+    temporary.replace(path)
+
+
 def run_logged(
     command: list[str],
     *,
@@ -37,30 +52,68 @@ def run_logged(
     log_path: Path,
     timeout: int,
 ) -> None:
+    """Stream a child's output to its log and to this runner's stdout.
+
+    Buffering the child in a pipe and writing the log only after it exits
+    loses the log entirely when the child is killed or times out, which is
+    exactly when the log matters most. Streaming also lets the Kaggle console
+    show progress inside the longest phase instead of going silent for it.
+    """
+
     started = time.time()
-    completed = subprocess.run(
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    process = subprocess.Popen(
         command,
         cwd=str(cwd),
         env=env,
         text=True,
+        bufsize=1,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        timeout=timeout,
-        check=False,
     )
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    log_path.write_text(completed.stdout, encoding="utf-8")
-    print(completed.stdout, flush=True)
-    if completed.returncode:
+    tail: deque[str] = deque(maxlen=120)
+
+    def pump() -> None:
+        assert process.stdout is not None
+        with log_path.open("w", encoding="utf-8") as handle:
+            handle.write("$ " + " ".join(command) + "\n")
+            handle.flush()
+            for line in process.stdout:
+                tail.append(line.rstrip("\n"))
+                handle.write(line)
+                handle.flush()
+                print(line, end="", flush=True)
+
+    reader = threading.Thread(target=pump, daemon=True)
+    reader.start()
+    try:
+        returncode = process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
+        reader.join(timeout=30)
         raise RuntimeError(
-            f"command failed with exit code {completed.returncode} after {time.time() - started:.1f}s: {command}"
+            f"command timed out after {timeout}s: {command}\n"
+            f"log: {log_path}\n--- child log tail ---\n" + "\n".join(tail)
+        ) from None
+    reader.join(timeout=30)
+    if returncode:
+        raise RuntimeError(
+            f"command failed with exit code {returncode} after "
+            f"{time.time() - started:.1f}s: {command}\n"
+            f"log: {log_path}\n--- child log tail ---\n" + "\n".join(tail)
         )
 
 
 def phase_update(path: Path, phases: dict[str, Any], name: str, status: str, **extra: Any) -> None:
     entry = phases.setdefault(name, {})
-    entry.update({"status": status, "timestamp": time.time(), **extra})
-    path.write_text(json.dumps(phases, indent=2, sort_keys=True), encoding="utf-8")
+    now = time.time()
+    if status == "running":
+        entry["started_at"] = now
+    elif "started_at" in entry:
+        entry["elapsed_seconds"] = now - float(entry["started_at"])
+    entry.update({"status": status, "timestamp": now, **extra})
+    atomic_json(path, phases)
 
 
 def safe_environment() -> dict[str, str]:
@@ -136,9 +189,7 @@ def main() -> None:
     try:
         phase_update(phase_path, phases, "capture_environment", "running")
         environment = capture_environment(repo, config_text, sys.argv)
-        (output_root / "environment.json").write_text(
-            json.dumps(environment, indent=2, sort_keys=True), encoding="utf-8"
-        )
+        atomic_json(output_root / "environment.json", environment)
         if environment["git_status"]:
             raise RuntimeError(f"Kaggle source checkout is not clean: {environment['git_status']}")
         phase_update(phase_path, phases, "capture_environment", "complete")
@@ -350,7 +401,7 @@ def main() -> None:
             cwd=repo,
             env=env,
             log_path=logs / "gpu-vertical-slice.log",
-            timeout=10_800,
+            timeout=int(config["run"].get("gpu_phase_timeout_seconds", 1800)),
         )
         training_result = json.loads((output_root / "training-result.json").read_text(encoding="utf-8"))
         if not training_result.get("architecture_gate_passed"):
@@ -384,9 +435,7 @@ def main() -> None:
             ).stdout.strip(),
             "artifacts": artifacts,
         }
-        (output_root / "audit-manifest.json").write_text(
-            json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
-        )
+        atomic_json(output_root / "audit-manifest.json", manifest)
         summary = {
             "status": status,
             "error": error,
@@ -425,9 +474,7 @@ def main() -> None:
             summary["trivial_policy_baselines"] = json.loads(
                 (output_root / "trivial-policy-baselines.json").read_text(encoding="utf-8")
             )
-        (output_root / "summary.json").write_text(
-            json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8"
-        )
+        atomic_json(output_root / "summary.json", summary)
 
     if status != "complete":
         raise SystemExit(1)
