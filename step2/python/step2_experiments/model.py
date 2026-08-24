@@ -126,6 +126,17 @@ class Step2ForTrajectoryPrediction(PreTrainedModel):
         self.future_head = nn.Linear(h, 1)
         self.post_init()
 
+        # The core is modality-free: it consumes continuous event embeddings and
+        # never receives token ids, so LlamaModel's vocabulary table is
+        # structurally dead weight rather than merely unused on some batches.
+        # Left trainable it produces no gradient, and DDP then waits forever for
+        # a reduction that never arrives. State that fact here instead of
+        # relaxing the DDP contract with find_unused_parameters=True, which
+        # would also hide a genuinely dead parameter appearing later.
+        with torch.no_grad():
+            self.backbone.embed_tokens.weight.zero_()
+        self.backbone.embed_tokens.weight.requires_grad_(False)
+
     def _init_weights(self, module: nn.Module) -> None:
         if isinstance(module, nn.Linear):
             nn.init.normal_(module.weight, mean=0.0, std=self.config.initializer_range)
@@ -237,15 +248,18 @@ def parameter_report(model: Step2ForTrajectoryPrediction) -> dict[str, int]:
         "backbone": sum(parameter.numel() for parameter in model.backbone.parameters()),
     }
     groups["adapter_and_heads"] = groups["total"] - groups["backbone"]
+    groups["frozen_unused_vocabulary"] = groups["total"] - groups["trainable"]
     return groups
 
 
 def assert_selected_parameter_report(report: dict[str, int]) -> None:
     expected = {
         "total": 21_257_489,
-        "trainable": 21_257_489,
+        # The vocabulary table is frozen; the modality-free core has no tokens.
+        "trainable": 21_257_105,
         "backbone": 21_243_648,
         "adapter_and_heads": 13_841,
+        "frozen_unused_vocabulary": 384,
     }
     if report != expected:
         raise AssertionError(f"selected parameterization drift: expected {expected}, got {report}")

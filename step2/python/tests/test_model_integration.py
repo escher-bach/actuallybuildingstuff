@@ -304,6 +304,38 @@ class ModelIntegrationTests(unittest.TestCase):
         )
         self.assertIn("0.05", delta["threshold_success"])
 
+    def test_no_trainable_parameter_is_left_without_gradient(self) -> None:
+        """A dead trainable parameter deadlocks DDP on its second step.
+
+        Single-process CPU training cannot expose this, so assert it directly
+        rather than discovering it on a two-GPU run.
+        """
+
+        torch.manual_seed(6)
+        model = Step2ForTrajectoryPrediction(
+            Step2Config.from_project_json(SELECTED_CONFIG)
+        )
+        batch, _ = generate_torch_batch(
+            seed=33001,
+            start_index=0,
+            batch_size=2,
+            max_tokens=192,
+            world=WORLD,
+        )
+        model(**batch).loss.backward()
+        starved = sorted(
+            name
+            for name, parameter in model.named_parameters()
+            if parameter.requires_grad and parameter.grad is None
+        )
+        self.assertEqual(starved, [], f"these parameters would stall DDP: {starved}")
+        # The modality-free core has no token vocabulary to train.
+        self.assertFalse(model.backbone.embed_tokens.weight.requires_grad)
+        self.assertTrue(torch.equal(
+            model.backbone.embed_tokens.weight,
+            torch.zeros_like(model.backbone.embed_tokens.weight),
+        ))
+
     def test_paired_delta_rejects_mismatched_support(self) -> None:
         left = {
             "closed_loop": {"episodes": 4},

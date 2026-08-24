@@ -1,0 +1,145 @@
+{
+  "architecture_gate_passed": null,
+  "architecture_gate_progress": null,
+  "audit_verified": true,
+  "collected_at_unix": 1787603358.018621,
+  "configuration": {
+    "path": "step2/configs/kaggle/t4x2_vertical_slice.toml",
+    "sha256": "2f5f76eb9611936ec0456ef88a2a2c98148297eacd30ab3adf66ed2ecd4a0032"
+  },
+  "downloaded_files": [
+    {
+      "path": "step2-architecture-world-efe9dbb.log",
+      "sha256": "b5f0837c4b4928888e6aba3c7a8ebf6eb077172e6341733f8bba2d38ed9cab43",
+      "size": 40367
+    },
+    {
+      "path": "step2-results/audit-manifest.json",
+      "sha256": "f2e060426b6e346c79faaae33fc92fe0dc72f02e02a6abb019aad51eb41cf343",
+      "size": 4009
+    },
+    {
+      "path": "step2-results/cpu-benchmark.json",
+      "sha256": "5d1aab7f5ddfdb2225dadcdc895225e32f71e68da294e56dc2ed3c182b3ba439",
+      "size": 748
+    },
+    {
+      "path": "step2-results/environment.json",
+      "sha256": "8047560493157b613c256152566ac392cdaf5a8eaff7b29787f2990ffeeee24e",
+      "size": 2993
+    },
+    {
+      "path": "step2-results/logs/cpu-benchmark.log",
+      "sha256": "9c1327292dfec6238329304af7b4b4fb4da34ac65fed56399c7333b848f9b423",
+      "size": 655
+    },
+    {
+      "path": "step2-results/logs/gpu-vertical-slice.log",
+      "sha256": "9fd5f26ab3869d3ef0f56d4f3a1a588df9d8af0242b4892749ade27a15016462",
+      "size": 10571
+    },
+    {
+      "path": "step2-results/logs/maturin-build.log",
+      "sha256": "a510125d7dabdebd2fcb519ae569be3520439aa069ef2ba26f4da30b42340ea2",
+      "size": 2113
+    },
+    {
+      "path": "step2-results/logs/pip-install.log",
+      "sha256": "90cb4e9a36899377519c835e604d3b9a005770be9e251236a022c6b24cc69034",
+      "size": 13145
+    },
+    {
+      "path": "step2-results/logs/python-tests.log",
+      "sha256": "45a4c61704fb61defcb115df579b0307589cddb387099e5ee4c42bf50f14735b",
+      "size": 7462
+    },
+    {
+      "path": "step2-results/logs/rust-tests.log",
+      "sha256": "0ae86cad887152a74819bde1a941191f9bb52e588e8e61c269b004d038998630",
+      "size": 2223
+    },
+    {
+      "path": "step2-results/logs/rust-toolchain.log",
+      "sha256": "2775ffb86baebfb4c9959501cdd336fe315dd8e1229ffaede4f428f33862f10d",
+      "size": 196
+    },
+    {
+      "path": "step2-results/logs/rustup-download.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "step2-results/logs/rustup-install.log",
+      "sha256": "ce2fe4d6ae1e2ebfbe4066303e0a5ecf39d7e40223a122a465e19d573d0514f8",
+      "size": 1345
+    },
+    {
+      "path": "step2-results/logs/world-validation.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "step2-results/logs/world-wheel-install.log",
+      "sha256": "b975bb7fb84ddfbf87b1ec3cdfa97cbc19c526f73f6b3e5f8231ba7dcbacaefc",
+      "size": 178
+    },
+    {
+      "path": "step2-results/phase_status.json",
+      "sha256": "b2a960e1dc512a386c4032cdc2989938073e8b49274e921a912319d514d6473d",
+      "size": 737
+    },
+    {
+      "path": "step2-results/summary.json",
+      "sha256": "d4999c521456f2ca18180c63549d699e58edeee5cbc1f7e6b3f780465daf7514",
+      "size": 57175
+    },
+    {
+      "path": "step2-results/world-validation.json",
+      "sha256": "b1177f3aae0006eaf3e0f51a06eb7d94459c116cc1eee10a045fa89147ac006f",
+      "size": 383
+    }
+  ],
+  "experiment": "architecture-world-vertical-slice",
+  "kaggle": {
+    "completion_time": "2026-08-24T20:24:40.877000",
+    "owner_slug_version": "aniruddhavarma/step2-architecture-world-efe9dbb/1",
+    "push_url": "https://www.kaggle.com/code/aniruddhavarma/step2-architecture-world-efe9dbb",
+    "terminal_status": "aniruddhavarma/step2-architecture-world-efe9dbb/1 has status \"KernelWorkerStatus.ERROR\"",
+    "url": "https://www.kaggle.com/code/aniruddhavarma/step2-architecture-world-efe9dbb/versions/1"
+  },
+  "kernel": "aniruddhavarma/step2-architecture-world-efe9dbb",
+  "model_sha256": null,
+  "observed_accelerator_inventory": null,
+  "recovery_artifact": null,
+  "remote_manifest_sha256": "f2e060426b6e346c79faaae33fc92fe0dc72f02e02a6abb019aad51eb41cf343",
+  "requested_accelerator": "NvidiaTeslaT4",
+  "root_seed": 20260824,
+  "run_id": "aniruddhavarma/step2-architecture-world-efe9dbb/1",
+  "schema_version": 1,
+  "scientific_report": null,
+  "source": {
+    "git_remote": "origin",
+    "git_remote_url": "https://github.com/escher-bach/actuallybuildingstuff.git",
+    "git_sha": "efe9dbb00b227156e8dd9598ad8b9cc7693a65e6"
+  },
+  "status": "failed",
+  "upstream_kaggle_versions": [],
+  "verified_manifest_entries": [
+    "cpu-benchmark.json",
+    "environment.json",
+    "logs/cpu-benchmark.log",
+    "logs/gpu-vertical-slice.log",
+    "logs/maturin-build.log",
+    "logs/pip-install.log",
+    "logs/python-tests.log",
+    "logs/rust-tests.log",
+    "logs/rust-toolchain.log",
+    "logs/rustup-download.log",
+    "logs/rustup-install.log",
+    "logs/world-validation.log",
+    "logs/world-wheel-install.log",
+    "phase_status.json",
+    "world-validation.json"
+  ],
+  "world_size": null
+}
