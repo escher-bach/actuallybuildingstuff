@@ -95,10 +95,60 @@ path, including the paired step-zero baseline, was additionally dry-run on the
 local CPU at reduced scale; that check proves wiring only and produced no
 retained evidence.
 
+## Result of the first `0.2.0` two-T4 candidate, 2026-08-25
+
+Run `step2-architecture-world-3e973b6` completed and passed audit
+verification. Receipt and artifacts are under
+`step2/audit/runs/step2-architecture-world-3e973b6/`.
+
+**The apparatus works.** Two T4s, 256 updates in 44 seconds of training,
+architecture gate passed, checkpoint/resume smoke passed, candidate retained,
+19 artifacts hash-verified against the remote manifest. Two earlier attempts
+failed first: `efe9dbb` on a DDP dead-parameter fault and `f3dbf51` on a
+process-teardown stall. Both were apparatus failures, not evidence about the
+world.
+
+**The candidate did not learn control.** On the fixed 64-episode held-out
+support, against its own step-zero weights:
+
+| metric | step zero | trained |
+| --- | --- | --- |
+| closed-loop terminal error | 0.5066 | 0.6308 |
+| fractional error reduction | -0.6487 | -0.9264 |
+| success at error <= 0.05 | 0.047 | 0.188 |
+| success at error <= 0.4 | 0.312 | 0.188 |
+| teacher-forced action L1 | 0.7288 | 0.6300 |
+| teacher-forced future L1 | 0.2487 | 0.1078 |
+
+Read against the predeclared band, zero action gives terminal error `0.3385`
+and the privileged oracle gives `0.0000`. Both learners are therefore worse
+than doing nothing, and training moved the learner further from inaction, not
+closer to the oracle. Mean action magnitude rose from `3.931` to `5.403`.
+
+The supervised objective did improve: teacher-forced future L1 fell by 57%.
+So the model learned to predict effects while getting worse at using them.
+Its rising success at tight thresholds alongside worse mean error is the
+signature of a policy that has acquired direction but not magnitude, and
+overshoots.
+
+**This does not license rejecting the world.** The oracle solves it perfectly
+from public information, so the target capability is present and reachable.
+The budget was 256 updates costing 44 seconds; it is the cheapest variable
+available and has not been varied. The evaluation support is also only 64
+episodes, so the success-rate cells are 3 to 12 episodes and are noisy. The
+result is `passes infrastructure but not learning` under the decision rule
+below, with budget unexcluded as the explanation.
+
+**Reproducibility.** Runs `f3dbf51` and `3e973b6` produced bit-identical
+metrics and an identical model `sha256`, so FP16 DDP training on two T4s is
+deterministic here and future comparisons can attribute differences to the
+change under test.
+
 ## Evidence level
 
-`0.2.0` has only local apparatus evidence. It has not produced a two-T4 result,
-a retained checkpoint, source-world competence evidence, or transfer evidence.
+`0.2.0` now has a complete, audited two-T4 apparatus result and one retained
+candidate checkpoint. It has no source-world competence evidence and no
+transfer evidence.
 
 The retained `0.1.0` checkpoints are historical apparatus evidence. They use a
 superseded ABI and architecture boundary and must not be parents of the `0.2.0`
