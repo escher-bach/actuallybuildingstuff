@@ -9,11 +9,20 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use std::collections::BTreeMap;
 
-pub const WORLD_VERSION: &str = "calibrated-monomial-0.1.0";
-pub const ORACLE_VERSION: &str = "public-prefix-oracle-0.1.0";
-pub const TOKEN_ABI_VERSION: &str = "physical-event-abi-0.1.0";
+pub const WORLD_VERSION: &str = "calibrated-monomial-0.2.0";
+pub const ORACLE_VERSION: &str = "public-prefix-oracle-0.2.0";
+pub const TOKEN_ABI_VERSION: &str = "physical-event-abi-0.2.0";
 pub const PAYLOAD_DIM: usize = 8;
 pub const ACTION_HORIZON: usize = 16;
+
+const INSTANCE_DOMAIN: u64 = 0x494E_5354_414E_4345;
+const TASK_DOMAIN: u64 = 0x5441_534B_5F5F_5F5F;
+const CALIBRATION_DOMAIN: u64 = 0x4341_4C49_4252_4154;
+const PRESENTATION_DOMAIN: u64 = 0x5052_4553_454E_545F;
+const BOUNDARY_CALIBRATION_RESET: f32 = -1.0;
+const BOUNDARY_TASK_RESET: f32 = 0.0;
+const BOUNDARY_EPISODE_END: f32 = 1.0;
+const REQUESTED_ACTION_STEPS: usize = 1;
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,15 +32,16 @@ pub enum Role {
     SchemaActuator = 2,
     Boundary = 3,
     Condition = 4,
-    Observation = 5,
-    ActionQuery = 6,
-    ActionExecuted = 7,
-    OutcomeQuery = 8,
-    Feedback = 9,
+    Goal = 5,
+    Observation = 6,
+    ActionQuery = 7,
+    ActionExecuted = 8,
+    FutureQuery = 9,
+    Feedback = 10,
 }
 
 impl Role {
-    pub const COUNT: usize = 10;
+    pub const COUNT: usize = 11;
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -46,8 +56,8 @@ pub struct PublicToken {
 pub struct Supervision {
     pub action_target: [f32; ACTION_HORIZON],
     pub action_mask: [bool; ACTION_HORIZON],
-    pub outcome_target: f32,
-    pub outcome_mask: bool,
+    pub future_target: f32,
+    pub future_mask: bool,
 }
 
 impl Default for Supervision {
@@ -55,8 +65,8 @@ impl Default for Supervision {
         Self {
             action_target: [0.0; ACTION_HORIZON],
             action_mask: [false; ACTION_HORIZON],
-            outcome_target: 0.0,
-            outcome_mask: false,
+            future_target: 0.0,
+            future_mask: false,
         }
     }
 }
@@ -97,7 +107,7 @@ impl Default for FamilyConfig {
             one_step_total_action: 0.10,
             multi_step_total_action: 0.35,
             max_control_steps: 4,
-            success_tolerance: 1.0e-5,
+            success_tolerance: 0.05,
         }
     }
 }
@@ -206,7 +216,9 @@ impl PublicOracle {
     pub fn from_public_prefix(tokens: &[PublicToken]) -> Result<Self, String> {
         let task_event = tokens
             .iter()
-            .find(|t| t.role == Role::Boundary && (t.payload[0] - 2.0).abs() < 1.0e-6)
+            .find(|t| {
+                t.role == Role::Boundary && (t.payload[0] - BOUNDARY_TASK_RESET).abs() < 1.0e-6
+            })
             .map(|t| t.event)
             .ok_or("public prefix has no task-reset boundary")?;
 
@@ -379,6 +391,20 @@ fn payload(value: f32, lower: f32, upper: f32, aux0: f32, aux1: f32) -> [f32; PA
     [value, lower, upper, aux0, aux1, 1.0, 0.0, 0.0]
 }
 
+fn boundary_payload(kind: f32) -> [f32; PAYLOAD_DIM] {
+    payload(kind, -1.0, 1.0, 0.0, 0.0)
+}
+
+fn action_payload(value: f32, cfg: &FamilyConfig) -> [f32; PAYLOAD_DIM] {
+    payload(
+        value,
+        -cfg.action_limit,
+        cfg.action_limit,
+        1.0,
+        REQUESTED_ACTION_STEPS as f32 / ACTION_HORIZON as f32,
+    )
+}
+
 fn shuffled_keys(d: usize, rng: &mut ChaCha8Rng) -> Vec<usize> {
     let mut keys: Vec<usize> = (0..d).collect();
     keys.shuffle(rng);
@@ -392,18 +418,21 @@ fn mix_seed(seed: u64, index: u64) -> u64 {
     z ^ (z >> 31)
 }
 
+fn domain_rng(seed: u64, index: u64, domain: u64, salt: u64) -> ChaCha8Rng {
+    ChaCha8Rng::seed_from_u64(mix_seed(seed ^ domain ^ salt.rotate_left(17), index))
+}
+
 pub fn sample_instance(cfg: &FamilyConfig, seed: u64, index: u64) -> Result<Instance, String> {
     cfg.validate()?;
     let span = cfg.d_max - cfg.d_min + 1;
     let d = cfg.d_min + index as usize % span;
-    let mut rng = ChaCha8Rng::seed_from_u64(mix_seed(seed, index));
+    let mut rng = domain_rng(seed, index, INSTANCE_DOMAIN, 0);
     let mut effect_of_actuator: Vec<usize> = (0..d).collect();
     effect_of_actuator.shuffle(&mut rng);
-    let stratum = index as usize / span;
     let gain_of_actuator = (0..d)
-        .map(|j| {
+        .map(|_| {
             let magnitude = rng.gen_range(cfg.gain_min..=cfg.gain_max);
-            let sign = if (stratum + j) % 2 == 0 { 1.0 } else { -1.0 };
+            let sign = if rng.gen_bool(0.5) { 1.0 } else { -1.0 };
             sign * magnitude
         })
         .collect();
@@ -433,13 +462,7 @@ fn append_schema(
     for (role, key) in tagged {
         let p = match role {
             Role::SchemaObservation => payload(0.0, -1.0, 1.0, 0.0, 0.0),
-            Role::SchemaActuator => payload(
-                0.0,
-                -cfg.action_limit,
-                cfg.action_limit,
-                1.0,
-                ACTION_HORIZON as f32,
-            ),
+            Role::SchemaActuator => action_payload(0.0, cfg),
             _ => unreachable!(),
         };
         entries.push((role, key as u16, p, Supervision::default()));
@@ -451,35 +474,32 @@ fn append_calibration(
     serializer: &mut Serializer,
     instance: &Instance,
     cfg: &FamilyConfig,
-    rng: &mut ChaCha8Rng,
+    presentation_rng: &mut ChaCha8Rng,
+    calibration_rng: &mut ChaCha8Rng,
 ) -> Result<(), String> {
-    let mut calibration_order = shuffled_keys(instance.d, rng);
-    // A rotation derived from the instance index prevents one accidental RNG
-    // realization from defining a stable first actuator.
-    let n = calibration_order.len();
-    calibration_order.rotate_left(instance.index as usize % n);
+    let calibration_order = shuffled_keys(instance.d, presentation_rng);
     for &pulse_actuator in &calibration_order {
         serializer.segment(vec![(
             Role::Boundary,
             0,
-            payload(1.0, 0.0, 3.0, 0.0, 0.0),
+            boundary_payload(BOUNDARY_CALIBRATION_RESET),
             Supervision::default(),
         )]);
         let before = vec![0.0; instance.d];
-        append_observation(serializer, &before, rng);
+        append_observation(serializer, &before, presentation_rng);
         let mut action = vec![0.0; instance.d];
-        let pulse_sign = if (instance.index as usize + pulse_actuator) % 2 == 0 {
+        let pulse_sign = if calibration_rng.gen_bool(0.5) {
             1.0
         } else {
             -1.0
         };
         action[pulse_actuator] = pulse_sign * cfg.calibration_pulse;
-        let action_order = shuffled_keys(instance.d, rng);
+        let action_order = shuffled_keys(instance.d, presentation_rng);
         append_executed_action(serializer, &action, cfg, &action_order);
         let after = instance.transition(&before, &action)?;
-        let observation_order = shuffled_keys(instance.d, rng);
-        append_outcome_queries(serializer, &after, &observation_order, true);
-        append_observation(serializer, &after, rng);
+        let observation_order = shuffled_keys(instance.d, presentation_rng);
+        append_future_queries(serializer, &after, &observation_order, 1, true);
+        append_observation(serializer, &after, presentation_rng);
     }
     Ok(())
 }
@@ -493,20 +513,14 @@ fn sample_task(
     for value in &mut start {
         *value = rng.gen_range(-0.10..=0.10);
     }
-    let span = cfg.d_max - cfg.d_min + 1;
-    let stratum = instance.index as usize / span;
     let mut total_action = vec![0.0; instance.d];
-    for (j, value) in total_action.iter_mut().enumerate() {
-        let magnitude = if (stratum + j) % 3 == 0 {
+    for value in &mut total_action {
+        let magnitude = if rng.gen_bool(1.0 / 3.0) {
             cfg.one_step_total_action
         } else {
             cfg.multi_step_total_action
         };
-        let sign = if (stratum + 2 * j) % 2 == 0 {
-            1.0
-        } else {
-            -1.0
-        };
+        let sign = if rng.gen_bool(0.5) { 1.0 } else { -1.0 };
         *value = sign * magnitude;
     }
     let goal = instance
@@ -521,27 +535,40 @@ type PublicPrefixBuild = (Serializer, PublicOracle, Vec<f32>, Vec<f32>, ChaCha8R
 fn build_public_prefix(
     instance: &Instance,
     cfg: &FamilyConfig,
+    presentation_salt: u64,
 ) -> Result<PublicPrefixBuild, String> {
-    let mut rng = ChaCha8Rng::seed_from_u64(mix_seed(
-        instance.seed ^ 0xA5A5_A5A5_A5A5_A5A5,
+    // Semantic and presentation streams are domain-separated. In particular,
+    // changing a legal serialization order cannot change the task itself.
+    let mut task_rng = domain_rng(instance.seed, instance.index, TASK_DOMAIN, 0);
+    let (start, goal) = sample_task(instance, cfg, &mut task_rng);
+    let mut calibration_rng = domain_rng(instance.seed, instance.index, CALIBRATION_DOMAIN, 0);
+    let mut presentation_rng = domain_rng(
+        instance.seed,
         instance.index,
-    ));
+        PRESENTATION_DOMAIN,
+        presentation_salt,
+    );
     let mut serializer = Serializer::new();
-    append_schema(&mut serializer, instance, cfg, &mut rng);
-    append_calibration(&mut serializer, instance, cfg, &mut rng)?;
+    append_schema(&mut serializer, instance, cfg, &mut presentation_rng);
+    append_calibration(
+        &mut serializer,
+        instance,
+        cfg,
+        &mut presentation_rng,
+        &mut calibration_rng,
+    )?;
     serializer.segment(vec![(
         Role::Boundary,
         0,
-        payload(2.0, 0.0, 3.0, 0.0, 0.0),
+        boundary_payload(BOUNDARY_TASK_RESET),
         Supervision::default(),
     )]);
     let oracle = PublicOracle::from_public_prefix(&serializer.public())?;
-    let (start, goal) = sample_task(instance, cfg, &mut rng);
-    let condition_entries = shuffled_keys(instance.d, &mut rng)
+    let condition_entries = shuffled_keys(instance.d, &mut presentation_rng)
         .into_iter()
         .map(|i| {
             (
-                Role::Condition,
+                Role::Goal,
                 i as u16,
                 payload(goal[i], -1.0, 1.0, 0.0, 0.0),
                 Supervision::default(),
@@ -549,8 +576,8 @@ fn build_public_prefix(
         })
         .collect();
     serializer.segment(condition_entries);
-    append_observation(&mut serializer, &start, &mut rng);
-    Ok((serializer, oracle, start, goal, rng))
+    append_observation(&mut serializer, &start, &mut presentation_rng);
+    Ok((serializer, oracle, start, goal, presentation_rng))
 }
 
 pub fn generate_trajectory(
@@ -559,7 +586,7 @@ pub fn generate_trajectory(
     index: u64,
 ) -> Result<Trajectory, String> {
     let instance = sample_instance(cfg, seed, index)?;
-    let (mut serializer, oracle, mut x, goal, mut rng) = build_public_prefix(&instance, cfg)?;
+    let (mut serializer, oracle, mut x, goal, mut rng) = build_public_prefix(&instance, cfg, 0)?;
     let mut max_oracle_error = 0.0f32;
     for j in 0..instance.d {
         max_oracle_error =
@@ -581,7 +608,7 @@ pub fn generate_trajectory(
         append_executed_action(&mut serializer, &oracle_action, cfg, &action_order);
         let next = instance.transition(&x, &oracle_action)?;
         let observation_order = shuffled_keys(instance.d, &mut rng);
-        append_outcome_queries(&mut serializer, &next, &observation_order, true);
+        append_future_queries(&mut serializer, &next, &observation_order, 1, true);
         let success = append_feedback(&mut serializer, &next, &goal, cfg.success_tolerance);
         append_observation(&mut serializer, &next, &mut rng);
         x = next;
@@ -590,7 +617,7 @@ pub fn generate_trajectory(
             serializer.segment(vec![(
                 Role::Boundary,
                 0,
-                payload(3.0, 0.0, 3.0, 0.0, 0.0),
+                boundary_payload(BOUNDARY_EPISODE_END),
                 Supervision::default(),
             )]);
             if !success {
@@ -630,7 +657,7 @@ pub struct RolloutEpisode {
 impl RolloutEpisode {
     pub fn new(cfg: &FamilyConfig, seed: u64, index: u64) -> Result<Self, String> {
         let instance = sample_instance(cfg, seed, index)?;
-        let (mut serializer, oracle, x, goal, mut rng) = build_public_prefix(&instance, cfg)?;
+        let (mut serializer, oracle, x, goal, mut rng) = build_public_prefix(&instance, cfg, 0)?;
         let query_order = shuffled_keys(instance.d, &mut rng);
         append_action_queries(&mut serializer, None, cfg, &query_order);
         Ok(Self {
@@ -686,11 +713,12 @@ impl RolloutEpisode {
             &self.query_order,
         );
         let next = self.instance.transition(&self.x, &action)?;
-        let outcome_order = shuffled_keys(self.instance.d, &mut self.rng);
-        append_outcome_queries(
+        let future_order = shuffled_keys(self.instance.d, &mut self.rng);
+        append_future_queries(
             &mut SerializerProxy::new(&mut self.tokens),
             &next,
-            &outcome_order,
+            &future_order,
+            1,
             false,
         );
         self.success = append_feedback(
@@ -711,7 +739,7 @@ impl RolloutEpisode {
             SerializerProxy::new(&mut self.tokens).segment(vec![(
                 Role::Boundary,
                 0,
-                payload(3.0, 0.0, 3.0, 0.0, 0.0),
+                boundary_payload(BOUNDARY_EPISODE_END),
                 Supervision::default(),
             )]);
         } else {
@@ -796,13 +824,7 @@ fn append_executed_action<S: SegmentSink>(
             (
                 Role::ActionExecuted,
                 j as u16,
-                payload(
-                    u[j] / cfg.action_limit,
-                    -cfg.action_limit,
-                    cfg.action_limit,
-                    1.0,
-                    ACTION_HORIZON as f32,
-                ),
+                action_payload(u[j] / cfg.action_limit, cfg),
                 Supervision::default(),
             )
         })
@@ -810,24 +832,26 @@ fn append_executed_action<S: SegmentSink>(
     serializer.segment(entries);
 }
 
-fn append_outcome_queries<S: SegmentSink>(
+fn append_future_queries<S: SegmentSink>(
     serializer: &mut S,
     next: &[f32],
     order: &[usize],
+    horizon: usize,
     supervised: bool,
 ) {
+    assert!((1..=ACTION_HORIZON).contains(&horizon));
     let entries = order
         .iter()
         .map(|&i| {
             let mut supervision = Supervision::default();
             if supervised {
-                supervision.outcome_target = next[i];
-                supervision.outcome_mask = true;
+                supervision.future_target = next[i];
+                supervision.future_mask = true;
             }
             (
-                Role::OutcomeQuery,
+                Role::FutureQuery,
                 i as u16,
-                payload(0.0, -1.0, 1.0, 0.0, 0.0),
+                payload(0.0, -1.0, 1.0, horizon as f32 / ACTION_HORIZON as f32, 0.0),
                 supervision,
             )
         })
@@ -852,13 +876,7 @@ fn append_action_queries<S: SegmentSink>(
             (
                 Role::ActionQuery,
                 j as u16,
-                payload(
-                    0.0,
-                    -cfg.action_limit,
-                    cfg.action_limit,
-                    1.0,
-                    ACTION_HORIZON as f32,
-                ),
+                action_payload(0.0, cfg),
                 supervision,
             )
         })
@@ -881,7 +899,7 @@ fn append_feedback<S: SegmentSink>(
     serializer.segment(vec![(
         Role::Feedback,
         0,
-        payload(error, 0.0, 2.0, if success { 1.0 } else { 0.0 }, 0.0),
+        payload(error / 2.0, 0.0, 1.0, if success { 1.0 } else { 0.0 }, 0.0),
         Supervision::default(),
     )]);
     success
@@ -969,6 +987,69 @@ mod tests {
         {
             assert_eq!(token.public.payload[0], 0.0);
             assert!(token.supervision.action_mask[0]);
+        }
+    }
+
+    #[test]
+    fn goal_and_future_query_have_distinct_explicit_roles() {
+        let cfg = FamilyConfig::default();
+        let trajectory = generate_trajectory(&cfg, 33, 5).unwrap();
+        assert!(trajectory
+            .tokens
+            .iter()
+            .any(|token| token.public.role == Role::Goal));
+        assert!(!trajectory
+            .tokens
+            .iter()
+            .any(|token| token.public.role == Role::Condition));
+        for token in trajectory
+            .tokens
+            .iter()
+            .filter(|token| token.public.role == Role::FutureQuery)
+        {
+            assert!((token.public.payload[3] - 1.0 / ACTION_HORIZON as f32).abs() < 1.0e-7);
+        }
+    }
+
+    #[test]
+    fn presentation_changes_do_not_change_task_or_reconstructed_dynamics() {
+        let cfg = FamilyConfig::default();
+        for index in 0..64 {
+            let instance = sample_instance(&cfg, 35, index).unwrap();
+            let (_, oracle_a, start_a, goal_a, _) =
+                build_public_prefix(&instance, &cfg, 0).unwrap();
+            let (_, oracle_b, start_b, goal_b, _) =
+                build_public_prefix(&instance, &cfg, 1).unwrap();
+            assert_eq!(start_a, start_b);
+            assert_eq!(goal_a, goal_b);
+            assert_eq!(oracle_a.effect_of_actuator, oracle_b.effect_of_actuator);
+            assert_eq!(oracle_a.gain_of_actuator, oracle_b.gain_of_actuator);
+        }
+    }
+
+    #[test]
+    fn static_oracle_trajectory_matches_online_public_rollout_exactly() {
+        let cfg = FamilyConfig::default();
+        for index in 0..32 {
+            let static_trajectory = generate_trajectory(&cfg, 39, index).unwrap();
+            let mut online = RolloutEpisode::new(&cfg, 39, index).unwrap();
+            while !online.done {
+                let action = online.oracle.action(&online.x, &online.goal).unwrap();
+                let normalized_by_query: Vec<f32> = online
+                    .query_order
+                    .iter()
+                    .map(|&j| action[j] / cfg.action_limit)
+                    .collect();
+                online.step_normalized(&cfg, &normalized_by_query).unwrap();
+            }
+            let static_public: Vec<&PublicToken> = static_trajectory
+                .tokens
+                .iter()
+                .map(|token| &token.public)
+                .collect();
+            let online_public: Vec<&PublicToken> =
+                online.tokens.iter().map(|token| &token.public).collect();
+            assert_eq!(static_public, online_public);
         }
     }
 

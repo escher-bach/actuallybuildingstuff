@@ -4,7 +4,9 @@ import unittest
 
 import step2_world_py
 
-from step2_experiments.data import MODEL_FIELDS, tensorize
+from step2_experiments.baselines import baseline_band
+from step2_experiments.data import MODEL_FIELDS, assert_world_model_compatibility, tensorize
+from step2_experiments.model import Step2Config
 
 
 WORLD = {
@@ -19,6 +21,35 @@ WORLD = {
 
 
 class WorldContractTests(unittest.TestCase):
+    def test_versioned_role_contract_is_0_2(self) -> None:
+        versions = step2_world_py.versions()
+        self.assertEqual(versions["world"], "calibrated-monomial-0.2.0")
+        self.assertEqual(versions["token_abi"], "physical-event-abi-0.2.0")
+        self.assertEqual(versions["role_count"], 11)
+        raw = step2_world_py.generate_training_batch(
+            seed=11,
+            start_index=0,
+            batch_size=1,
+            max_tokens=192,
+            **WORLD,
+        )
+        public_roles = set(raw["role_ids"][0][: raw["lengths"][0]])
+        self.assertIn(5, public_roles)  # Goal
+        self.assertIn(9, public_roles)  # FutureQuery
+
+    def test_model_config_and_world_abi_match(self) -> None:
+        config = Step2Config(
+            hidden_size=64,
+            intermediate_size=128,
+            num_hidden_layers=2,
+            attention_heads=4,
+            max_position_embeddings=192,
+        )
+        assert_world_model_compatibility(config)
+        config.num_roles = 10
+        with self.assertRaises(RuntimeError):
+            assert_world_model_compatibility(config)
+
     def test_public_oracle_and_support_validation(self) -> None:
         result = step2_world_py.validate_generated_worlds(
             seed=123,
@@ -29,7 +60,7 @@ class WorldContractTests(unittest.TestCase):
         self.assertEqual(result["dimension_counts"][1:5], [64, 64, 64, 64])
         self.assertLess(result["max_oracle_error"], 1.0e-5)
         self.assertGreater(result["action_targets"], 0)
-        self.assertGreater(result["outcome_targets"], result["action_targets"])
+        self.assertGreater(result["future_targets"], result["action_targets"])
         self.assertLessEqual(result["max_length"], 192)
 
     def test_batched_public_tensor_contract(self) -> None:
@@ -84,6 +115,25 @@ class WorldContractTests(unittest.TestCase):
             actions = [([] if done else [0.0] * dimension) for done, dimension in zip(batch["done"], batch["dimensions"])]
             zero.step(actions)
         self.assertFalse(any(zero.summary()["success"]))
+
+    def test_trivial_policy_band_is_decision_facing(self) -> None:
+        config = {
+            "model": {"sequence_length": 192},
+            "world": {**WORLD, "rollout_seed": 41},
+            "evaluation": {
+                "error_thresholds": [0.01, 0.05, 0.10],
+                "trivial_policy_scales": [0.0, 0.75, 1.0],
+                "baseline_episodes": 16,
+            },
+        }
+        result = baseline_band(config)
+        zero = result["policies"]["scaled_oracle_0"]
+        partial = result["policies"]["scaled_oracle_0.75"]
+        oracle = result["policies"]["scaled_oracle_1"]
+        self.assertEqual(len(zero["trial_curve"]), WORLD["max_control_steps"] + 1)
+        self.assertEqual(zero["threshold_success"]["0.05"], 0.0)
+        self.assertGreater(partial["mean_error_reduction"], zero["mean_error_reduction"])
+        self.assertEqual(oracle["threshold_success"]["0.05"], 1.0)
 
 
 if __name__ == "__main__":

@@ -36,6 +36,9 @@ matter of intent.
 
 | Document | What it settles |
 | --- | --- |
+| [step2/CURRENT-STATE.md](step2/CURRENT-STATE.md) | **Start here:** current world, targeted capability, evidence level, next action, and authority map |
+| [step2/CORE-BOUNDARY.md](step2/CORE-BOUNDARY.md) | Accepted modality-free core and downstream grounding boundary |
+| [step2/META-PROCESS.md](step2/META-PROCESS.md) | User-directed working, velocity, compute, and experiment rules |
 | [step2/WORLD-VALIDITY.md](step2/WORLD-VALIDITY.md) | The validity contract: plausibility, interaction mode, degenerate winners, acceptance gates |
 | [PROCESS-AND-RENDERING.md](PROCESS-AND-RENDERING.md) | Presentation vs rendering; the discriminating probe skeleton |
 | [TRAINING-DYNAMICS.md](TRAINING-DYNAMICS.md) | The cost model the worlds must live inside |
@@ -53,8 +56,12 @@ matter of intent.
 
 ## Status
 
-No world, body, goal encoding, law family, teacher, operator, or experiment is
-specified or authorized. The validity contract is drafted and pending review.
+STEP 2 currently implements the `0.2.0` calibrated signed-permutation control
+world and modality-free core. Local apparatus tests pass; no `0.2.0` GPU result,
+retained checkpoint, source-world competence, or transfer result exists. The
+next proposed action is the bounded C1 candidate described in
+[step2/CURRENT-STATE.md](step2/CURRENT-STATE.md). The validity contract remains
+a draft pending review.
 
 Inherited material and its boundaries are recorded in
 [PROVENANCE.md](PROVENANCE.md).

@@ -1,5 +1,33 @@
 # Standard LLM Stack Migration Plan
 
+## STEP 2 continuous-token amendment — 2026-08-24
+
+The user-directed STEP 2 abstract-control experiment requires variable
+continuous sensor, goal, actuator, and query tokens rather than the STEP 1 byte
+language surface. For STEP 2 only, the maintained model body is Hugging Face
+`LlamaModel` with the checked-in 12-layer, width-384 configuration, initialized
+from scratch. Project code may own the thin continuous event embedding and
+shared action/future readout adapter required by that experimental interface.
+Pixels, text, and robot-specific encoders remain outside the core.
+
+This amendment does not return commodity training infrastructure to project
+code. Transformers `Trainer` owns optimizer selection, scheduling, gradient
+accumulation, mixed precision, distributed execution, logging, checkpointing,
+and resume. The direct-Accelerate loop used by the completed `0.1.0` vertical
+slice is retained as historical apparatus but is not the training path for the
+`0.2.0` lineage. Model artifacts remain standard `save_pretrained` directories
+with safetensors weights and supplemental scientific provenance.
+
+**Implementation status:** the `0.2.0` local path now uses Trainer end to end,
+including a real checkpoint interruption and resume within the unchanged step
+budget. Single-process CPU tests pass; the declared two-T4 verification has not
+yet been rerun for `0.2.0`.
+
+The scientific ownership boundary remains unchanged: project code owns worlds,
+teacher/verifier semantics, learner-visible token construction, interaction,
+and evaluation. The exact STEP 2 core contract is in
+`step2/CORE-BOUNDARY.md`.
+
 **Status:** authoritative reusable implementation path; world-0.1 scientific contract closed
 
 **Decision date:** 2026-08-12

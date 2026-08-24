@@ -45,3 +45,8 @@ cpu_benchmark_episodes = 4096
 cpu_benchmark_batch_size = 64
 cpu_benchmark_repeats = 5
 rollout_episodes_per_rank = 32
+
+[evaluation]
+error_thresholds = [0.01, 0.025, 0.05, 0.10, 0.20, 0.40]
+trivial_policy_scales = [0.0, 0.25, 0.50, 0.75, 1.0]
+baseline_episodes = 4096

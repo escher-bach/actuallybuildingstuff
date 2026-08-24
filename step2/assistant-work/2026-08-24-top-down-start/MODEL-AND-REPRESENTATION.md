@@ -1,5 +1,10 @@
 # Model and Representation Decision
 
+> **Historical `0.1.0` record.** It documents the completed prior apparatus,
+> not the current `0.2.0` architecture. The current boundary removes vision
+> from the core and assigns training ownership to Transformers `Trainer`; see
+> [`../../CORE-BOUNDARY.md`](../../CORE-BOUNDARY.md).
+
 **Date:** 2026-08-24
 **Status:** selected profile implemented; local CPU integration gates pass; one
 two-T4 vertical-slice run is authorized and pending

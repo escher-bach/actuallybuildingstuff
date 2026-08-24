@@ -1,4 +1,4 @@
-"""Two-T4 vertical-slice gate and bounded C1-candidate training start."""
+"""Maintained Trainer path for STEP 2 procedural trajectory pretraining."""
 
 from __future__ import annotations
 
@@ -10,17 +10,28 @@ import os
 from pathlib import Path
 import time
 import tomllib
-from typing import Any
+from typing import Any, Iterator
 
 from accelerate import Accelerator
-from accelerate.utils import DistributedDataParallelKwargs, set_seed
 import torch
-from torch.optim import AdamW
-from transformers import get_cosine_schedule_with_warmup
+from torch.utils.data import Dataset, IterableDataset
+from transformers import Trainer, TrainerCallback, TrainingArguments, set_seed
 
 import step2_world_py
 
-from .data import generate_torch_batch, tensorize_rollout, world_kwargs
+from .data import (
+    MODEL_FIELDS,
+    assert_world_model_compatibility,
+    generate_torch_batch,
+    tensorize_rollout,
+    world_kwargs,
+)
+from .evaluation import (
+    error_thresholds,
+    paired_learning_delta,
+    summarize_episode_rows,
+    summarize_trial_rows,
+)
 from .model import (
     Step2Config,
     Step2ForTrajectoryPrediction,
@@ -35,53 +46,213 @@ def load_config(path: Path) -> dict[str, Any]:
 
 
 def resolve_project_path(config_path: Path, relative: str) -> Path:
-    root = config_path.resolve().parents[3]
-    return root / relative
+    return config_path.resolve().parents[3] / relative
 
 
-def build_optimizer(model: torch.nn.Module, learning_rate: float, weight_decay: float) -> AdamW:
-    decay: list[torch.nn.Parameter] = []
-    no_decay: list[torch.nn.Parameter] = []
-    for name, parameter in model.named_parameters():
-        if not parameter.requires_grad:
-            continue
-        if parameter.ndim < 2 or "embedding" in name or "norm" in name or "queries" in name:
-            no_decay.append(parameter)
-        else:
-            decay.append(parameter)
-    return AdamW(
-        [
-            {"params": decay, "weight_decay": weight_decay},
-            {"params": no_decay, "weight_decay": 0.0},
+class ProceduralTrajectoryDataset(IterableDataset):
+    """Infinite deterministic stream; Trainer/Accelerate owns rank sharding."""
+
+    def __init__(self, *, seed: int, max_tokens: int, world: dict[str, Any]) -> None:
+        super().__init__()
+        self.seed = seed
+        self.max_tokens = max_tokens
+        self.world = dict(world)
+
+    def __iter__(self) -> Iterator[dict[str, torch.Tensor]]:
+        worker = torch.utils.data.get_worker_info()
+        index = 0 if worker is None else worker.id
+        stride = 1 if worker is None else worker.num_workers
+        while True:
+            batch, _ = generate_torch_batch(
+                seed=self.seed,
+                start_index=index,
+                batch_size=1,
+                max_tokens=self.max_tokens,
+                world=self.world,
+            )
+            yield {name: batch[name][0] for name in MODEL_FIELDS}
+            index += stride
+
+
+class FixedCohortDataset(Dataset):
+    """Repeat one real generated cohort for a disposable wiring diagnostic."""
+
+    def __init__(self, batch: dict[str, torch.Tensor], repeats: int) -> None:
+        size = len(next(iter(batch.values())))
+        self.rows = [
+            {name: value[row] for name, value in batch.items()} for row in range(size)
+        ]
+        self.repeats = repeats
+
+    def __len__(self) -> int:
+        return len(self.rows) * self.repeats
+
+    def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
+        return self.rows[index % len(self.rows)]
+
+
+def training_arguments(
+    *,
+    output_dir: Path,
+    run: dict[str, Any],
+    max_steps: int,
+    per_device_batch_size: int,
+    warmup_steps: int,
+    save: bool,
+    use_cpu: bool = False,
+) -> TrainingArguments:
+    mixed_precision = str(run.get("mixed_precision", "no"))
+    return TrainingArguments(
+        output_dir=str(output_dir),
+        do_train=True,
+        max_steps=max_steps,
+        per_device_train_batch_size=per_device_batch_size,
+        gradient_accumulation_steps=int(run.get("gradient_accumulation_steps", 1)),
+        learning_rate=float(run["learning_rate"]),
+        weight_decay=float(run["weight_decay"]),
+        adam_beta1=0.9,
+        adam_beta2=0.95,
+        adam_epsilon=1.0e-8,
+        lr_scheduler_type="cosine",
+        warmup_steps=warmup_steps,
+        max_grad_norm=float(run["max_grad_norm"]),
+        fp16=mixed_precision == "fp16" and not use_cpu,
+        bf16=mixed_precision == "bf16" and not use_cpu,
+        use_cpu=use_cpu,
+        logging_strategy="steps",
+        logging_steps=max(1, int(run.get("log_every", 1))),
+        logging_first_step=True,
+        save_strategy="steps" if save else "no",
+        save_steps=max_steps,
+        save_total_limit=2,
+        eval_strategy="no",
+        prediction_loss_only=True,
+        remove_unused_columns=False,
+        label_names=[
+            "action_targets",
+            "action_target_mask",
+            "future_targets",
+            "future_target_mask",
         ],
-        lr=learning_rate,
-        betas=(0.9, 0.95),
-        eps=1.0e-8,
+        dataloader_num_workers=0,
+        dataloader_drop_last=False,
+        optim="adamw_torch",
+        ddp_find_unused_parameters=False,
+        average_tokens_across_devices=False,
+        include_num_input_tokens_seen=True,
+        report_to=[],
+        disable_tqdm=True,
+        seed=int(run["seed"]),
+        data_seed=int(run["seed"]),
     )
+
+
+class StopAfterStepCallback(TrainerCallback):
+    """Stop after a declared step while asking Trainer to write its state."""
+
+    def __init__(self, stop_step: int) -> None:
+        self.stop_step = stop_step
+
+    def on_step_end(self, args, state, control, **kwargs):
+        if state.global_step >= self.stop_step:
+            control.should_save = True
+            control.should_training_stop = True
+        return control
+
+
+def train_with_resume_smoke(
+    *,
+    model: Step2ForTrajectoryPrediction,
+    dataset: IterableDataset | Dataset,
+    trainer_state_dir: Path,
+    run: dict[str, Any],
+    total_steps: int,
+    per_device_batch_size: int,
+    warmup_steps: int,
+    resume_checkpoint: str | None = None,
+    use_cpu: bool = False,
+) -> tuple[Trainer, dict[str, Any], dict[str, Any]]:
+    """Exercise standard Trainer save/resume without increasing the step budget."""
+
+    if resume_checkpoint is not None:
+        arguments = training_arguments(
+            output_dir=trainer_state_dir,
+            run=run,
+            max_steps=total_steps,
+            per_device_batch_size=per_device_batch_size,
+            warmup_steps=warmup_steps,
+            save=True,
+            use_cpu=use_cpu,
+        )
+        trainer = Trainer(model=model, args=arguments, train_dataset=dataset)
+        output = trainer.train(resume_from_checkpoint=resume_checkpoint)
+        return trainer, output.metrics, {
+            "passed": True,
+            "mode": "external",
+            "checkpoint": str(Path(resume_checkpoint).resolve()),
+            "resumed_to_step": int(trainer.state.global_step),
+        }
+
+    smoke_step = int(run["resume_smoke_update"])
+    if not 0 < smoke_step < total_steps:
+        raise ValueError("resume_smoke_update must be between zero and max_updates")
+    first_arguments = training_arguments(
+        output_dir=trainer_state_dir,
+        run=run,
+        max_steps=total_steps,
+        per_device_batch_size=per_device_batch_size,
+        warmup_steps=warmup_steps,
+        save=True,
+        use_cpu=use_cpu,
+    )
+    first_trainer = Trainer(
+        model=model,
+        args=first_arguments,
+        train_dataset=dataset,
+        callbacks=[StopAfterStepCallback(smoke_step)],
+    )
+    first_output = first_trainer.train()
+    checkpoint = trainer_state_dir / f"checkpoint-{smoke_step}"
+    required = ("model.safetensors", "optimizer.pt", "scheduler.pt", "trainer_state.json")
+    missing = [name for name in required if not (checkpoint / name).is_file()]
+    if missing or int(first_trainer.state.global_step) != smoke_step:
+        raise RuntimeError(
+            "Trainer resume-smoke checkpoint incomplete: "
+            f"step={first_trainer.state.global_step}, missing={missing}"
+        )
+
+    resumed_arguments = training_arguments(
+        output_dir=trainer_state_dir,
+        run=run,
+        max_steps=total_steps,
+        per_device_batch_size=per_device_batch_size,
+        warmup_steps=warmup_steps,
+        save=True,
+        use_cpu=use_cpu,
+    )
+    resumed_trainer = Trainer(
+        model=Step2ForTrajectoryPrediction(model.config),
+        args=resumed_arguments,
+        train_dataset=dataset,
+    )
+    resumed_output = resumed_trainer.train(resume_from_checkpoint=str(checkpoint))
+    passed = int(resumed_trainer.state.global_step) == total_steps
+    resume_smoke = {
+        "passed": passed,
+        "mode": "automatic",
+        "checkpoint": checkpoint.name,
+        "checkpoint_step": smoke_step,
+        "resumed_to_step": int(resumed_trainer.state.global_step),
+        "required_state_files": list(required),
+        "first_segment_metrics": first_output.metrics,
+    }
+    if not passed:
+        raise RuntimeError(f"Trainer resume smoke failed: {resume_smoke}")
+    return resumed_trainer, resumed_output.metrics, resume_smoke
 
 
 def move_batch(batch: dict[str, torch.Tensor], device: torch.device) -> dict[str, torch.Tensor]:
     return {name: tensor.to(device, non_blocking=False) for name, tensor in batch.items()}
-
-
-def model_checksum(model: torch.nn.Module) -> torch.Tensor:
-    checksum = torch.zeros(3, device=next(model.parameters()).device, dtype=torch.float64)
-    with torch.no_grad():
-        for parameter in model.parameters():
-            values = parameter.detach().to(dtype=torch.float64)
-            checksum[0] += values.sum()
-            checksum[1] += values.square().sum()
-            checksum[2] += values.numel()
-    return checksum
-
-
-def aggregate_scalar(accelerator: Accelerator, value: torch.Tensor) -> float:
-    return accelerator.gather(value.detach().float().reshape(1)).mean().item()
-
-
-def scheduler_last_epoch(scheduler: Any) -> int:
-    underlying = getattr(scheduler, "scheduler", scheduler)
-    return int(underlying.last_epoch)
 
 
 @torch.no_grad()
@@ -112,42 +283,42 @@ def teacher_forced_eval(
         batch = move_batch(batch, accelerator.device)
         output = model(**batch)
         action_abs = (output.action_predictions - batch["action_targets"]).abs()
-        outcome_abs = (output.outcome_predictions - batch["outcome_targets"]).abs()
+        future_abs = (output.future_predictions - batch["future_targets"]).abs()
         for row, dimension in enumerate(metadata["dimensions"]):
             action_mask = batch["action_target_mask"][row]
-            outcome_mask = batch["outcome_target_mask"][row]
+            future_mask = batch["future_target_mask"][row]
             records.append(
                 torch.tensor(
                     [
                         float(dimension),
                         float((action_abs[row] * action_mask).sum().item()),
                         float(action_mask.sum().item()),
-                        float((outcome_abs[row] * outcome_mask).sum().item()),
-                        float(outcome_mask.sum().item()),
+                        float((future_abs[row] * future_mask).sum().item()),
+                        float(future_mask.sum().item()),
                     ],
                     device=accelerator.device,
                 )
             )
     gathered = accelerator.gather_for_metrics(torch.stack(records)).cpu()
     result: dict[str, Any] = {"by_dimension": {}}
-    total_action_sum = total_action_count = total_outcome_sum = total_outcome_count = 0.0
+    total_action_sum = total_action_count = total_future_sum = total_future_count = 0.0
     for dimension in range(int(world["d_min"]), int(world["d_max"]) + 1):
         rows = gathered[gathered[:, 0] == float(dimension)]
         action_sum = rows[:, 1].sum().item()
         action_count = rows[:, 2].sum().item()
-        outcome_sum = rows[:, 3].sum().item()
-        outcome_count = rows[:, 4].sum().item()
+        future_sum = rows[:, 3].sum().item()
+        future_count = rows[:, 4].sum().item()
         result["by_dimension"][str(dimension)] = {
             "episodes": int(rows.shape[0]),
             "action_l1": action_sum / max(action_count, 1.0),
-            "outcome_l1": outcome_sum / max(outcome_count, 1.0),
+            "future_l1": future_sum / max(future_count, 1.0),
         }
         total_action_sum += action_sum
         total_action_count += action_count
-        total_outcome_sum += outcome_sum
-        total_outcome_count += outcome_count
+        total_future_sum += future_sum
+        total_future_count += future_count
     result["action_l1"] = total_action_sum / max(total_action_count, 1.0)
-    result["outcome_l1"] = total_outcome_sum / max(total_outcome_count, 1.0)
+    result["future_l1"] = total_future_sum / max(total_future_count, 1.0)
     return result
 
 
@@ -172,15 +343,21 @@ def closed_loop_eval(
         max_tokens=sequence_length,
         **world_kwargs(world),
     )
+    initial_summary = rollouts.summary()
+    initial_errors = [float(value) for value in initial_summary["terminal_error"]]
+    normalized_cost = [0.0] * episodes_per_rank
+    physical_cost = [0.0] * episodes_per_rank
+    local_trial_rows = [
+        [0.0, initial_errors[index], 0.0, 0.0] for index in range(episodes_per_rank)
+    ]
     model.eval()
-    while not rollouts.all_done():
+    for trial in range(1, int(world["max_control_steps"]) + 1):
         raw = rollouts.learner_batch()
         if use_oracle:
             actions = rollouts.privileged_oracle_actions()
         else:
             tensors = move_batch(tensorize_rollout(raw, "cpu"), accelerator.device)
-            output = model(**tensors)
-            predictions = output.action_predictions[..., 0].detach().float().cpu()
+            predictions = model(**tensors).action_predictions[..., 0].detach().float().cpu()
             actions = []
             for row, dimension in enumerate(raw["dimensions"]):
                 if raw["done"][row]:
@@ -188,95 +365,111 @@ def closed_loop_eval(
                     continue
                 positions = raw["query_positions"][row][:dimension]
                 actions.append([float(predictions[row, position]) for position in positions])
+        for index, action in enumerate(actions):
+            normalized_cost[index] += sum(abs(value) for value in action)
+            physical_cost[index] += float(world["action_limit"]) * sum(
+                abs(value) for value in action
+            )
         rollouts.step(actions)
+        current = rollouts.summary()
+        local_trial_rows.extend(
+            [
+                float(trial),
+                float(current["terminal_error"][index]),
+                normalized_cost[index],
+                physical_cost[index],
+            ]
+            for index in range(episodes_per_rank)
+        )
     summary = rollouts.summary()
     local = torch.tensor(
         [
             [
                 float(summary["dimensions"][i]),
-                1.0 if summary["success"][i] else 0.0,
+                initial_errors[i],
                 float(summary["terminal_error"][i]),
                 float(summary["steps"][i]),
+                normalized_cost[i],
+                physical_cost[i],
             ]
             for i in range(episodes_per_rank)
         ],
         device=accelerator.device,
     )
     gathered = accelerator.gather_for_metrics(local).cpu()
-    result: dict[str, Any] = {
-        "episodes": int(gathered.shape[0]),
-        "success_rate": float(gathered[:, 1].mean().item()),
-        "terminal_error": float(gathered[:, 2].mean().item()),
-        "mean_steps": float(gathered[:, 3].mean().item()),
-        "by_dimension": {},
-    }
-    for dimension in range(int(world["d_min"]), int(world["d_max"]) + 1):
-        rows = gathered[gathered[:, 0] == float(dimension)]
-        result["by_dimension"][str(dimension)] = {
-            "episodes": int(rows.shape[0]),
-            "success_rate": float(rows[:, 1].mean().item()) if rows.numel() else 0.0,
-            "terminal_error": float(rows[:, 2].mean().item()) if rows.numel() else math.nan,
-        }
+    trial_tensor = torch.tensor(local_trial_rows, device=accelerator.device)
+    gathered_trials = accelerator.gather_for_metrics(trial_tensor).cpu()
+    thresholds = error_thresholds(config)
+    result = summarize_episode_rows(gathered, thresholds)
+    result["trial_curve"] = summarize_trial_rows(gathered_trials, thresholds)
+    result["policy"] = "privileged_public_oracle" if use_oracle else "learner"
     return result
 
 
-def run_overfit_gate(
+@torch.no_grad()
+def held_out_learner_evaluation(
     accelerator: Accelerator,
+    model: torch.nn.Module,
+    config: dict[str, Any],
+    *,
+    rollout_episodes_per_rank: int,
+) -> dict[str, Any]:
+    """Evaluate one learner on the fixed held-out support.
+
+    The step-zero baseline and the trained candidate both go through this one
+    function so their evaluation support is identical by construction rather
+    than by two call sites happening to agree.
+    """
+
+    return {
+        "validation": teacher_forced_eval(accelerator, model, config, start_index=0),
+        "closed_loop": closed_loop_eval(
+            accelerator,
+            model,
+            config,
+            seed=int(config["world"]["rollout_seed"]),
+            start_index=0,
+            episodes_per_rank=rollout_episodes_per_rank,
+        ),
+    }
+
+
+def run_overfit_gate(
     model_config: Step2Config,
     config: dict[str, Any],
-) -> tuple[dict[str, Any], torch.nn.Module]:
+    output_root: Path,
+    *,
+    use_cpu: bool = False,
+) -> tuple[dict[str, Any], Trainer]:
     run = config["run"]
     world = config["world"]
-    batch_size = int(run["overfit_per_device_batch_size"])
-    sequence_length = int(config["model"]["sequence_length"])
-    set_seed(int(run["seed"]))
-    model = Step2ForTrajectoryPrediction(model_config)
-    optimizer = build_optimizer(model, float(run["learning_rate"]), float(run["weight_decay"]))
-    updates = int(run["overfit_updates"])
-    warmup = int(run.get("overfit_warmup_updates", 0))
-    if warmup < 0 or warmup >= updates:
-        raise ValueError("overfit_warmup_updates must satisfy 0 <= warmup < overfit_updates")
-    scheduler = get_cosine_schedule_with_warmup(
-        optimizer,
-        num_warmup_steps=warmup,
-        num_training_steps=updates,
-    )
-    model, optimizer, scheduler = accelerator.prepare(model, optimizer, scheduler)
-    local_start = accelerator.process_index * batch_size
-    fixed_batch, _ = generate_torch_batch(
+    per_device = int(run["overfit_per_device_batch_size"])
+    world_size = int(os.environ.get("WORLD_SIZE", "1"))
+    cohort, _ = generate_torch_batch(
         seed=int(world["overfit_seed"]),
-        start_index=local_start,
-        batch_size=batch_size,
-        max_tokens=sequence_length,
+        start_index=0,
+        batch_size=per_device * world_size,
+        max_tokens=int(config["model"]["sequence_length"]),
         world=world,
     )
-    fixed_batch = move_batch(fixed_batch, accelerator.device)
-    model.eval()
-    with torch.no_grad():
-        initial = aggregate_scalar(accelerator, model(**fixed_batch).loss)
-    trace = [initial]
-    scheduler_steps = 0
-    model.train()
-    for update in range(updates):
-        optimizer.zero_grad(set_to_none=True)
-        output = model(**fixed_batch)
-        accelerator.backward(output.loss)
-        if accelerator.sync_gradients:
-            accelerator.clip_grad_norm_(model.parameters(), float(run["max_grad_norm"]))
-        optimizer.step()
-        if not accelerator.optimizer_step_was_skipped:
-            scheduler.step()
-            scheduler_steps += 1
-        if scheduler_last_epoch(scheduler) != scheduler_steps:
-            raise RuntimeError(
-                "diagnostic scheduler advanced by a non-global-update count: "
-                f"last_epoch={scheduler_last_epoch(scheduler)}, successful_steps={scheduler_steps}"
-            )
-        if update in {0, 1, 3, 7, 15, 31, 63, updates - 1}:
-            trace.append(aggregate_scalar(accelerator, output.loss))
-    model.eval()
-    with torch.no_grad():
-        final = aggregate_scalar(accelerator, model(**fixed_batch).loss)
+    updates = int(run["overfit_updates"])
+    train_dataset = FixedCohortDataset(cohort, repeats=max(2, updates))
+    eval_dataset = FixedCohortDataset(cohort, repeats=1)
+    set_seed(int(run["seed"]))
+    model = Step2ForTrajectoryPrediction(model_config)
+    arguments = training_arguments(
+        output_dir=output_root / "diagnostic-trainer",
+        run=run,
+        max_steps=updates,
+        per_device_batch_size=per_device,
+        warmup_steps=int(run.get("overfit_warmup_updates", 0)),
+        save=False,
+        use_cpu=use_cpu,
+    )
+    trainer = Trainer(model=model, args=arguments, train_dataset=train_dataset)
+    initial = float(trainer.evaluate(eval_dataset=eval_dataset)["eval_loss"])
+    train_output = trainer.train()
+    final = float(trainer.evaluate(eval_dataset=eval_dataset)["eval_loss"])
     required = float(run["overfit_required_fraction"])
     passed = math.isfinite(initial) and math.isfinite(final) and final <= required * initial
     result = {
@@ -284,16 +477,14 @@ def run_overfit_gate(
         "final_loss": final,
         "required_final_fraction": required,
         "observed_final_fraction": final / initial,
-        "trace": trace,
         "updates": updates,
-        "warmup_updates": warmup,
-        "successful_optimizer_steps": scheduler_steps,
-        "scheduler_last_epoch": scheduler_last_epoch(scheduler),
+        "successful_optimizer_steps": int(trainer.state.global_step),
+        "trainer_metrics": train_output.metrics,
         "passed": passed,
     }
     if not passed:
-        raise RuntimeError(f"real-batch overfit gate failed: {result}")
-    return result, model
+        raise RuntimeError(f"real-batch Trainer overfit gate failed: {result}")
+    return result, trainer
 
 
 def sha256_file(path: Path) -> str:
@@ -305,7 +496,6 @@ def sha256_file(path: Path) -> str:
 
 
 def checkpoint_inventory(root: Path) -> dict[str, Any]:
-    """Describe a remote-only recovery payload without moving it off Kaggle."""
     files = [
         {
             "path": path.relative_to(root).as_posix(),
@@ -317,23 +507,35 @@ def checkpoint_inventory(root: Path) -> dict[str, Any]:
     ]
     canonical = json.dumps(files, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return {
-        "remote_path": (Path(output_root_name(root)) / root.name).as_posix(),
+        "remote_path": (Path(root.parents[1].name) / "checkpoints" / root.name).as_posix(),
         "size": sum(int(item["size"]) for item in files),
         "sha256": hashlib.sha256(canonical).hexdigest(),
         "files": files,
     }
 
 
-def output_root_name(checkpoint_root: Path) -> str:
-    # checkpoint_root is <output-root>/checkpoints/<label>.
-    return checkpoint_root.parents[1].name + "/checkpoints"
+def load_lineage_model(
+    model_config: Step2Config,
+    parent_model: str | None,
+) -> tuple[Step2ForTrajectoryPrediction, str | None]:
+    if parent_model is None:
+        return Step2ForTrajectoryPrediction(model_config), None
+    parent = Path(parent_model).resolve()
+    model = Step2ForTrajectoryPrediction.from_pretrained(parent)
+    assert_selected_profile(model.config)
+    assert_world_model_compatibility(model.config)
+    return model, str(parent)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--output-root", required=True)
+    parser.add_argument("--parent-model")
+    parser.add_argument("--resume-checkpoint")
     args = parser.parse_args()
+    if args.parent_model and args.resume_checkpoint:
+        parser.error("--parent-model and --resume-checkpoint are mutually exclusive")
     config_path = Path(args.config).resolve()
     config = load_config(config_path)
     run = config["run"]
@@ -347,159 +549,106 @@ def main() -> None:
         if any("T4" not in name.upper() for name in names):
             raise RuntimeError(f"expected two T4 GPUs, found {names}")
 
-    ddp = DistributedDataParallelKwargs(find_unused_parameters=True)
-    accelerator = Accelerator(
-        mixed_precision=str(run["mixed_precision"]),
-        gradient_accumulation_steps=int(run["gradient_accumulation_steps"]),
-        # Batches are generated directly per rank rather than supplied through
-        # an Accelerate-prepared DataLoader. The default scheduler wrapper would
-        # therefore step once per process. We step exactly once after each
-        # successful global optimizer update below.
-        step_scheduler_with_optimizer=False,
-        kwargs_handlers=[ddp],
+    model_config = Step2Config.from_project_json(
+        resolve_project_path(config_path, str(config["model"]["config"]))
     )
-    if accelerator.num_processes != 2:
-        raise RuntimeError(f"expected two training processes, found {accelerator.num_processes}")
-
-    model_config_path = resolve_project_path(config_path, str(config["model"]["config"]))
-    model_config = Step2Config.from_project_json(model_config_path)
     assert_selected_profile(model_config)
+    assert_world_model_compatibility(model_config)
     started = time.time()
 
-    overfit, diagnostic_model = run_overfit_gate(accelerator, model_config, config)
+    overfit, diagnostic_trainer = run_overfit_gate(model_config, config, output_root)
     diagnostic_closed_loop = closed_loop_eval(
-        accelerator,
-        diagnostic_model,
+        diagnostic_trainer.accelerator,
+        diagnostic_trainer.model,
         config,
         seed=int(config["world"]["overfit_seed"]),
         start_index=0,
         episodes_per_rank=int(run["overfit_per_device_batch_size"]),
     )
-    del diagnostic_model
-    accelerator.free_memory()
-    accelerator.wait_for_everyone()
-    gate_progress: dict[str, Any] = {
+    gate_progress_path = output_root / "architecture-gate-progress.json"
+    gate_progress = {
         "overfit_gate": overfit,
         "diagnostic_closed_loop": diagnostic_closed_loop,
         "diagnostic_weights_discarded": True,
-        "fresh_blank_lineage_initialized": False,
-        "resume_smoke": {"passed": False, "attempted": False},
+        "training_lineage_initialized": False,
+        "untrained_baseline": None,
+        "resume_smoke": {"attempted": False, "passed": False},
     }
-    gate_progress_path = output_root / "architecture-gate-progress.json"
-    if accelerator.is_main_process:
+    if diagnostic_trainer.is_world_process_zero():
         gate_progress_path.write_text(
             json.dumps(gate_progress, indent=2, sort_keys=True), encoding="utf-8"
         )
 
-    # The diagnostic weights are deliberately discarded. This reset begins the
-    # true blank C1-candidate lineage.
+    # Evaluate the exact weights training is about to start from, on the same
+    # held-out support used after training. Without this paired step-zero
+    # baseline the run can only demonstrate apparatus execution.
+    rollout_count = int(config["preflight"]["rollout_episodes_per_rank"])
     set_seed(int(run["seed"]))
-    model = Step2ForTrajectoryPrediction(model_config)
+    model, parent_model = load_lineage_model(model_config, args.parent_model)
     params = parameter_report(model)
     assert_selected_parameter_report(params)
-    gate_progress.update(
+    untrained_baseline = held_out_learner_evaluation(
+        diagnostic_trainer.accelerator,
+        model.to(diagnostic_trainer.accelerator.device),
+        config,
+        rollout_episodes_per_rank=rollout_count,
+    )
+    untrained_baseline.update(
         {
-            "fresh_blank_lineage_initialized": True,
-            "parameter_report": params,
+            "purpose": "fixed step-zero learner on the held-out support; paired baseline for the trained candidate",
+            "parent_model": parent_model,
+            "updates": 0,
         }
     )
-    if accelerator.is_main_process:
+    gate_progress["untrained_baseline"] = untrained_baseline
+    if diagnostic_trainer.is_world_process_zero():
         gate_progress_path.write_text(
             json.dumps(gate_progress, indent=2, sort_keys=True), encoding="utf-8"
         )
-    optimizer = build_optimizer(model, float(run["learning_rate"]), float(run["weight_decay"]))
-    scheduler = get_cosine_schedule_with_warmup(
-        optimizer,
-        num_warmup_steps=int(run["warmup_updates"]),
-        num_training_steps=int(run["max_updates"]),
-    )
-    model, optimizer, scheduler = accelerator.prepare(model, optimizer, scheduler)
-    sequence_length = int(config["model"]["sequence_length"])
-    batch_size = int(run["per_device_batch_size"])
-    loss_trace: list[dict[str, float | int]] = []
-    resume_smoke: dict[str, Any] = {"passed": False}
-    scheduler_steps = 0
+    del diagnostic_trainer
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
-    model.train()
-    for update in range(int(run["max_updates"])):
-        local_start = (update * accelerator.num_processes + accelerator.process_index) * batch_size
-        batch, _ = generate_torch_batch(
-            seed=int(config["world"]["train_seed"]),
-            start_index=local_start,
-            batch_size=batch_size,
-            max_tokens=sequence_length,
-            world=config["world"],
+    checkpoint_root = output_root / "checkpoints" / str(run["checkpoint_label"])
+    trainer_state_dir = checkpoint_root / "trainer-state"
+    dataset = ProceduralTrajectoryDataset(
+        seed=int(config["world"]["train_seed"]),
+        max_tokens=int(config["model"]["sequence_length"]),
+        world=config["world"],
+    )
+    gate_progress["training_lineage_initialized"] = True
+    gate_progress["resume_smoke"] = {"attempted": True, "passed": False}
+    if int(os.environ.get("RANK", "0")) == 0:
+        gate_progress_path.write_text(
+            json.dumps(gate_progress, indent=2, sort_keys=True), encoding="utf-8"
         )
-        batch = move_batch(batch, accelerator.device)
-        with accelerator.accumulate(model):
-            optimizer.zero_grad(set_to_none=True)
-            output = model(**batch)
-            accelerator.backward(output.loss)
-            if accelerator.sync_gradients:
-                accelerator.clip_grad_norm_(model.parameters(), float(run["max_grad_norm"]))
-            optimizer.step()
-            if not accelerator.optimizer_step_was_skipped:
-                scheduler.step()
-                scheduler_steps += 1
-            if scheduler_last_epoch(scheduler) != scheduler_steps:
-                raise RuntimeError(
-                    "scheduler advanced by a non-global-update count: "
-                    f"last_epoch={scheduler_last_epoch(scheduler)}, successful_steps={scheduler_steps}"
-                )
-
-        if update % int(run["log_every"]) == 0 or update == int(run["max_updates"]) - 1:
-            loss_trace.append(
-                {
-                    "update": update + 1,
-                    "loss": aggregate_scalar(accelerator, output.loss),
-                    "action_loss": aggregate_scalar(accelerator, output.action_loss),
-                    "outcome_loss": aggregate_scalar(accelerator, output.outcome_loss),
-                    "learning_rate": float(scheduler.get_last_lr()[0]),
-                }
-            )
-
-        if update + 1 == int(run["resume_smoke_update"]):
-            resume_dir = output_root / "resume-smoke"
-            accelerator.save_state(str(resume_dir))
-            # save_state is main-process-only for model weights. Without an
-            # explicit rendezvous, another rank can inspect the directory
-            # before model.safetensors is visible and incorrectly fall back to
-            # the legacy pytorch_model.bin filename.
-            accelerator.wait_for_everyone()
-            before = model_checksum(accelerator.unwrap_model(model))
-            with torch.no_grad():
-                next(accelerator.unwrap_model(model).parameters()).add_(0.5)
-            accelerator.load_state(str(resume_dir))
-            after = model_checksum(accelerator.unwrap_model(model))
-            local_pass = torch.allclose(before, after, rtol=0.0, atol=1.0e-8)
-            gathered_pass = accelerator.gather(torch.tensor([int(local_pass)], device=accelerator.device))
-            resume_smoke = {
-                "passed": bool(gathered_pass.bool().all().item()),
-                "update": update + 1,
-                "checksum_before": before.detach().cpu().tolist(),
-                "checksum_after": after.detach().cpu().tolist(),
-            }
-            if not resume_smoke["passed"]:
-                raise RuntimeError(f"accelerator checkpoint restore failed: {resume_smoke}")
-            gate_progress["resume_smoke"] = {**resume_smoke, "attempted": True}
-            if accelerator.is_main_process:
-                gate_progress_path.write_text(
-                    json.dumps(gate_progress, indent=2, sort_keys=True), encoding="utf-8"
-                )
-
-    validation = teacher_forced_eval(accelerator, model, config, start_index=0)
-    rollout_count = int(config["preflight"]["rollout_episodes_per_rank"])
-    closed_loop = closed_loop_eval(
-        accelerator,
-        model,
-        config,
-        seed=int(config["world"]["rollout_seed"]),
-        start_index=0,
-        episodes_per_rank=rollout_count,
+    trainer, train_metrics, resume_smoke = train_with_resume_smoke(
+        model=model,
+        dataset=dataset,
+        trainer_state_dir=trainer_state_dir,
+        run=run,
+        total_steps=int(run["max_updates"]),
+        per_device_batch_size=int(run["per_device_batch_size"]),
+        warmup_steps=int(run["warmup_updates"]),
+        resume_checkpoint=args.resume_checkpoint,
     )
+    gate_progress["resume_smoke"] = {**resume_smoke, "attempted": True}
+    if trainer.is_world_process_zero():
+        gate_progress_path.write_text(
+            json.dumps(gate_progress, indent=2, sort_keys=True), encoding="utf-8"
+        )
+
+    trained = held_out_learner_evaluation(
+        trainer.accelerator,
+        trainer.model,
+        config,
+        rollout_episodes_per_rank=rollout_count,
+    )
+    validation = trained["validation"]
+    closed_loop = trained["closed_loop"]
     oracle_closed_loop = closed_loop_eval(
-        accelerator,
-        model,
+        trainer.accelerator,
+        trainer.model,
         config,
         seed=int(config["world"]["rollout_seed"]),
         start_index=0,
@@ -507,46 +656,43 @@ def main() -> None:
         use_oracle=True,
     )
 
-    accelerator.wait_for_everyone()
-    final_state_dir = output_root / "checkpoints" / str(run["checkpoint_label"]) / "accelerate-state"
-    accelerator.save_state(str(final_state_dir))
-    accelerator.wait_for_everyone()
-    model_dir = output_root / "checkpoints" / str(run["checkpoint_label"]) / "model"
-    if accelerator.is_main_process:
-        model_dir.mkdir(parents=True, exist_ok=True)
-        unwrapped = accelerator.unwrap_model(model)
-        unwrapped.save_pretrained(
-            model_dir,
-            is_main_process=True,
-            save_function=accelerator.save,
-            state_dict=accelerator.get_state_dict(model),
-            safe_serialization=True,
-        )
+    model_dir = checkpoint_root / "model"
+    trainer.save_model(model_dir)
+    trainer.save_state()
+    trainer.accelerator.wait_for_everyone()
+    if trainer.is_world_process_zero():
         weights = model_dir / "model.safetensors"
-        recovery = checkpoint_inventory(output_root / "checkpoints" / str(run["checkpoint_label"]))
+        recovery = checkpoint_inventory(checkpoint_root)
         result = {
             "status": "complete",
             "checkpoint_label": str(run["checkpoint_label"]),
-            "checkpoint_classification": "candidate; architecture-integrated but not yet a completed developmental session",
+            "checkpoint_classification": "candidate; source competence and transfer unestablished",
+            "parent_model": parent_model,
             "diagnostic_weights_discarded_before_lineage": True,
             "overfit_gate": overfit,
             "diagnostic_closed_loop": diagnostic_closed_loop,
             "resume_smoke": resume_smoke,
             "parameter_report": params,
-            "loss_trace": loss_trace,
+            "trainer_log_history": trainer.state.log_history,
+            "trainer_metrics": train_metrics,
             "validation": validation,
             "closed_loop": closed_loop,
             "oracle_closed_loop": oracle_closed_loop,
+            "untrained_baseline": untrained_baseline,
+            "paired_learning_delta": paired_learning_delta(untrained_baseline, trained),
             "world_versions": step2_world_py.versions(),
-            "updates": int(run["max_updates"]),
-            "successful_optimizer_steps": scheduler_steps,
-            "scheduler_last_epoch": scheduler_last_epoch(scheduler),
-            "scheduler_step_policy": "once per successful global optimizer update",
-            "global_episodes": int(run["max_updates"]) * batch_size * accelerator.num_processes,
+            "updates": int(trainer.state.global_step),
+            "global_episodes": int(run["max_updates"])
+            * int(run["per_device_batch_size"])
+            * int(run.get("gradient_accumulation_steps", 1))
+            * int(trainer.args.world_size),
             "elapsed_seconds": time.time() - started,
-            "world_size": accelerator.num_processes,
-            "device_names": [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())],
+            "world_size": int(trainer.args.world_size),
+            "device_names": [
+                torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())
+            ],
             "torch_version": torch.__version__,
+            "transformers_trainer_owned": True,
             "model_sha256": sha256_file(weights),
             "recovery_artifact": recovery,
             "root_seed": int(run["seed"]),
@@ -557,7 +703,7 @@ def main() -> None:
             json.dumps(result, indent=2, sort_keys=True), encoding="utf-8"
         )
         print(json.dumps(result, sort_keys=True))
-    accelerator.wait_for_everyone()
+    trainer.accelerator.wait_for_everyone()
 
 
 if __name__ == "__main__":

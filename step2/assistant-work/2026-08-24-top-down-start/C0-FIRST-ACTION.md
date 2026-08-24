@@ -1,5 +1,10 @@
 # First Application of the Recursive Policy at `C0`
 
+> **Historical `0.1.0` decision record.** Its world motivation remains useful,
+> but its ABI, architecture, authorization, checkpoint, and next-action status
+> are superseded. Fresh agents must use
+> [`../../CURRENT-STATE.md`](../../CURRENT-STATE.md).
+
 **Date:** 2026-08-24
 **Status:** Rust world/oracle vertical slice implemented; local CPU gates pass;
 one two-T4 apparatus gate followed by a bounded candidate-checkpoint start is

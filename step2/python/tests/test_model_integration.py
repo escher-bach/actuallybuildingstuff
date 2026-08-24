@@ -6,7 +6,7 @@ import unittest
 
 import torch
 from accelerate import Accelerator
-from transformers import get_cosine_schedule_with_warmup
+from transformers import set_seed
 
 from step2_experiments.data import generate_torch_batch
 from step2_experiments.model import (
@@ -16,12 +16,13 @@ from step2_experiments.model import (
     assert_selected_profile,
     parameter_report,
 )
+from step2_experiments.evaluation import paired_learning_delta
 from step2_experiments.train import (
-    build_optimizer,
+    FixedCohortDataset,
     closed_loop_eval,
-    model_checksum,
+    held_out_learner_evaluation,
     run_overfit_gate,
-    scheduler_last_epoch,
+    train_with_resume_smoke,
 )
 
 
@@ -45,10 +46,10 @@ def tiny_config() -> Step2Config:
         num_hidden_layers=2,
         attention_heads=4,
         max_position_embeddings=192,
-        num_roles=10,
+        num_roles=11,
         payload_dim=8,
         action_horizon=16,
-        vision_resampler_tokens=8,
+        token_abi_version="physical-event-abi-0.2.0",
     )
 
 
@@ -117,18 +118,49 @@ class ModelIntegrationTests(unittest.TestCase):
                 after = restored(**batch).action_predictions
         self.assertTrue(torch.equal(before, after))
 
-    def test_random_visual_path_has_expected_shape_and_gradient(self) -> None:
+    def test_external_adapter_can_supply_canonical_content_only(self) -> None:
         torch.manual_seed(4)
         model = Step2ForTrajectoryPrediction(tiny_config())
-        images = torch.randn(2, 3, 32, 32)
-        visual = model.encode_images(images)
-        self.assertEqual(tuple(visual.shape), (2, 8, 64))
-        visual.square().mean().backward()
-        self.assertIsNotNone(model.visual_patch_stem.weight.grad)
-        self.assertTrue(torch.isfinite(model.visual_patch_stem.weight.grad).all())
+        batch, _ = generate_torch_batch(
+            seed=404,
+            start_index=0,
+            batch_size=1,
+            max_tokens=192,
+            world=WORLD,
+        )
+        canonical = torch.zeros(1, 192, 64, requires_grad=True)
+        output = model(**batch, canonical_content_embeds=canonical)
+        output.loss.backward()
+        self.assertIsNotNone(canonical.grad)
+        self.assertTrue(torch.isfinite(canonical.grad).all())
+        self.assertFalse(any(name.startswith("visual_") for name, _ in model.named_parameters()))
 
-    def test_accelerate_gate_runs_on_real_rust_batch(self) -> None:
-        accelerator = Accelerator(cpu=True)
+    def test_key_encoding_has_initialization_scale(self) -> None:
+        model = Step2ForTrajectoryPrediction(tiny_config())
+        keys = torch.tensor([[0, 1, 17, 65535]])
+        norms = model.deterministic_key_embedding(keys).norm(dim=-1)
+        expected = tiny_config().initializer_range * (tiny_config().hidden_size / 2) ** 0.5
+        self.assertTrue(torch.allclose(norms, torch.full_like(norms, expected), atol=1.0e-6))
+
+    def test_equal_rank_shards_match_full_batch_loss(self) -> None:
+        torch.manual_seed(5)
+        model = Step2ForTrajectoryPrediction(tiny_config()).eval()
+        batch, _ = generate_torch_batch(
+            seed=505,
+            start_index=0,
+            batch_size=4,
+            max_tokens=192,
+            world=WORLD,
+        )
+        with torch.no_grad():
+            full = model(**batch)
+            left = model(**{name: value[:2] for name, value in batch.items()})
+            right = model(**{name: value[2:] for name, value in batch.items()})
+        for field in ("loss", "action_loss", "future_loss"):
+            expected = (getattr(left, field) + getattr(right, field)) / 2
+            self.assertTrue(torch.allclose(getattr(full, field), expected, atol=1.0e-6))
+
+    def test_trainer_gate_runs_on_real_rust_batch(self) -> None:
         config = {
             "run": {
                 "seed": 5,
@@ -143,10 +175,14 @@ class ModelIntegrationTests(unittest.TestCase):
             "model": {"sequence_length": 192},
             "world": {**WORLD, "overfit_seed": 505},
         }
-        result, model = run_overfit_gate(accelerator, tiny_config(), config)
-        self.assertTrue(result["passed"])
-        del model
-        accelerator.free_memory()
+        with tempfile.TemporaryDirectory() as directory:
+            result, trainer = run_overfit_gate(
+                tiny_config(), config, Path(directory), use_cpu=True
+            )
+            self.assertTrue(result["passed"])
+            self.assertEqual(result["successful_optimizer_steps"], 12)
+            self.assertFalse(trainer.model_accepts_loss_kwargs)
+            del trainer
 
     def test_model_and_oracle_closed_loop_paths_share_rust_rollout(self) -> None:
         accelerator = Accelerator(cpu=True)
@@ -173,53 +209,112 @@ class ModelIntegrationTests(unittest.TestCase):
             use_oracle=True,
         )
         self.assertEqual(model_result["episodes"], 4)
+        self.assertEqual(len(model_result["trial_curve"]), WORLD["max_control_steps"] + 1)
+        self.assertIn("0.05", model_result["threshold_success"])
+        self.assertIn("terminal_error_distribution", model_result)
         self.assertEqual(oracle_result["success_rate"], 1.0)
         accelerator.free_memory()
 
-    def test_accelerate_state_restore_is_exact(self) -> None:
-        accelerator = Accelerator(cpu=True, step_scheduler_with_optimizer=False)
-        model = Step2ForTrajectoryPrediction(tiny_config())
-        optimizer = build_optimizer(model, 1.0e-3, 0.0)
-        scheduler = get_cosine_schedule_with_warmup(optimizer, 1, 4)
-        model, optimizer, scheduler = accelerator.prepare(model, optimizer, scheduler)
+    def test_trainer_checkpoint_resumes_optimizer_and_scheduler(self) -> None:
         batch, _ = generate_torch_batch(
             seed=707,
             start_index=0,
-            batch_size=1,
+            batch_size=2,
             max_tokens=192,
             world=WORLD,
         )
-        optimizer.zero_grad(set_to_none=True)
-        loss = model(**batch).loss
-        accelerator.backward(loss)
-        optimizer.step()
-        scheduler.step()
-        before = model_checksum(accelerator.unwrap_model(model))
+        dataset = FixedCohortDataset(batch, repeats=8)
+        run = {
+            "seed": 7,
+            "mixed_precision": "no",
+            "gradient_accumulation_steps": 1,
+            "learning_rate": 1.0e-3,
+            "weight_decay": 0.0,
+            "max_grad_norm": 1.0,
+            "log_every": 1,
+            "resume_smoke_update": 2,
+        }
         with tempfile.TemporaryDirectory() as directory:
-            accelerator.save_state(directory)
-            with torch.no_grad():
-                next(accelerator.unwrap_model(model).parameters()).add_(1.0)
-            accelerator.load_state(directory)
-        after = model_checksum(accelerator.unwrap_model(model))
-        self.assertTrue(torch.equal(before, after))
+            root = Path(directory)
+            set_seed(7)
+            resumed, metrics, smoke = train_with_resume_smoke(
+                model=Step2ForTrajectoryPrediction(tiny_config()),
+                dataset=dataset,
+                trainer_state_dir=root,
+                run=run,
+                total_steps=3,
+                per_device_batch_size=1,
+                warmup_steps=1,
+                use_cpu=True,
+            )
+            checkpoint = root / "checkpoint-2"
+            self.assertTrue((checkpoint / "optimizer.pt").is_file())
+            self.assertTrue((checkpoint / "scheduler.pt").is_file())
+            self.assertTrue(smoke["passed"])
+            self.assertIn("train_loss", metrics)
+            self.assertEqual(resumed.state.global_step, 3)
+
+    def test_step_zero_and_candidate_share_one_held_out_support(self) -> None:
+        accelerator = Accelerator(cpu=True)
+        config = {
+            "model": {"sequence_length": 192},
+            "world": {**WORLD, "validation_seed": 808, "rollout_seed": 909},
+            "run": {"per_device_batch_size": 2, "eval_batches": 1},
+            "preflight": {"rollout_episodes_per_rank": 4},
+        }
+        set_seed(11)
+        step_zero = held_out_learner_evaluation(
+            accelerator,
+            Step2ForTrajectoryPrediction(tiny_config()).to(accelerator.device),
+            config,
+            rollout_episodes_per_rank=4,
+        )
+        set_seed(12)
+        candidate = held_out_learner_evaluation(
+            accelerator,
+            Step2ForTrajectoryPrediction(tiny_config()).to(accelerator.device),
+            config,
+            rollout_episodes_per_rank=4,
+        )
+        for part in ("validation", "closed_loop"):
+            self.assertIn(part, step_zero)
+            self.assertIn(part, candidate)
+        # Identical starting conditions prove both learners met the same episodes.
+        self.assertEqual(
+            step_zero["closed_loop"]["initial_error_distribution"],
+            candidate["closed_loop"]["initial_error_distribution"],
+        )
+        self.assertEqual(
+            step_zero["closed_loop"]["episodes"], candidate["closed_loop"]["episodes"]
+        )
         accelerator.free_memory()
 
-    def test_manual_scheduler_advances_once_per_global_update(self) -> None:
-        accelerator = Accelerator(cpu=True, step_scheduler_with_optimizer=False)
-        model = Step2ForTrajectoryPrediction(tiny_config())
-        optimizer = build_optimizer(model, 1.0e-3, 0.0)
-        scheduler = get_cosine_schedule_with_warmup(optimizer, 1, 4)
-        model, optimizer, scheduler = accelerator.prepare(model, optimizer, scheduler)
-        observed = []
-        for _ in range(4):
-            optimizer.zero_grad(set_to_none=True)
-            next(model.parameters()).sum().backward()
-            optimizer.step()
-            if not accelerator.optimizer_step_was_skipped:
-                scheduler.step()
-            observed.append(scheduler_last_epoch(scheduler))
-        self.assertEqual(observed, [1, 2, 3, 4])
-        accelerator.free_memory()
+        delta = paired_learning_delta(step_zero, candidate)
+        self.assertEqual(delta["episodes"], 4)
+        self.assertAlmostEqual(
+            delta["terminal_error"]["improvement"],
+            step_zero["closed_loop"]["terminal_error"]
+            - candidate["closed_loop"]["terminal_error"],
+            places=6,
+        )
+        self.assertAlmostEqual(
+            delta["teacher_forced_action_l1"]["improvement"],
+            step_zero["validation"]["action_l1"] - candidate["validation"]["action_l1"],
+            places=6,
+        )
+        self.assertIn("0.05", delta["threshold_success"])
+
+    def test_paired_delta_rejects_mismatched_support(self) -> None:
+        left = {
+            "closed_loop": {"episodes": 4},
+            "validation": {"action_l1": 0.0, "future_l1": 0.0},
+        }
+        right = {
+            "closed_loop": {"episodes": 8},
+            "validation": {"action_l1": 0.0, "future_l1": 0.0},
+        }
+        with self.assertRaises(ValueError):
+            paired_learning_delta(left, right)
 
 
 if __name__ == "__main__":

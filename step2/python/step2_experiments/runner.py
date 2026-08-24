@@ -306,6 +306,24 @@ def main() -> None:
         )
         phase_update(phase_path, phases, "cpu_benchmark", "complete")
 
+        phase_update(phase_path, phases, "trivial_policy_baselines", "running")
+        run_logged(
+            [
+                sys.executable,
+                "-m",
+                "step2_experiments.baselines",
+                "--config",
+                str(config_path),
+                "--output",
+                str(output_root / "trivial-policy-baselines.json"),
+            ],
+            cwd=repo,
+            env=env,
+            log_path=logs / "trivial-policy-baselines.log",
+            timeout=300,
+        )
+        phase_update(phase_path, phases, "trivial_policy_baselines", "complete")
+
         phase_update(phase_path, phases, "gpu_vertical_slice", "running")
         gpu_command = [
             sys.executable,
@@ -387,9 +405,12 @@ def main() -> None:
             summary.update(
                 {
                     "architecture_gate_passed": result.get("architecture_gate_passed"),
+                    "resume_smoke": result.get("resume_smoke"),
                     "validation": result.get("validation"),
                     "closed_loop": result.get("closed_loop"),
                     "oracle_closed_loop": result.get("oracle_closed_loop"),
+                    "untrained_baseline": result.get("untrained_baseline"),
+                    "paired_learning_delta": result.get("paired_learning_delta"),
                     "model_sha256": result.get("model_sha256"),
                     "recovery_artifact": result.get("recovery_artifact"),
                     "root_seed": result.get("root_seed"),
@@ -399,6 +420,10 @@ def main() -> None:
                         "torch_version": result.get("torch_version"),
                     },
                 }
+            )
+        if (output_root / "trivial-policy-baselines.json").exists():
+            summary["trivial_policy_baselines"] = json.loads(
+                (output_root / "trivial-policy-baselines.json").read_text(encoding="utf-8")
             )
         (output_root / "summary.json").write_text(
             json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8"

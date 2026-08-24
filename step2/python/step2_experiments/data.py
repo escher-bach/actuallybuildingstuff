@@ -17,9 +17,23 @@ MODEL_FIELDS = (
     "attention_mask",
     "action_targets",
     "action_target_mask",
-    "outcome_targets",
-    "outcome_target_mask",
+    "future_targets",
+    "future_target_mask",
 )
+
+
+def assert_world_model_compatibility(model_config: Any) -> None:
+    """Fail before data generation when the model and Rust token ABI diverge."""
+    versions = step2_world_py.versions()
+    expected = {
+        "token_abi": model_config.token_abi_version,
+        "role_count": model_config.num_roles,
+        "payload_dim": model_config.payload_dim,
+        "action_horizon": model_config.action_horizon,
+    }
+    actual = {key: versions[key] for key in expected}
+    if actual != expected:
+        raise RuntimeError(f"world/model ABI mismatch: expected {expected}, got {actual}")
 
 
 def world_kwargs(config: dict[str, Any]) -> dict[str, Any]:

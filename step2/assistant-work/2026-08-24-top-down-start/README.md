@@ -1,5 +1,12 @@
 # Assistant Work: STEP 2 Top-Down Starting Point
 
+> **Historical `0.1.0` record.** The current user-directed boundary is
+> [`../../CORE-BOUNDARY.md`](../../CORE-BOUNDARY.md), and the maintained
+> `0.2.0` implementation boundary is the STEP 2 amendment in
+> [`../../../STANDARD-LLM-STACK-MIGRATION-PLAN.md`](../../../STANDARD-LLM-STACK-MIGRATION-PLAN.md).
+> Descriptions below of a custom core or core-integrated modality paths are not
+> current direction.
+
 **Date:** 2026-08-24
 **Status:** architecture/world vertical slice passed on two T4s; an audited
 bounded `c1-start-candidate` exists; source-world competence and transfer remain

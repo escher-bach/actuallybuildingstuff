@@ -37,10 +37,12 @@ information-boundary and procedural-generation requirements in
 - PyO3 exposes one batched learner-tensor boundary plus explicitly privileged
   validator methods. Python does not reproduce the transition or oracle.
 - Hugging Face `LlamaModel` owns transformer blocks, causal masking, RoPE,
-  RMSNorm, and SwiGLU. PyTorch owns continuous adapters/heads; Accelerate owns
-  mixed precision, DDP, gradient synchronization, and state restore.
-- All learned tensors initialize randomly. No STEP 1/Pythia, language, visual,
-  or action weights are loaded.
+  RMSNorm, and SwiGLU. The project owns only the continuous event adapters and
+  heads. Transformers `Trainer`, through Accelerate, owns optimization,
+  scheduling, accumulation, mixed precision, DDP, checkpointing, and resume.
+- All core tensors initialize randomly. No STEP 1/Pythia, language, vision, or
+  robot-specific action weights are loaded; those modalities remain downstream
+  adapters outside abstract pretraining.
 
 ### STEP 2 run and source contract
 
@@ -73,6 +75,7 @@ capture_environment
   -> Rust and Python correctness tests
   -> generated-world validity sweep
   -> Kaggle-CPU world/binding throughput
+  -> pre-scheduling trivial-policy band
   -> exact two-T4 verification
   -> real-batch architecture overfit gate
   -> discard diagnostic weights and reinitialize

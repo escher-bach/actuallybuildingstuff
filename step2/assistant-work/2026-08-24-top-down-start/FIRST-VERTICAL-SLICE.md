@@ -1,5 +1,10 @@
 # First Architecture–World Vertical Slice
 
+> **Historical `0.1.0` record.** It documents the completed prior apparatus,
+> not the current `0.2.0` architecture. The current boundary removes vision
+> from the core and assigns training ownership to Transformers `Trainer`; see
+> [`../../CORE-BOUNDARY.md`](../../CORE-BOUNDARY.md).
+
 **Date:** 2026-08-24
 **Status:** architecture gate and corrected bounded candidate start completed;
 source-world competence remains unestablished

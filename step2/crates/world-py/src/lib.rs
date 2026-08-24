@@ -44,8 +44,8 @@ struct PaddedBatch {
     attention_mask: Vec<Vec<i64>>,
     action_targets: Vec<Vec<Vec<f32>>>,
     action_target_mask: Vec<Vec<Vec<f32>>>,
-    outcome_targets: Vec<Vec<f32>>,
-    outcome_target_mask: Vec<Vec<f32>>,
+    future_targets: Vec<Vec<f32>>,
+    future_target_mask: Vec<Vec<f32>>,
     lengths: Vec<usize>,
 }
 
@@ -66,8 +66,8 @@ fn pad_records(records: &[&[LearningToken]], max_tokens: usize) -> Result<Padded
         let mut attention = vec![0i64; max_tokens];
         let mut action_targets = vec![vec![0.0f32; ACTION_HORIZON]; max_tokens];
         let mut action_mask = vec![vec![0.0f32; ACTION_HORIZON]; max_tokens];
-        let mut outcome_targets = vec![0.0f32; max_tokens];
-        let mut outcome_mask = vec![0.0f32; max_tokens];
+        let mut future_targets = vec![0.0f32; max_tokens];
+        let mut future_mask = vec![0.0f32; max_tokens];
         for (position, token) in record.iter().enumerate() {
             roles[position] = token.public.role as u8;
             keys[position] = token.public.key as i64;
@@ -82,8 +82,8 @@ fn pad_records(records: &[&[LearningToken]], max_tokens: usize) -> Result<Padded
                     0.0
                 };
             }
-            outcome_targets[position] = token.supervision.outcome_target;
-            outcome_mask[position] = if token.supervision.outcome_mask {
+            future_targets[position] = token.supervision.future_target;
+            future_mask[position] = if token.supervision.future_mask {
                 1.0
             } else {
                 0.0
@@ -96,8 +96,8 @@ fn pad_records(records: &[&[LearningToken]], max_tokens: usize) -> Result<Padded
         batch.attention_mask.push(attention);
         batch.action_targets.push(action_targets);
         batch.action_target_mask.push(action_mask);
-        batch.outcome_targets.push(outcome_targets);
-        batch.outcome_target_mask.push(outcome_mask);
+        batch.future_targets.push(future_targets);
+        batch.future_target_mask.push(future_mask);
         batch.lengths.push(record.len());
     }
     Ok(batch)
@@ -112,8 +112,8 @@ fn padded_to_dict<'py>(py: Python<'py>, batch: PaddedBatch) -> PyResult<Bound<'p
     output.set_item("attention_mask", batch.attention_mask)?;
     output.set_item("action_targets", batch.action_targets)?;
     output.set_item("action_target_mask", batch.action_target_mask)?;
-    output.set_item("outcome_targets", batch.outcome_targets)?;
-    output.set_item("outcome_target_mask", batch.outcome_target_mask)?;
+    output.set_item("future_targets", batch.future_targets)?;
+    output.set_item("future_target_mask", batch.future_target_mask)?;
     output.set_item("lengths", batch.lengths)?;
     Ok(output)
 }
@@ -218,7 +218,7 @@ fn validate_generated_worlds(
     let mut min_length = usize::MAX;
     let mut max_oracle_error = 0.0f32;
     let mut action_targets = 0usize;
-    let mut outcome_targets = 0usize;
+    let mut future_targets = 0usize;
     for offset in 0..count {
         let trajectory = generate_trajectory(&cfg, seed, start_index + offset as u64)
             .map_err(PyValueError::new_err)?;
@@ -228,7 +228,7 @@ fn validate_generated_worlds(
         max_oracle_error = max_oracle_error.max(trajectory.oracle_reconstruction_error);
         for token in &trajectory.tokens {
             action_targets += token.supervision.action_mask.iter().filter(|&&v| v).count();
-            outcome_targets += usize::from(token.supervision.outcome_mask);
+            future_targets += usize::from(token.supervision.future_mask);
         }
     }
     let output = PyDict::new(py);
@@ -238,7 +238,7 @@ fn validate_generated_worlds(
     output.set_item("max_length", max_length)?;
     output.set_item("max_oracle_error", max_oracle_error)?;
     output.set_item("action_targets", action_targets)?;
-    output.set_item("outcome_targets", outcome_targets)?;
+    output.set_item("future_targets", future_targets)?;
     output.set_item("world_version", WORLD_VERSION)?;
     output.set_item("oracle_version", ORACLE_VERSION)?;
     output.set_item("token_abi_version", TOKEN_ABI_VERSION)?;
