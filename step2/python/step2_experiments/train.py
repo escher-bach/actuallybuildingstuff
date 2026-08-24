@@ -737,7 +737,29 @@ def main() -> None:
         )
         print(json.dumps(result, sort_keys=True))
     trainer.accelerator.wait_for_everyone()
+    mark_stage("run:complete")
+
+
+def shutdown_distributed() -> None:
+    """Tear the process group down explicitly before interpreter exit.
+
+    Leaving it alive is what stalled run f3dbf51: training finished and wrote
+    its result in 53 seconds, then the launcher sat for eighty minutes because
+    the ranks never completed their own shutdown. Releasing it here makes the
+    process exit a step the run performs rather than one it hopes for.
+    """
+
+    try:
+        if torch.distributed.is_available() and torch.distributed.is_initialized():
+            torch.distributed.barrier()
+            torch.distributed.destroy_process_group()
+    except Exception as exc:  # shutdown must never mask the real outcome
+        print(f"[step2-stage] non-fatal distributed shutdown error: {exc}", flush=True)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        shutdown_distributed()
+        mark_stage("process:exiting")

@@ -21,6 +21,12 @@ overfit_warmup_updates = 12
 overfit_per_device_batch_size = 2
 overfit_required_fraction = 0.80
 checkpoint_label = "c1-start-candidate"
+# Hard stops. Observed healthy timings: whole run about six minutes, of which
+# the GPU phase is about one. These bounds are wide enough that a healthy run
+# never meets them and tight enough that a wedged one cannot hold a Kaggle
+# session open. Layers: GPU phase, whole runner, notebook.
+gpu_phase_timeout_seconds = 1800
+max_wall_clock_seconds = 4800
 
 [model]
 config = "step2/artifacts/icrt-derived-small/model_config.json"

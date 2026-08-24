@@ -181,7 +181,14 @@ cmd = [
     "--config", str(SOURCE / CONFIG_REL),
     "--output-root", str(OUTPUT),
 ]
-completed = subprocess.run(cmd, cwd=str(SOURCE), env=env, check=False)
+# Outermost guard. The runner arms its own wall-clock watchdog; this one
+# covers the case where the runner process itself wedges and cannot enforce
+# it. Kaggle would otherwise hold the session until the platform limit.
+NOTEBOOK_TIMEOUT_SECONDS = 5400
+try:
+    completed = subprocess.run(cmd, cwd=str(SOURCE), env=env, check=False, timeout=NOTEBOOK_TIMEOUT_SECONDS)
+except subprocess.TimeoutExpired:
+    raise RuntimeError(f"STEP 2 runner exceeded the {{NOTEBOOK_TIMEOUT_SECONDS}}s notebook budget and was killed; partial evidence is retained under {{OUTPUT}}")
 if completed.returncode != 0:
     raise RuntimeError(f"STEP 2 runner failed with exit code {{completed.returncode}}; evidence is retained under {{OUTPUT}}")
 '''

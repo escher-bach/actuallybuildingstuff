@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import platform
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -44,6 +45,78 @@ def atomic_json(path: Path, value: Any) -> None:
     temporary.replace(path)
 
 
+def kill_process_tree(process: subprocess.Popen) -> None:
+    """Kill a child and every process it spawned."""
+
+    if os.name != "nt":
+        try:
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+    process.kill()
+    try:
+        process.wait(timeout=60)
+    except subprocess.TimeoutExpired:
+        pass
+
+
+ACTIVE_CHILD: subprocess.Popen | None = None
+RUN_DEADLINE: float | None = None
+
+
+def effective_timeout(phase_timeout: int) -> int:
+    """Clamp a phase timeout to whatever wall-clock budget remains."""
+
+    if RUN_DEADLINE is None:
+        return phase_timeout
+    remaining = RUN_DEADLINE - time.time()
+    if remaining <= 0:
+        raise RuntimeError("run wall-clock budget exhausted before this phase began")
+    return max(1, int(min(phase_timeout, remaining)))
+
+
+def start_wall_clock_watchdog(budget: int, output_root: Path, context: dict[str, Any]) -> None:
+    """Terminate the run at a fixed wall-clock deadline, whatever it is doing.
+
+    Phase timeouts only fire for a phase that is being waited on. A wedge
+    anywhere else, including in this runner itself, would otherwise hold a
+    Kaggle session open until the platform limit. This deadline is
+    unconditional: it kills the child process tree, writes what evidence it
+    can, and exits without waiting for anything.
+    """
+
+    global RUN_DEADLINE
+    RUN_DEADLINE = time.time() + budget
+
+    def enforce() -> None:
+        while True:
+            remaining = (RUN_DEADLINE or 0) - time.time()
+            if remaining <= 0:
+                break
+            time.sleep(min(remaining, 15.0))
+        message = (
+            f"hard wall-clock stop: the {budget}s run budget expired; "
+            "killing the child process tree and exiting"
+        )
+        print(message, flush=True)
+        if ACTIVE_CHILD is not None:
+            kill_process_tree(ACTIVE_CHILD)
+        try:
+            atomic_json(
+                output_root / "summary.json",
+                {"status": "failed", "error": message, "wall_clock_budget_seconds": budget, **context},
+            )
+            atomic_json(
+                output_root / "audit-manifest.json",
+                {"status": "failed", "error": message, "artifacts": []},
+            )
+        except Exception:  # the exit must happen even if evidence cannot be written
+            pass
+        os._exit(75)
+
+    threading.Thread(target=enforce, daemon=True).start()
+
+
 def run_logged(
     command: list[str],
     *,
@@ -60,6 +133,8 @@ def run_logged(
     show progress inside the longest phase instead of going silent for it.
     """
 
+    global ACTIVE_CHILD
+    timeout = effective_timeout(timeout)
     started = time.time()
     log_path.parent.mkdir(parents=True, exist_ok=True)
     process = subprocess.Popen(
@@ -70,7 +145,12 @@ def run_logged(
         bufsize=1,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
+        # Own session/group: `accelerate launch` spawns one worker per GPU, and
+        # killing only the launcher would orphan workers that still hold the
+        # GPUs. The whole tree must be killable as a unit.
+        **({"start_new_session": True} if os.name != "nt" else {}),
     )
+    ACTIVE_CHILD = process
     tail: deque[str] = deque(maxlen=120)
 
     def pump() -> None:
@@ -89,8 +169,7 @@ def run_logged(
     try:
         returncode = process.wait(timeout=timeout)
     except subprocess.TimeoutExpired:
-        process.kill()
-        process.wait()
+        kill_process_tree(process)
         reader.join(timeout=30)
         raise RuntimeError(
             f"command timed out after {timeout}s: {command}\n"
@@ -184,6 +263,16 @@ def main() -> None:
             + os.pathsep
             + env.get("PYTHONPATH", ""),
         }
+    )
+
+    start_wall_clock_watchdog(
+        int(config["run"].get("max_wall_clock_seconds", 4800)),
+        output_root,
+        {
+            "purpose": config["run"]["purpose"],
+            "checkpoint_label": config["run"]["checkpoint_label"],
+            "config_sha256": sha256_text(config_text),
+        },
     )
 
     try:
