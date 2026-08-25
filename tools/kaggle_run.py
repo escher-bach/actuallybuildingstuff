@@ -184,7 +184,7 @@ cmd = [
 # Outermost guard. The runner arms its own wall-clock watchdog; this one
 # covers the case where the runner process itself wedges and cannot enforce
 # it. Kaggle would otherwise hold the session until the platform limit.
-NOTEBOOK_TIMEOUT_SECONDS = 5400
+NOTEBOOK_TIMEOUT_SECONDS = 6000
 try:
     completed = subprocess.run(cmd, cwd=str(SOURCE), env=env, check=False, timeout=NOTEBOOK_TIMEOUT_SECONDS)
 except subprocess.TimeoutExpired:
