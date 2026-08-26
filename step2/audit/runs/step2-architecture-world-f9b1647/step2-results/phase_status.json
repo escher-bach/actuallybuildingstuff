@@ -1,0 +1,45 @@
+{
+  "capture_environment": {
+    "elapsed_seconds": 0.42651987075805664,
+    "started_at": 1787694888.8231483,
+    "status": "complete",
+    "timestamp": 1787694889.2496681
+  },
+  "correctness_tests": {
+    "elapsed_seconds": 57.25747323036194,
+    "started_at": 1787694938.960522,
+    "status": "complete",
+    "timestamp": 1787694996.2179952
+  },
+  "cpu_benchmark": {
+    "elapsed_seconds": 32.961663007736206,
+    "started_at": 1787694996.384056,
+    "status": "complete",
+    "timestamp": 1787695029.345719
+  },
+  "gpu_vertical_slice": {
+    "elapsed_seconds": 3532.685077905655,
+    "started_at": 1787695032.2700157,
+    "status": "complete",
+    "timestamp": 1787698564.9550936
+  },
+  "install_and_build": {
+    "elapsed_seconds": 49.710376501083374,
+    "started_at": 1787694889.2498417,
+    "status": "complete",
+    "timestamp": 1787694938.9602182,
+    "wheel_sha256": "0f87f9d95a02b5054ca81fc415b2aa87b0aa720226c8ec6e5d380eeefb8e9460"
+  },
+  "trivial_policy_baselines": {
+    "elapsed_seconds": 2.9234302043914795,
+    "started_at": 1787695029.346177,
+    "status": "complete",
+    "timestamp": 1787695032.2696073
+  },
+  "world_validation": {
+    "elapsed_seconds": 0.1652975082397461,
+    "started_at": 1787694996.218396,
+    "status": "complete",
+    "timestamp": 1787694996.3836935
+  }
+}

@@ -144,11 +144,76 @@ metrics and an identical model `sha256`, so FP16 DDP training on two T4s is
 deterministic here and future comparisons can attribute differences to the
 change under test.
 
+## Result of the hour-scale candidate, run `f9b1647`
+
+Budget was raised from 256 to 35,000 updates, about 59 minutes of lineage
+training on two T4s, with learning rate, seed, batch size and world held
+fixed so budget is the only training factor varied. Held-out support was
+widened from 64 to 512 episodes. The run completed and passed audit
+verification.
+
+**Budget was the explanation for the earlier null result.** Every paired
+metric improved against the same step-zero weights:
+
+| metric | step zero | 35,000 updates |
+| --- | --- | --- |
+| closed-loop terminal error | 0.5090 | 0.3743 |
+| fractional error reduction | -0.6275 | -0.0326 |
+| teacher-forced action L1 | 0.7263 | 0.2812 |
+| teacher-forced future L1 | 0.2393 | 0.0207 |
+| success at error <= 0.01 | 0.006 | 0.330 |
+| success at error <= 0.05 | 0.088 | 0.330 |
+
+**The world teaches the targeted capability, and dimension one is solved
+exactly.** Per-dimension terminal error and success at `0.01`:
+
+| d | terminal error | success <= 0.01 |
+| --- | --- | --- |
+| 1 | 0.3418 -> 0.0000 | 0.000 -> 1.000 |
+| 2 | 0.4993 -> 0.3758 | 0.008 -> 0.219 |
+| 3 | 0.5788 -> 0.5693 | 0.008 -> 0.070 |
+| 4 | 0.6161 -> 0.5522 | 0.008 -> 0.031 |
+
+Every `d=1` episode is solved to within `0.01`, and teacher-forced action L1
+at `d=1` is `0.0000`. In-context system identification followed by inverse
+control is therefore learnable from this world's public experience. Competence
+falls off sharply as the number of actuator/channel bindings grows.
+
+**The learner is not yet competent overall, and the defect is specific.**
+Mean terminal error `0.3743` remains worse than the zero-action policy's
+`0.3385`, while success at every threshold is far better than zero action's
+`0.000`. The policy is bimodal: it solves a third of episodes essentially
+exactly and drags its own mean with the rest. The trial curve locates the
+cause:
+
+| actions allowed | mean error | success <= 0.05 |
+| --- | --- | --- |
+| 0 | 0.3371 | 0.000 |
+| 1 | 0.3157 | 0.100 |
+| 2 | 0.3312 | 0.330 |
+| 3 | 0.3579 | 0.330 |
+| 4 | 0.3743 | 0.330 |
+
+Error falls after the first action, then rises monotonically. Success
+saturates by the second action and never improves. The learner makes a good
+opening move and then damages every episode it has not already solved: it has
+learned to identify and invert, but not to stop. Residual correction is
+divergent rather than contractive.
+
+This is the specific next target. It is a property of the learner or the
+interface, not evidence that the world is wrong: the privileged oracle scores
+`0.0000` terminal error and `100%` at `0.01` on every dimension.
+
 ## Evidence level
 
-`0.2.0` now has a complete, audited two-T4 apparatus result and one retained
-candidate checkpoint. It has no source-world competence evidence and no
-transfer evidence.
+`0.2.0` now has audited two-T4 apparatus results and a retained
+35,000-update candidate checkpoint with partial source-world competence:
+dimension one solved exactly, degrading with dimension, and a located
+non-termination defect in multi-step correction. It has no transfer evidence.
+
+`c1-start-candidate` from run `f9b1647` has not been promoted to Checkpoint 1.
+No numeric promotion threshold was predeclared and none may be invented after
+the fact; promotion is the user's decision.
 
 The retained `0.1.0` checkpoints are historical apparatus evidence. They use a
 superseded ABI and architecture boundary and must not be parents of the `0.2.0`
