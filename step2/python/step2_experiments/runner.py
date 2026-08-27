@@ -478,6 +478,36 @@ def main() -> None:
             )
             phase_update(phase_path, phases, "capacity_probe", "complete")
             status = "complete"
+        elif "dagger" in config:
+            phase_update(phase_path, phases, "dagger_arm", "running")
+            run_logged(
+                [
+                    sys.executable,
+                    "-m",
+                    "accelerate.commands.launch",
+                    "--multi_gpu",
+                    "--num_processes",
+                    "2",
+                    "--num_machines",
+                    "1",
+                    "--mixed_precision",
+                    str(config["run"]["mixed_precision"]),
+                    "--dynamo_backend",
+                    "no",
+                    "-m",
+                    "step2_experiments.dagger",
+                    "--config",
+                    str(config_path),
+                    "--output-root",
+                    str(output_root),
+                ],
+                cwd=repo,
+                env=env,
+                log_path=logs / "dagger.log",
+                timeout=int(config["run"].get("gpu_phase_timeout_seconds", 1800)),
+            )
+            phase_update(phase_path, phases, "dagger_arm", "complete")
+            status = "complete"
         elif "curve" in config:
             # A budget curve is a learner question too, but a full-size one:
             # it needs DDP throughput to reach the step count that makes the

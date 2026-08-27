@@ -22,3 +22,9 @@ title = "STEP 2 per-dimension budget curve"
 slug_prefix = "step2-budget-curve"
 config = "step2/configs/kaggle/t4x2_budget_curve.toml"
 purpose = "does the learner acquire d=3 and d=4 with more budget concentrated on them"
+
+[experiments.dagger]
+title = "STEP 2 DAgger arm"
+slug_prefix = "step2-dagger"
+config = "step2/configs/kaggle/t4x2_dagger.toml"
+purpose = "paired DAgger arm against the f9b1647 behaviour-cloning control"
