@@ -446,57 +446,92 @@ def main() -> None:
         )
         phase_update(phase_path, phases, "cpu_benchmark", "complete")
 
-        phase_update(phase_path, phases, "trivial_policy_baselines", "running")
-        run_logged(
-            [
+        # A capacity probe is a learner question, not a world question. It does
+        # not need the world baseline band, a retained checkpoint, or a lineage,
+        # so it skips the phases that exist to make a candidate promotable and
+        # runs single-process: DDP contributed two of the three apparatus
+        # failures so far and buys a probe of this size nothing.
+        if "probe" in config:
+            phase_update(phase_path, phases, "capacity_probe", "running")
+            run_logged(
+                [
+                    sys.executable,
+                    "-m",
+                    "step2_experiments.capacity_probe",
+                    "--config",
+                    str(config_path),
+                    "--output-root",
+                    str(output_root),
+                ],
+                cwd=repo,
+                env=env,
+                log_path=logs / "capacity-probe.log",
+                timeout=int(config["run"].get("gpu_phase_timeout_seconds", 1800)),
+            )
+            probe_result = json.loads(
+                (output_root / "capacity-probe.json").read_text(encoding="utf-8")
+            )
+            print(
+                "capacity probe verdict: "
+                + json.dumps(probe_result["decision"], sort_keys=True),
+                flush=True,
+            )
+            phase_update(phase_path, phases, "capacity_probe", "complete")
+            status = "complete"
+        else:
+            phase_update(phase_path, phases, "trivial_policy_baselines", "running")
+            run_logged(
+                [
+                    sys.executable,
+                    "-m",
+                    "step2_experiments.baselines",
+                    "--config",
+                    str(config_path),
+                    "--output",
+                    str(output_root / "trivial-policy-baselines.json"),
+                ],
+                cwd=repo,
+                env=env,
+                log_path=logs / "trivial-policy-baselines.log",
+                timeout=300,
+            )
+            phase_update(phase_path, phases, "trivial_policy_baselines", "complete")
+
+            phase_update(phase_path, phases, "gpu_vertical_slice", "running")
+            gpu_command = [
                 sys.executable,
                 "-m",
-                "step2_experiments.baselines",
+                "accelerate.commands.launch",
+                "--multi_gpu",
+                "--num_processes",
+                "2",
+                "--num_machines",
+                "1",
+                "--mixed_precision",
+                str(config["run"]["mixed_precision"]),
+                "--dynamo_backend",
+                "no",
+                "-m",
+                "step2_experiments.train",
                 "--config",
                 str(config_path),
-                "--output",
-                str(output_root / "trivial-policy-baselines.json"),
-            ],
-            cwd=repo,
-            env=env,
-            log_path=logs / "trivial-policy-baselines.log",
-            timeout=300,
-        )
-        phase_update(phase_path, phases, "trivial_policy_baselines", "complete")
-
-        phase_update(phase_path, phases, "gpu_vertical_slice", "running")
-        gpu_command = [
-            sys.executable,
-            "-m",
-            "accelerate.commands.launch",
-            "--multi_gpu",
-            "--num_processes",
-            "2",
-            "--num_machines",
-            "1",
-            "--mixed_precision",
-            str(config["run"]["mixed_precision"]),
-            "--dynamo_backend",
-            "no",
-            "-m",
-            "step2_experiments.train",
-            "--config",
-            str(config_path),
-            "--output-root",
-            str(output_root),
-        ]
-        run_logged(
-            gpu_command,
-            cwd=repo,
-            env=env,
-            log_path=logs / "gpu-vertical-slice.log",
-            timeout=int(config["run"].get("gpu_phase_timeout_seconds", 1800)),
-        )
-        training_result = json.loads((output_root / "training-result.json").read_text(encoding="utf-8"))
-        if not training_result.get("architecture_gate_passed"):
-            raise RuntimeError("GPU architecture integration gate did not pass")
-        phase_update(phase_path, phases, "gpu_vertical_slice", "complete")
-        status = "complete"
+                "--output-root",
+                str(output_root),
+            ]
+            run_logged(
+                gpu_command,
+                cwd=repo,
+                env=env,
+                log_path=logs / "gpu-vertical-slice.log",
+                timeout=int(config["run"].get("gpu_phase_timeout_seconds", 1800)),
+            )
+            training_result = json.loads(
+                (output_root / "training-result.json").read_text(encoding="utf-8")
+            )
+            if not training_result.get("architecture_gate_passed"):
+                raise RuntimeError("GPU architecture integration gate did not pass")
+            phase_update(phase_path, phases, "gpu_vertical_slice", "complete")
+            status = "complete"
     except Exception as exc:  # package evidence before propagating the failure
         error = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
         print(error, file=sys.stderr, flush=True)

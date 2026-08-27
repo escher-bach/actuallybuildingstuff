@@ -10,3 +10,9 @@ title = "STEP 2 architecture and first-world vertical slice"
 slug_prefix = "step2-architecture-world"
 config = "step2/configs/kaggle/t4x2_vertical_slice.toml"
 purpose = "two-T4 apparatus gate followed by a fresh bounded C1 candidate start"
+
+[experiments.learner-capacity-probe]
+title = "STEP 2 learner capacity probe"
+slug_prefix = "step2-learner-capacity"
+config = "step2/configs/kaggle/t4x2_capacity_probe.toml"
+purpose = "attribute the d>=2 teacher-forced cliff to the key encoding or to budget before any world work continues"

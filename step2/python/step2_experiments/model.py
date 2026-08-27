@@ -33,6 +33,8 @@ class Step2Config(PretrainedConfig):
         num_roles: int = 11,
         payload_dim: int = 8,
         action_horizon: int = 16,
+        key_embedding: str = "sinusoid",
+        max_keys: int = 64,
         action_loss_weight: float = 1.0,
         future_loss_weight: float = 0.5,
         token_abi_version: str = "physical-event-abi-0.2.0",
@@ -43,6 +45,8 @@ class Step2Config(PretrainedConfig):
             raise ValueError("hidden_size must be divisible by attention_heads")
         if hidden_size % 2:
             raise ValueError("hidden_size must be even for deterministic Fourier keys")
+        if key_embedding not in ("sinusoid", "learned"):
+            raise ValueError("key_embedding must be 'sinusoid' or 'learned'")
         self.hidden_size = hidden_size
         self.intermediate_size = intermediate_size
         self.num_hidden_layers = num_hidden_layers
@@ -54,6 +58,8 @@ class Step2Config(PretrainedConfig):
         self.num_roles = num_roles
         self.payload_dim = payload_dim
         self.action_horizon = action_horizon
+        self.key_embedding = key_embedding
+        self.max_keys = max_keys
         self.action_loss_weight = action_loss_weight
         self.future_loss_weight = future_loss_weight
         self.token_abi_version = token_abi_version
@@ -122,6 +128,16 @@ class Step2ForTrajectoryPrediction(PreTrainedModel):
         # an otherwise exact checkpoint reload change the public-key encoding.
         self.register_buffer("key_frequencies", key_frequencies, persistent=True)
 
+        # Probe arm only. The canonical `0.2.0` profile encodes public key
+        # identity as a frozen Fourier code, so the world's only carrier of
+        # "which channel/actuator is this" cannot adapt during training. The
+        # learned arm replaces that code with a trainable table so a capacity
+        # probe can attribute a multi-binding failure to the encoding rather
+        # than to the budget. It is not part of the selected profile.
+        self.key_table = (
+            nn.Embedding(config.max_keys, h) if config.key_embedding == "learned" else None
+        )
+
         self.action_head = nn.Linear(h, config.action_horizon)
         self.future_head = nn.Linear(h, 1)
         self.post_init()
@@ -152,6 +168,12 @@ class Step2ForTrajectoryPrediction(PreTrainedModel):
         encoded = torch.cat((torch.sin(angles), torch.cos(angles)), dim=-1)
         return encoded * self.config.initializer_range
 
+    def key_identity_embedding(self, key_ids: torch.Tensor) -> torch.Tensor:
+        """Public key identity under the configured encoding."""
+        if self.key_table is None:
+            return self.deterministic_key_embedding(key_ids)
+        return self.key_table(key_ids.clamp_max(self.config.max_keys - 1))
+
     def embed_events(
         self,
         role_ids: torch.Tensor,
@@ -163,7 +185,7 @@ class Step2ForTrajectoryPrediction(PreTrainedModel):
         embeddings = (
             self.role_embedding(role_ids)
             + self.payload_projector(payloads)
-            + self.deterministic_key_embedding(key_ids).to(dtype=payloads.dtype)
+            + self.key_identity_embedding(key_ids).to(dtype=payloads.dtype)
         )
         if canonical_content_embeds is not None:
             if canonical_content_embeds.shape != embeddings.shape:
@@ -252,7 +274,22 @@ def parameter_report(model: Step2ForTrajectoryPrediction) -> dict[str, int]:
     return groups
 
 
-def assert_selected_parameter_report(report: dict[str, int]) -> None:
+def is_selected_profile_arm(config: Step2Config) -> bool:
+    """True for the canonical `0.2.0` profile, false for a probe arm.
+
+    The drift guards below pin the selected parameterization exactly so an
+    accidental architecture change cannot enter the lineage unnoticed. A
+    deliberate probe arm must still be able to run, so it is identified here
+    and exempted rather than forcing the pinned numbers to be edited.
+    """
+    return str(getattr(config, "key_embedding", "sinusoid")) == "sinusoid"
+
+
+def assert_selected_parameter_report(
+    report: dict[str, int], config: Step2Config | None = None
+) -> None:
+    if config is not None and not is_selected_profile_arm(config):
+        return
     expected = {
         "total": 21_257_489,
         # The vocabulary table is frozen; the modality-free core has no tokens.
@@ -266,6 +303,8 @@ def assert_selected_parameter_report(report: dict[str, int]) -> None:
 
 
 def assert_selected_profile(config: Step2Config) -> None:
+    if not is_selected_profile_arm(config):
+        return
     expected = {
         "hidden_size": 384,
         "intermediate_size": 1024,
