@@ -1,0 +1,151 @@
+{
+  "architecture_gate_passed": null,
+  "architecture_gate_progress": null,
+  "audit_verified": true,
+  "collected_at_unix": 1787853124.6077476,
+  "configuration": {
+    "path": "step2/configs/kaggle/t4x2_dagger.toml",
+    "sha256": "118f1e2a49c0880d4bdf3061caa35381a4aa368c76860dd7dcef2f3d28e1df87"
+  },
+  "downloaded_files": [
+    {
+      "path": "step2-dagger-d2a1a23.log",
+      "sha256": "beccc656ff2b2411e2afb550b02244de5e7e2c0eb2c9a3e387ce96f0f3ef246d",
+      "size": 184193
+    },
+    {
+      "path": "step2-results/audit-manifest.json",
+      "sha256": "62ebb9d0687ddbf84ca2b797d2c7bf4a17309a78c74a85385ab06d20a52199eb",
+      "size": 2680
+    },
+    {
+      "path": "step2-results/cpu-benchmark.json",
+      "sha256": "96d2c276422f2ea6fcb05d1d996238e9aa9bc1867c21d800f73882aada9bdb13",
+      "size": 750
+    },
+    {
+      "path": "step2-results/dagger-result.json",
+      "sha256": "1b675f901245a34396701a96b13597c56c7d659aeadd2799b480e562a1639f89",
+      "size": 24416
+    },
+    {
+      "path": "step2-results/environment.json",
+      "sha256": "9f5815669e6e11ef1fe8032b7495a9fe7715aaa279d59ab4dedbf2fc1dc62fe5",
+      "size": 2985
+    },
+    {
+      "path": "step2-results/logs/cpu-benchmark.log",
+      "sha256": "61832ebdf43afa47622da02a1253861014f241ed41706a4b1672bd3b212fbe3c",
+      "size": 855
+    },
+    {
+      "path": "step2-results/logs/dagger.log",
+      "sha256": "ec0a6939fa792262a76a2eb4792e9f5737061ffd73124d5ea7ac456348d62456",
+      "size": 33441
+    },
+    {
+      "path": "step2-results/logs/maturin-build.log",
+      "sha256": "4d5bb36def4f2d15a8e9791975cc6508825690f80df444a8cbaa4ebeb4757310",
+      "size": 2283
+    },
+    {
+      "path": "step2-results/logs/pip-install.log",
+      "sha256": "401be5dd329a29cacf227c9a90618691f3eda5505f2dcc07ac91fbcb98d36172",
+      "size": 13252
+    },
+    {
+      "path": "step2-results/logs/python-tests.log",
+      "sha256": "263e0e3376e6e2e175139a03c67c303c7cbe48cea5e210c435cfef2311c50f46",
+      "size": 7766
+    },
+    {
+      "path": "step2-results/logs/rust-tests.log",
+      "sha256": "eea1f3aecb86531324a647c3348b7119ee267eecca209b4d796e3254c95dc81d",
+      "size": 2332
+    },
+    {
+      "path": "step2-results/logs/rust-toolchain.log",
+      "sha256": "0b9eb92826014ae3a18109a3fc4773321bc0f6c56850b74a8c8bcba403d33e20",
+      "size": 245
+    },
+    {
+      "path": "step2-results/logs/rustup-download.log",
+      "sha256": "65ab67427918399433c826dc3d69d1a19dc47a96b0439717ad27931fb699e6ce",
+      "size": 111
+    },
+    {
+      "path": "step2-results/logs/rustup-install.log",
+      "sha256": "2c7d7957f29fdf9077b8961d77f01ae61f673fff719f903bdf8a8c27c130d62c",
+      "size": 1435
+    },
+    {
+      "path": "step2-results/logs/world-validation.log",
+      "sha256": "0dc43b20272535d2b75fc461a257f5376a41646cb478edd1c7569ec88a5eac45",
+      "size": 588
+    },
+    {
+      "path": "step2-results/logs/world-wheel-install.log",
+      "sha256": "b5b3d22c47877937a6301822e1f63e04288978ca574af82e8e91285e061e9c08",
+      "size": 317
+    },
+    {
+      "path": "step2-results/phase_status.json",
+      "sha256": "2fec4774bfbf97184260235c454d72cf085bfab50de769a5b52eb66e9bd5d40a",
+      "size": 1115
+    },
+    {
+      "path": "step2-results/summary.json",
+      "sha256": "3f6fe33a976531b6d0288d802d91e2361fdb3fcae3509c5a9130aa289fb5339c",
+      "size": 1609
+    },
+    {
+      "path": "step2-results/world-validation.json",
+      "sha256": "b1177f3aae0006eaf3e0f51a06eb7d94459c116cc1eee10a045fa89147ac006f",
+      "size": 383
+    }
+  ],
+  "experiment": "dagger",
+  "kaggle": {
+    "completion_time": "2026-08-27T16:51:40.403000",
+    "owner_slug_version": "aniruddhavarma/step2-dagger-d2a1a23/1",
+    "push_url": "https://www.kaggle.com/code/aniruddhavarma/step2-dagger-d2a1a23",
+    "terminal_status": "aniruddhavarma/step2-dagger-d2a1a23/1 has status \"KernelWorkerStatus.COMPLETE\"",
+    "url": "https://www.kaggle.com/code/aniruddhavarma/step2-dagger-d2a1a23/versions/1"
+  },
+  "kernel": "aniruddhavarma/step2-dagger-d2a1a23",
+  "model_sha256": null,
+  "observed_accelerator_inventory": null,
+  "recovery_artifact": null,
+  "remote_manifest_sha256": "62ebb9d0687ddbf84ca2b797d2c7bf4a17309a78c74a85385ab06d20a52199eb",
+  "requested_accelerator": "NvidiaTeslaT4",
+  "root_seed": 20260824,
+  "run_id": "aniruddhavarma/step2-dagger-d2a1a23/1",
+  "schema_version": 1,
+  "scientific_report": null,
+  "source": {
+    "git_remote": "origin",
+    "git_remote_url": "https://github.com/escher-bach/actuallybuildingstuff.git",
+    "git_sha": "d2a1a23db0569b853fef9d5ecc8c60352ff35ce6"
+  },
+  "status": "complete",
+  "upstream_kaggle_versions": [],
+  "verified_manifest_entries": [
+    "cpu-benchmark.json",
+    "dagger-result.json",
+    "environment.json",
+    "logs/cpu-benchmark.log",
+    "logs/dagger.log",
+    "logs/maturin-build.log",
+    "logs/pip-install.log",
+    "logs/python-tests.log",
+    "logs/rust-tests.log",
+    "logs/rust-toolchain.log",
+    "logs/rustup-download.log",
+    "logs/rustup-install.log",
+    "logs/world-validation.log",
+    "logs/world-wheel-install.log",
+    "phase_status.json",
+    "world-validation.json"
+  ],
+  "world_size": null
+}

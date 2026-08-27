@@ -1,0 +1,39 @@
+{
+  "capture_environment": {
+    "elapsed_seconds": 0.42858314514160156,
+    "started_at": 1787849511.4235544,
+    "status": "complete",
+    "timestamp": 1787849511.8521376
+  },
+  "correctness_tests": {
+    "elapsed_seconds": 59.45141386985779,
+    "started_at": 1787849567.103388,
+    "status": "complete",
+    "timestamp": 1787849626.554802
+  },
+  "cpu_benchmark": {
+    "elapsed_seconds": 37.88981342315674,
+    "started_at": 1787849626.7208028,
+    "status": "complete",
+    "timestamp": 1787849664.6106162
+  },
+  "dagger_arm": {
+    "elapsed_seconds": 3402.4336562156677,
+    "started_at": 1787849664.6110218,
+    "status": "complete",
+    "timestamp": 1787853067.044678
+  },
+  "install_and_build": {
+    "elapsed_seconds": 55.250483989715576,
+    "started_at": 1787849511.8525033,
+    "status": "complete",
+    "timestamp": 1787849567.1029873,
+    "wheel_sha256": "84dc753709751fa35a5d600f15a97380785245135212c936b72a10636921ed73"
+  },
+  "world_validation": {
+    "elapsed_seconds": 0.16514015197753906,
+    "started_at": 1787849626.5552073,
+    "status": "complete",
+    "timestamp": 1787849626.7203474
+  }
+}
