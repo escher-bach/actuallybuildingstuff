@@ -1,0 +1,39 @@
+{
+  "capacity_probe": {
+    "elapsed_seconds": 996.8078052997589,
+    "started_at": 1787847124.5208008,
+    "status": "complete",
+    "timestamp": 1787848121.3286061
+  },
+  "capture_environment": {
+    "elapsed_seconds": 0.42556285858154297,
+    "started_at": 1787846965.2402823,
+    "status": "complete",
+    "timestamp": 1787846965.6658452
+  },
+  "correctness_tests": {
+    "elapsed_seconds": 70.89253425598145,
+    "started_at": 1787847019.6426146,
+    "status": "complete",
+    "timestamp": 1787847090.5351489
+  },
+  "cpu_benchmark": {
+    "elapsed_seconds": 33.819249629974365,
+    "started_at": 1787847090.7011073,
+    "status": "complete",
+    "timestamp": 1787847124.520357
+  },
+  "install_and_build": {
+    "elapsed_seconds": 53.97606539726257,
+    "started_at": 1787846965.6662128,
+    "status": "complete",
+    "timestamp": 1787847019.6422782,
+    "wheel_sha256": "56369aedffa0f05e6c22484615427baee272dd00eeeefb13d7f2f3c74c8becd9"
+  },
+  "world_validation": {
+    "elapsed_seconds": 0.1652061939239502,
+    "started_at": 1787847090.5355666,
+    "status": "complete",
+    "timestamp": 1787847090.7007728
+  }
+}

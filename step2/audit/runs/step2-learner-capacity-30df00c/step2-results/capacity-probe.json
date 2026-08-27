@@ -1,0 +1,89 @@
+{
+  "arms": {
+    "learned": {
+      "action_l1_fit": 0.02751932665705681,
+      "arm": "learned",
+      "cohort_episodes": 64,
+      "dimension": 4,
+      "fit_after": {
+        "action_l1": 0.02751932665705681,
+        "future_l1": 0.012248215265572071,
+        "supervised_action_positions": 512
+      },
+      "fit_before": {
+        "action_l1": 0.6657053232192993,
+        "future_l1": 0.26346638798713684,
+        "supervised_action_positions": 512
+      },
+      "key_embedding": "learned",
+      "optimizer_steps": 4000,
+      "parameter_report": {
+        "adapter_and_heads": 38417,
+        "backbone": 21243648,
+        "frozen_unused_vocabulary": 384,
+        "total": 21282065,
+        "trainable": 21281681
+      },
+      "train_loss": 0.13712390267848967,
+      "updates": 4000
+    },
+    "sinusoid": {
+      "action_l1_fit": 0.02353595569729805,
+      "arm": "sinusoid",
+      "cohort_episodes": 64,
+      "dimension": 4,
+      "fit_after": {
+        "action_l1": 0.02353595569729805,
+        "future_l1": 0.01559352409094572,
+        "supervised_action_positions": 512
+      },
+      "fit_before": {
+        "action_l1": 0.7003391981124878,
+        "future_l1": 0.2228740006685257,
+        "supervised_action_positions": 512
+      },
+      "key_embedding": "sinusoid",
+      "optimizer_steps": 4000,
+      "parameter_report": {
+        "adapter_and_heads": 13841,
+        "backbone": 21243648,
+        "frozen_unused_vocabulary": 384,
+        "total": 21257489,
+        "trainable": 21257105
+      },
+      "train_loss": 0.18570965766906739,
+      "updates": 4000
+    }
+  },
+  "decision": {
+    "action_l1_fit": {
+      "learned": 0.02751932665705681,
+      "sinusoid": 0.02353595569729805
+    },
+    "fail_threshold": 0.05,
+    "fit_threshold": 0.02,
+    "learner_validated_as_instrument": false,
+    "next_action": "At least one arm landed between the thresholds. Extend updates and re-run; do not invent a threshold after the fact.",
+    "verdict": "inconclusive-no-decision-band"
+  },
+  "probe": {
+    "cohort_episodes": 64,
+    "dimension": 4,
+    "per_device_batch_size": 8,
+    "updates": 4000,
+    "warmup_updates": 100
+  },
+  "world": {
+    "action_limit": 0.2,
+    "calibration_pulse": 0.1,
+    "d_max": 4,
+    "d_min": 1,
+    "gain_max": 1.25,
+    "gain_min": 0.75,
+    "max_control_steps": 4,
+    "overfit_seed": 33001,
+    "rollout_seed": 44001,
+    "train_seed": 11001,
+    "validation_seed": 22001
+  }
+}
