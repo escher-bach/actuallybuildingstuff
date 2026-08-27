@@ -16,3 +16,9 @@ title = "STEP 2 learner capacity probe"
 slug_prefix = "step2-learner-capacity"
 config = "step2/configs/kaggle/t4x2_capacity_probe.toml"
 purpose = "attribute the d>=2 teacher-forced cliff to the key encoding or to budget before any world work continues"
+
+[experiments.budget-curve]
+title = "STEP 2 per-dimension budget curve"
+slug_prefix = "step2-budget-curve"
+config = "step2/configs/kaggle/t4x2_budget_curve.toml"
+purpose = "does the learner acquire d=3 and d=4 with more budget concentrated on them"

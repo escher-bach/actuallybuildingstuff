@@ -478,6 +478,47 @@ def main() -> None:
             )
             phase_update(phase_path, phases, "capacity_probe", "complete")
             status = "complete"
+        elif "curve" in config:
+            # A budget curve is a learner question too, but a full-size one:
+            # it needs DDP throughput to reach the step count that makes the
+            # curve's shape readable, so it launches the same way training
+            # does. It still skips the lineage and the retained checkpoint.
+            phase_update(phase_path, phases, "budget_curve", "running")
+            run_logged(
+                [
+                    sys.executable,
+                    "-m",
+                    "accelerate.commands.launch",
+                    "--multi_gpu",
+                    "--num_processes",
+                    "2",
+                    "--num_machines",
+                    "1",
+                    "--mixed_precision",
+                    str(config["run"]["mixed_precision"]),
+                    "--dynamo_backend",
+                    "no",
+                    "-m",
+                    "step2_experiments.budget_curve",
+                    "--config",
+                    str(config_path),
+                    "--output-root",
+                    str(output_root),
+                ],
+                cwd=repo,
+                env=env,
+                log_path=logs / "budget-curve.log",
+                timeout=int(config["run"].get("gpu_phase_timeout_seconds", 1800)),
+            )
+            curve_result = json.loads(
+                (output_root / "budget-curve.json").read_text(encoding="utf-8")
+            )
+            print(
+                "budget curve verdict: " + json.dumps(curve_result["verdict"], sort_keys=True),
+                flush=True,
+            )
+            phase_update(phase_path, phases, "budget_curve", "complete")
+            status = "complete"
         else:
             phase_update(phase_path, phases, "trivial_policy_baselines", "running")
             run_logged(

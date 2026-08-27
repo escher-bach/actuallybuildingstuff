@@ -328,10 +328,10 @@ def collect(kernel: str) -> Path:
     destination.mkdir(parents=True, exist_ok=True)
     pattern = (
         r"(^|/)(summary|training-result|architecture-gate-progress|cpu-benchmark|world-validation|"
-        r"trivial-policy-baselines|capacity-probe|phase_status|environment|audit-manifest)\.json$"
+        r"trivial-policy-baselines|capacity-probe|budget-curve|phase_status|environment|audit-manifest)\.json$"
         r"|(^|/)logs/(pip-install|rustup-download|rustup-install|rust-toolchain|maturin-build|"
         r"world-wheel-install|rust-tests|python-tests|world-validation|cpu-benchmark|"
-        r"trivial-policy-baselines|gpu-vertical-slice|capacity-probe)\.log$"
+        r"trivial-policy-baselines|gpu-vertical-slice|capacity-probe|budget-curve)\.log$"
     )
     command_run(
         [
