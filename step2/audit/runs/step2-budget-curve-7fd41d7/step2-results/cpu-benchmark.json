@@ -1,0 +1,29 @@
+{
+  "batch_size": 64,
+  "episodes": 4096,
+  "existing_batch_tensor_conversions_per_second": {
+    "max": 1801.6087507001794,
+    "median": 1787.9027105588273,
+    "min": 1753.26843603277
+  },
+  "generated_episodes_per_second": {
+    "max": 2880.146496401455,
+    "median": 2849.520653753784,
+    "min": 2690.858868359882
+  },
+  "generated_unpadded_tokens_per_second": {
+    "max": 189169.93448093033,
+    "median": 186900.3101258619,
+    "min": 176684.84153507167
+  },
+  "repeats": 5,
+  "torch_version": "2.10.0+cu128",
+  "world_versions": {
+    "action_horizon": 16,
+    "oracle": "public-prefix-oracle-0.2.0",
+    "payload_dim": 8,
+    "role_count": 11,
+    "token_abi": "physical-event-abi-0.2.0",
+    "world": "calibrated-monomial-0.2.0"
+  }
+}

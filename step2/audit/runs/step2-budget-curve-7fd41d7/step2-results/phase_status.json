@@ -1,0 +1,39 @@
+{
+  "budget_curve": {
+    "elapsed_seconds": 5749.247709512711,
+    "started_at": 1787849012.274115,
+    "status": "complete",
+    "timestamp": 1787854761.5218246
+  },
+  "capture_environment": {
+    "elapsed_seconds": 0.42165231704711914,
+    "started_at": 1787848871.0778604,
+    "status": "complete",
+    "timestamp": 1787848871.4995127
+  },
+  "correctness_tests": {
+    "elapsed_seconds": 57.32691192626953,
+    "started_at": 1787848921.9640994,
+    "status": "complete",
+    "timestamp": 1787848979.2910113
+  },
+  "cpu_benchmark": {
+    "elapsed_seconds": 32.817075967788696,
+    "started_at": 1787848979.4567025,
+    "status": "complete",
+    "timestamp": 1787849012.2737784
+  },
+  "install_and_build": {
+    "elapsed_seconds": 50.463929891586304,
+    "started_at": 1787848871.4998705,
+    "status": "complete",
+    "timestamp": 1787848921.9638004,
+    "wheel_sha256": "d1230a8525e046af3f5bedc1a3b14d4bb189f8c6d2d4de831a1214ddd145b9f0"
+  },
+  "world_validation": {
+    "elapsed_seconds": 0.16495633125305176,
+    "started_at": 1787848979.2914395,
+    "status": "complete",
+    "timestamp": 1787848979.4563959
+  }
+}

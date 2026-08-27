@@ -1,0 +1,88 @@
+{
+  "artifacts": [
+    {
+      "path": "budget-curve.json",
+      "sha256": "58c7f7f6ea74a9cf3061a62653600b126cadd139a37658acd77a28423a053331",
+      "size": 5661
+    },
+    {
+      "path": "cpu-benchmark.json",
+      "sha256": "45afe98a401c1ec1181b4a5382065d1044bb6179c6c4d11ccd653ac860e6c077",
+      "size": 747
+    },
+    {
+      "path": "environment.json",
+      "sha256": "f05d47e46be259cbd65f10ab9a8e1360a5ed3d5cda41488d734a5c38fc15f190",
+      "size": 2991
+    },
+    {
+      "path": "logs/budget-curve.log",
+      "sha256": "3d7cfb5d80055fec30955ebaefb54a27f9b74a77910c3e905daaf5da136533af",
+      "size": 54590
+    },
+    {
+      "path": "logs/cpu-benchmark.log",
+      "sha256": "aaa4172b2b0834434f7a1b7be683a36eb093cd7659ea554061c662abb85f39e0",
+      "size": 858
+    },
+    {
+      "path": "logs/maturin-build.log",
+      "sha256": "7955545bb61d81ffeba46e593b784faacaf1aba346f707f0b3386c03e0aa89bd",
+      "size": 2283
+    },
+    {
+      "path": "logs/pip-install.log",
+      "sha256": "c889c96d707d4372ffcc64e23dc695ac3379e1319bf14fc18022e2171a0e4827",
+      "size": 13252
+    },
+    {
+      "path": "logs/python-tests.log",
+      "sha256": "b4589aabdcf88da9580ac36cea06be020827d8989f6abc99dcc1b40c32c31813",
+      "size": 7776
+    },
+    {
+      "path": "logs/rust-tests.log",
+      "sha256": "6a1bb27cf01f7a0c1ca595b64fab47a26a6d7220676f07d51f79fbb72aba378e",
+      "size": 2332
+    },
+    {
+      "path": "logs/rust-toolchain.log",
+      "sha256": "0b9eb92826014ae3a18109a3fc4773321bc0f6c56850b74a8c8bcba403d33e20",
+      "size": 245
+    },
+    {
+      "path": "logs/rustup-download.log",
+      "sha256": "65ab67427918399433c826dc3d69d1a19dc47a96b0439717ad27931fb699e6ce",
+      "size": 111
+    },
+    {
+      "path": "logs/rustup-install.log",
+      "sha256": "2c7d7957f29fdf9077b8961d77f01ae61f673fff719f903bdf8a8c27c130d62c",
+      "size": 1435
+    },
+    {
+      "path": "logs/world-validation.log",
+      "sha256": "b46234db8611f2e272206c3a1f2b8cbfaecf0e919c6ca653137282420742fb79",
+      "size": 594
+    },
+    {
+      "path": "logs/world-wheel-install.log",
+      "sha256": "b5b3d22c47877937a6301822e1f63e04288978ca574af82e8e91285e061e9c08",
+      "size": 317
+    },
+    {
+      "path": "phase_status.json",
+      "sha256": "d59d0bdb8ac4c9d6e0c8df02293ca45f043f85a0481c00c8cf259c7e03087671",
+      "size": 1119
+    },
+    {
+      "path": "world-validation.json",
+      "sha256": "b1177f3aae0006eaf3e0f51a06eb7d94459c116cc1eee10a045fa89147ac006f",
+      "size": 383
+    }
+  ],
+  "config_sha256": "ff20fd9ff05d15ce3ff05f28852b1f49cf0dab378da5e25ea6137817d2dabb7b",
+  "error": null,
+  "git_sha": "7fd41d7be374fff3225d43afeae049758cdfc316",
+  "status": "complete"
+}
